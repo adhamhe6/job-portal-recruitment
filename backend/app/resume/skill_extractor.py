@@ -73,7 +73,9 @@ _SPACE_RUN = re.compile(r"[\s\-]+")
 _SLASH_SPACES = re.compile(r"\s*/\s*")
 _EMAIL = re.compile(r"[\w.+\-]+@[\w\-]+(?:\.[\w\-]+)+")
 # Only unmistakable URLs: a bare "asp.net" or "node.js" must stay matchable as a skill.
-_URL = re.compile(r"(?:https?://|www\.)\S+|\b(?:github|gitlab|bitbucket|linkedin|twitter|medium)\.com/\S*", re.IGNORECASE)
+_URL = re.compile(
+    r"(?:https?://|www\.)\S+|\b(?:github|gitlab|bitbucket|linkedin|twitter|medium)\.com/\S*", re.IGNORECASE
+)
 _LIST_SEP = re.compile(r"[,;|•·▪●◦‣⁃•\t]+|\s{3,}")
 _LABEL = re.compile(r"^\s*[A-Za-z][A-Za-z &/+#.\-]{1,35}:\s+")
 _PAREN = re.compile(r"\([^)]*\)")

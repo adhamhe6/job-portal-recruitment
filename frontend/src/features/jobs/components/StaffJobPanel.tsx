@@ -1,6 +1,5 @@
 import { Eye, Pencil, Target, Trash2, Users } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
-import { StatusBadge } from '@/components/common/StatusBadge'
 import { Alert } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -45,7 +44,6 @@ export function StaffJobPanel({ job }: { job: JobDetail }) {
           </CardTitle>
           <CardDescription>Only people at {job.company.name} can see this panel.</CardDescription>
         </div>
-        <StatusBadge kind="job" status={job.status} />
       </CardHeader>
       <CardContent className="space-y-4">
         {note && <Alert variant={note.variant}>{note.text}</Alert>}

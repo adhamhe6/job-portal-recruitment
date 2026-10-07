@@ -14,8 +14,13 @@ from app.matching.embedder import EmbeddingError
 from app.resume.storage import get_storage
 from tests import fixtures_resumes as fx
 from tests.helpers import register_candidate, register_employer
-from tests.resume_helpers import clean_storage  # noqa: F401  (fixture)
-from tests.resume_helpers import DOCX, PDF, upload, upload_ok
+from tests.resume_helpers import (
+    DOCX,
+    PDF,
+    clean_storage,  # noqa: F401  (fixture)
+    upload,
+    upload_ok,
+)
 
 pytestmark = [pytest.mark.e2e, pytest.mark.usefixtures("clean_storage")]
 
@@ -42,7 +47,13 @@ async def error_of(r) -> tuple[str, dict]:
         (fx.EXE, "cv.exe", "application/x-msdownload", 415, "UNSUPPORTED_MEDIA_TYPE"),
         (fx.OLE_DOC, "cv.doc", "application/msword", 415, "UNSUPPORTED_MEDIA_TYPE"),  # legacy Word
         (fx.OLE_DOC, "cv.docx", DOCX, 415, "UNSUPPORTED_MEDIA_TYPE"),
-        (fx.backend_pdf(), "cv.pdf", "image/png", 415, "UNSUPPORTED_MEDIA_TYPE"),  # declared type contradicts content
+        (
+            fx.backend_pdf(),
+            "cv.pdf",
+            "image/png",
+            415,
+            "UNSUPPORTED_MEDIA_TYPE",
+        ),  # declared type contradicts content
         (b"", "cv.pdf", PDF, 422, "EMPTY_FILE"),
         (fx.zip_bomb_docx(60), "cv.docx", DOCX, 413, "PAYLOAD_TOO_LARGE"),
         (fx.traversal_docx(), "cv.docx", DOCX, 415, "UNSUPPORTED_MEDIA_TYPE"),
@@ -70,7 +81,13 @@ async def test_oversize_file_is_rejected_with_413(client):
 async def test_declared_oversize_request_is_refused_before_it_is_read(client):
     cand = await register_candidate(client)
     r = await client.post(
-        "/api/v1/resumes", headers={**cand["h"], "Content-Length": str(50 * 1024 * 1024), "Content-Type": "multipart/form-data; boundary=x"}, content=b"--x--"
+        "/api/v1/resumes",
+        headers={
+            **cand["h"],
+            "Content-Length": str(50 * 1024 * 1024),
+            "Content-Type": "multipart/form-data; boundary=x",
+        },
+        content=b"--x--",
     )
     assert r.status_code == 413 and r.json()["error"]["details"]["reason"] == "REQUEST_TOO_LARGE"
 
@@ -86,19 +103,27 @@ async def test_chunked_body_without_content_length_is_capped_while_streaming(cli
             sent += 1
             yield b"0" * 65536
 
-    r = await client.post("/api/v1/resumes", headers={**cand["h"], "Content-Type": "multipart/form-data; boundary=x"}, content=body())
+    r = await client.post(
+        "/api/v1/resumes",
+        headers={**cand["h"], "Content-Type": "multipart/form-data; boundary=x"},
+        content=body(),
+    )
     assert r.status_code == 413
     assert sent < 400  # the server stopped reading long before the end of the body
     assert storage_files() == []
 
 
 async def test_anonymous_and_wrong_role_uploads(client):
-    assert (await client.post("/api/v1/resumes", files={"file": ("cv.pdf", fx.backend_pdf(), PDF)})).status_code == 401
+    assert (
+        await client.post("/api/v1/resumes", files={"file": ("cv.pdf", fx.backend_pdf(), PDF)})
+    ).status_code == 401
     rec = await register_employer(client)
     assert (await upload(client, rec, fx.backend_pdf())).status_code == 403
     cand = await register_candidate(client)
     assert (await client.post("/api/v1/resumes", headers=cand["h"])).status_code == 422  # no file at all
-    assert (await client.post("/api/v1/resumes", headers=cand["h"], data={"file": "not-a-file"})).status_code == 422
+    assert (
+        await client.post("/api/v1/resumes", headers=cand["h"], data={"file": "not-a-file"})
+    ).status_code == 422
 
 
 async def test_resume_limit_per_candidate(client, monkeypatch):
@@ -126,7 +151,9 @@ async def test_resume_limit_per_candidate(client, monkeypatch):
         (fx.empty_docx(), "empty.docx", DOCX, "NO_TEXT_EXTRACTED", "OCR is not enabled"),
     ],
 )
-async def test_unprocessable_documents_fail_safely_and_notify(client, session, data, name, ctype, code, snippet):
+async def test_unprocessable_documents_fail_safely_and_notify(
+    client, session, data, name, ctype, code, snippet
+):
     cand = await register_candidate(client)
     r = await upload(client, cand, data, name, ctype)
     assert r.status_code == 202, r.text  # the upload itself is fine; processing reports the problem
@@ -141,12 +168,20 @@ async def test_unprocessable_documents_fail_safely_and_notify(client, session, d
 
     task = await client.get(f"/api/v1/tasks/{body['task_id']}", headers=cand["h"])
     assert task.json()["status"] == "FAILED" and task.json()["error_code"] == code
-    result = (await session.execute(select(ResumeProcessingResult).where(ResumeProcessingResult.resume_id == uuid.UUID(body["id"])))).scalar_one()
+    result = (
+        await session.execute(
+            select(ResumeProcessingResult).where(ResumeProcessingResult.resume_id == uuid.UUID(body["id"]))
+        )
+    ).scalar_one()
     assert result.status.value == "FAILED" and result.error_code == code and result.extracted_text is None
 
     notes = (await client.get("/api/v1/notifications", headers=cand["h"])).json()["items"]
     failed = [n for n in notes if n["type"] == "RESUME_FAILED"]
-    assert len(failed) == 1 and failed[0]["resume_id"] == body["id"] and snippet.lower() in failed[0]["message"].lower()
+    assert (
+        len(failed) == 1
+        and failed[0]["resume_id"] == body["id"]
+        and snippet.lower() in failed[0]["message"].lower()
+    )
     assert not [n for n in notes if n["type"] == "RESUME_PROCESSED"]
 
     # review endpoints refuse to serve suggestions that do not exist; the file itself is still downloadable
@@ -165,15 +200,23 @@ async def test_failed_resume_can_be_reprocessed_and_identical_reupload_retries_i
     real = pipeline.analyze
 
     async def broken(*a, **k):
-        raise pipeline.ExtractionError("MALFORMED_DOCUMENT", "The PDF could not be read. It may be corrupted; try exporting it again.")
+        raise pipeline.ExtractionError(
+            "MALFORMED_DOCUMENT", "The PDF could not be read. It may be corrupted; try exporting it again."
+        )
 
     monkeypatch.setattr(pipeline, "analyze", broken)
     first = await upload(client, cand, pdf, "cv.pdf")
     assert first.json()["status"] == "FAILED"
     monkeypatch.setattr(pipeline, "analyze", real)
 
-    again = await upload(client, cand, pdf, "cv.pdf")  # identical bytes, but the previous attempt FAILED → retried
-    assert again.status_code == 202 and again.json()["id"] == first.json()["id"] and again.json()["duplicate"] is True
+    again = await upload(
+        client, cand, pdf, "cv.pdf"
+    )  # identical bytes, but the previous attempt FAILED → retried
+    assert (
+        again.status_code == 202
+        and again.json()["id"] == first.json()["id"]
+        and again.json()["duplicate"] is True
+    )
     assert again.json()["status"] == "PROCESSED" and again.json()["processing"]["attempts"] == 2
 
 
@@ -187,7 +230,10 @@ async def test_unexpected_internal_error_marks_the_resume_failed_without_leaking
     cand = await register_candidate(client)
     body = (await upload(client, cand, fx.backend_pdf())).json()
     assert body["status"] == "FAILED" and body["processing"]["error_code"] == "INTERNAL_ERROR"
-    for blob in (body["processing"]["error_message"], (await client.get(f"/api/v1/tasks/{body['task_id']}", headers=cand["h"])).text):
+    for blob in (
+        body["processing"]["error_message"],
+        (await client.get(f"/api/v1/tasks/{body['task_id']}", headers=cand["h"])).text,
+    ):
         assert "jane.doe" not in blob and "secret" not in blob
     notes = (await client.get("/api/v1/notifications", headers=cand["h"])).json()["items"]
     assert any(n["type"] == "RESUME_FAILED" for n in notes)
@@ -196,7 +242,9 @@ async def test_unexpected_internal_error_marks_the_resume_failed_without_leaking
 # --- embedding failures: bounded retry ---------------------------------------------------------------------------------------
 
 
-async def test_embedding_failure_keeps_extracted_data_and_retries_a_bounded_number_of_times(client, session, monkeypatch):
+async def test_embedding_failure_keeps_extracted_data_and_retries_a_bounded_number_of_times(
+    client, session, monkeypatch
+):
     calls = 0
 
     async def always_fail(texts):
@@ -210,16 +258,26 @@ async def test_embedding_failure_keeps_extracted_data_and_retries_a_bounded_numb
     body = r.json()
     p = body["processing"]
     # the data survived: processed, suggestions available, just no embedding
-    assert body["status"] == "PROCESSED" and p["has_embedding"] is False and p["error_code"] == "EMBEDDING_UNAVAILABLE"
+    assert (
+        body["status"] == "PROCESSED"
+        and p["has_embedding"] is False
+        and p["error_code"] == "EMBEDDING_UNAVAILABLE"
+    )
     assert "embedding" in p["error_message"].lower()
-    assert p["attempts"] == 2 and p["task_status"] == "COMPLETED"  # retried once (task_max_attempts = 2), then settled
+    assert (
+        p["attempts"] == 2 and p["task_status"] == "COMPLETED"
+    )  # retried once (task_max_attempts = 2), then settled
     ex = await client.get(f"/api/v1/resumes/{body['id']}/extracted", headers=cand["h"])
     assert ex.status_code == 200 and {s["name"] for s in ex.json()["skills"]} >= {"Python", "FastAPI"}
     task = (await client.get(f"/api/v1/tasks/{body['task_id']}", headers=cand["h"])).json()
     assert task["attempts"] == 2 and task["result"]["embedding"] is False
     assert calls >= 2
     # exactly one notification, only after the final attempt
-    n = await session.scalar(select(func.count()).select_from(Notification).where(Notification.type == NotificationType.RESUME_PROCESSED))
+    n = await session.scalar(
+        select(func.count())
+        .select_from(Notification)
+        .where(Notification.type == NotificationType.RESUME_PROCESSED)
+    )
     assert n == 1
 
 
@@ -239,7 +297,12 @@ async def test_transient_embedding_failure_recovers_on_retry(client, monkeypatch
     cand = await register_candidate(client)
     body = (await upload(client, cand, fx.backend_pdf())).json()
     p = body["processing"]
-    assert body["status"] == "PROCESSED" and p["has_embedding"] is True and p["error_code"] is None and p["attempts"] == 2
+    assert (
+        body["status"] == "PROCESSED"
+        and p["has_embedding"] is True
+        and p["error_code"] is None
+        and p["attempts"] == 2
+    )
 
 
 # --- queue unavailable --------------------------------------------------------------------------------------------------------
@@ -259,10 +322,22 @@ async def test_queue_outage_does_not_lose_the_upload(client, session):
     r = await upload(client, cand, fx.backend_pdf(), "cv.pdf")
     assert r.status_code == 202
     body = r.json()
-    assert body["task_id"] is None and body["status"] == "UPLOADED" and body["message"] and "process" in body["message"].lower()
-    assert body["processing"]["task_status"] == "FAILED" and body["processing"]["error_code"] == "QUEUE_UNAVAILABLE"
-    assert (await client.get(f"/api/v1/resumes/{body['id']}/file", headers=cand["h"])).content == fx.backend_pdf()  # the file is safe
-    assert (await client.post(f"/api/v1/resumes/{body['id']}/process", headers=cand["h"])).status_code == 503  # still down
+    assert (
+        body["task_id"] is None
+        and body["status"] == "UPLOADED"
+        and body["message"]
+        and "process" in body["message"].lower()
+    )
+    assert (
+        body["processing"]["task_status"] == "FAILED"
+        and body["processing"]["error_code"] == "QUEUE_UNAVAILABLE"
+    )
+    assert (
+        await client.get(f"/api/v1/resumes/{body['id']}/file", headers=cand["h"])
+    ).content == fx.backend_pdf()  # the file is safe
+    assert (
+        await client.post(f"/api/v1/resumes/{body['id']}/process", headers=cand["h"])
+    ).status_code == 503  # still down
 
     app.state.dispatcher = InlineDispatcher()
     retry = await client.post(f"/api/v1/resumes/{body['id']}/process", headers=cand["h"])
@@ -279,7 +354,10 @@ async def test_reprocess_is_deduplicated_while_a_run_is_active(client, session):
     body = await upload_ok(client, cand, fx.backend_pdf())
     # simulate a run that is still queued
     pending = BackgroundTask(
-        type=TaskType.PROCESS_RESUME, params={"resume_id": body["id"]}, status=TaskStatus.PENDING, dedupe_key=f"process-resume:{body['id']}",
+        type=TaskType.PROCESS_RESUME,
+        params={"resume_id": body["id"]},
+        status=TaskStatus.PENDING,
+        dedupe_key=f"process-resume:{body['id']}",
         created_by_id=uuid.UUID(cand["user"]["id"]),
     )
     session.add(pending)

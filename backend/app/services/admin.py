@@ -16,7 +16,7 @@ from typing import Any
 
 from arq.constants import default_queue_name, health_check_key_suffix
 from redis.exceptions import RedisError
-from sqlalchemy import func, or_, select, text, update
+from sqlalchemy import func, null, or_, select, text, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -317,6 +317,7 @@ class AdminService:
             raise ConflictError(
                 f"Only FAILED tasks can be retried (this one is {task.status.value})", code="TASK_NOT_RETRYABLE", details={"status": task.status.value}
             )
+        dedupe_key, task_type, previous_error = task.dedupe_key, task.type, task.error_code  # plain values: ORM state expires on rollback
         try:
             # Atomic FAILED -> PENDING: of two admins clicking at once, exactly one proceeds.
             moved = (
@@ -325,7 +326,7 @@ class AdminService:
                     .where(BackgroundTask.id == task_id, BackgroundTask.status == TaskStatus.FAILED)
                     .values(
                         status=TaskStatus.PENDING, progress=0, stage="retrying", attempts=0, error_code=None, error_message=None,
-                        result=None, started_at=None, finished_at=None,
+                        result=null(), started_at=None, finished_at=None,
                     )
                     .returning(BackgroundTask.id)
                     .execution_options(synchronize_session=False)
@@ -336,13 +337,13 @@ class AdminService:
                 raise ConflictError("This task is no longer FAILED", code="TASK_NOT_RETRYABLE")
             record_audit(
                 self.session, actor_id=user.id, action="task.retried", entity_type="task", entity_id=task_id,
-                meta={"type": task.type.value, "previous_error": task.error_code},
+                meta={"type": task_type.value, "previous_error": previous_error},
             )
             await self.session.commit()
         except IntegrityError as exc:  # another task with the same dedupe key is active now
             await self.session.rollback()
             raise ConflictError(
-                "An equivalent task is already pending or running", code="TASK_ALREADY_ACTIVE", details={"dedupe_key": task.dedupe_key}
+                "An equivalent task is already pending or running", code="TASK_ALREADY_ACTIVE", details={"dedupe_key": dedupe_key}
             ) from exc
         await self.session.refresh(task)
         await TaskService(self.session).enqueue(task, dispatcher)

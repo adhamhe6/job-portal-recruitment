@@ -276,7 +276,7 @@ function JobForm({ job }: { job?: JobDetail }) {
       <form
         onSubmit={(e) => void submit(isLive ? 'save' : 'draft', e)}
         noValidate
-        className="mx-auto grid max-w-4xl gap-6"
+        className="grid max-w-4xl gap-6"
         aria-label={editing ? 'Edit job' : 'Create job'}
       >
         {formError && <Alert variant="danger">{formError}</Alert>}

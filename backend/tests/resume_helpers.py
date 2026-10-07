@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import shutil
-from collections.abc import Iterator
 from typing import Any
 
 import pytest
@@ -51,9 +50,8 @@ async def task_of(client: AsyncClient, who: dict[str, Any], task_id: str) -> dic
 
 
 @pytest.fixture
-def clean_storage() -> Iterator[None]:
+def clean_storage() -> None:
     """The tests share one storage directory for the whole session: start each test that counts files from empty."""
     root = get_storage().root  # type: ignore[attr-defined]
     for child in root.glob("resumes/*"):
         shutil.rmtree(child, ignore_errors=True)
-    yield

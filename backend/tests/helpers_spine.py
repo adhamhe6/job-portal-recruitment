@@ -226,7 +226,7 @@ async def insert_imported_candidate(
 __all__ = [
     "API", "PASSWORD", "U", "apply_job", "assert_error", "backend_world", "client_from", "company_team", "expire_deadline", "fast_argon",
     "future", "insert_imported_candidate", "login", "nurse_profile", "publish", "refresh", "refresh_cookie", "scalar", "set_application_status",
-    "seed_search_corpus", "set_cookie_headers", "set_job_status", "sql", "tasks", "walk",
+    "reset_database", "seed_search_corpus", "set_cookie_headers", "set_job_status", "shared_world", "sql", "tasks", "walk",
 ]
 
 
@@ -265,3 +265,35 @@ async def seed_search_corpus(client: AsyncClient) -> dict[str, Any]:
         assert r.status_code == 201, r.text
         out[key] = await publish(client, rec, r.json()["id"])
     return out
+
+
+async def reset_database() -> None:
+    """What the ``db`` fixture does before every test (kept in sync with tests/conftest.py)."""
+    from app.cache.redis_cache import get_cache, get_redis
+    from app.db.database import Base, get_engine
+
+    keep = {"skills", "skill_aliases"}
+    tables = ", ".join(f'"{t.name}"' for t in Base.metadata.sorted_tables if t.name not in keep)
+    async with get_engine().begin() as conn:
+        await conn.execute(text(f"TRUNCATE {tables} RESTART IDENTITY CASCADE"))
+        await conn.execute(text("DELETE FROM skills WHERE NOT is_verified"))
+    await get_redis().flushdb()
+    get_cache()._down_until = 0.0
+
+
+@asynccontextmanager
+async def shared_world(builder: Any) -> AsyncIterator[tuple[AsyncClient, Any]]:
+    """A clean database holding one world, built once for a whole module of *read-only* tests (much cheaper than rebuilding it
+    per test). Modules using this must not also use the per-test ``db``/``client`` fixtures, which would wipe the data."""
+    from app.main import app
+    from app.workers.dispatch import InlineDispatcher
+
+    patch = pytest.MonkeyPatch()
+    patch.setattr(security, "_hasher", PasswordHasher(time_cost=1, memory_cost=8, parallelism=1))
+    await reset_database()
+    app.state.dispatcher = InlineDispatcher()
+    try:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+            yield c, await builder(c)
+    finally:
+        patch.undo()

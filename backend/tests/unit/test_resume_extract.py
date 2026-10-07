@@ -26,7 +26,9 @@ def test_pdf_text_is_extracted_line_by_line():
 
 
 def test_multi_page_pdf_and_page_cap():
-    long_text = "\n".join(f"Line {i} of a very long résumé about Python engineering experience" for i in range(2500))
+    long_text = "\n".join(
+        f"Line {i} of a very long résumé about Python engineering experience" for i in range(2500)
+    )
     data = fx.make_pdf(long_text)
     full = extract_sync(data, PDF, max_chars=10_000_000, max_pages=1000)
     assert full.page_count > 30 and "Line 2499" in full.text and not full.was_truncated
@@ -70,7 +72,10 @@ def test_docx_merged_table_cells_are_not_repeated():
 
 
 def test_docx_header_text_is_included():
-    data = fx.docx_with_header("Experience\nEngineer at Acme Corp 2020 - 2022\nBuilt things for customers", "Jordan Lee | jordan@example.com")
+    data = fx.docx_with_header(
+        "Experience\nEngineer at Acme Corp 2020 - 2022\nBuilt things for customers",
+        "Jordan Lee | jordan@example.com",
+    )
     assert "jordan@example.com" in extract_sync(data, DOCX, max_chars=MAX).text.splitlines()[0]
 
 
@@ -92,7 +97,9 @@ def test_encrypted_pdf_is_rejected_gracefully():
     assert exc.value.code == "ENCRYPTED_DOCUMENT" and "password" in exc.value.message.lower()
 
 
-@pytest.mark.parametrize("data", [fx.malformed_pdf(), b"%PDF-1.4\nthis is not really a pdf", b"%PDF-", fx.truncated_pdf()])
+@pytest.mark.parametrize(
+    "data", [fx.malformed_pdf(), b"%PDF-1.4\nthis is not really a pdf", b"%PDF-", fx.truncated_pdf()]
+)
 def test_malformed_pdf_is_a_clean_failure(data):
     with pytest.raises(ExtractionError) as exc:
         extract_sync(data, PDF, max_chars=MAX)
@@ -100,13 +107,19 @@ def test_malformed_pdf_is_a_clean_failure(data):
 
 
 def test_malformed_docx_is_a_clean_failure():
-    for data in (b"PK\x03\x04 not a zip", fx.zip_bytes({"hello.txt": b"hi"}), fx.zip_bytes({"[Content_Types].xml": fx.CONTENT_TYPES_XML, "word/document.xml": b"<broken"})):
+    for data in (
+        b"PK\x03\x04 not a zip",
+        fx.zip_bytes({"hello.txt": b"hi"}),
+        fx.zip_bytes({"[Content_Types].xml": fx.CONTENT_TYPES_XML, "word/document.xml": b"<broken"}),
+    ):
         with pytest.raises(ExtractionError) as exc:
             extract_sync(data, DOCX, max_chars=MAX)
         assert exc.value.code == "MALFORMED_DOCUMENT"
 
 
-@pytest.mark.parametrize(("data", "kind"), [(fx.scanned_pdf(), PDF), (fx.blank_pdf(), PDF), (fx.empty_docx(), DOCX)])
+@pytest.mark.parametrize(
+    ("data", "kind"), [(fx.scanned_pdf(), PDF), (fx.blank_pdf(), PDF), (fx.empty_docx(), DOCX)]
+)
 def test_scanned_or_empty_documents_report_no_text_honestly(data, kind):
     with pytest.raises(ExtractionError) as exc:
         extract_sync(data, kind, max_chars=MAX)
@@ -116,7 +129,12 @@ def test_scanned_or_empty_documents_report_no_text_honestly(data, kind):
 
 def test_error_messages_never_contain_document_text():
     secret = "Jane Doe jane.doe@example.com"
-    for data, kind in ((fx.malformed_pdf(), PDF), (fx.encrypted_pdf(), PDF), (fx.scanned_pdf(), PDF), (fx.truncated_pdf(), PDF)):
+    for data, kind in (
+        (fx.malformed_pdf(), PDF),
+        (fx.encrypted_pdf(), PDF),
+        (fx.scanned_pdf(), PDF),
+        (fx.truncated_pdf(), PDF),
+    ):
         with pytest.raises(ExtractionError) as exc:
             extract_sync(data, kind, max_chars=MAX)
         assert secret not in exc.value.message and "jane" not in exc.value.message.lower()

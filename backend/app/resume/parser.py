@@ -109,7 +109,9 @@ def _has_company_suffix(text: str) -> bool:
     return any(w.casefold().strip(".,") in COMPANY_SUFFIXES for w in text.split())
 
 
-_MINOR_WORDS = frozenset({"and", "the", "for", "with", "from", "into", "per", "von", "van", "der", "des", "del", "las", "los"})
+_MINOR_WORDS = frozenset(
+    {"and", "the", "for", "with", "from", "into", "per", "von", "van", "der", "des", "del", "las", "los"}
+)
 
 
 def _capitalised_ratio(text: str) -> float:
@@ -604,7 +606,9 @@ def _looks_like_header(line: str) -> bool:
     ratio = _capitalised_ratio(s)
     # Strongly capitalised lines are headers; title / company vocabulary needs at least half the words capitalised too,
     # so "Mentored junior engineers" (a description) is not mistaken for a job title.
-    return ratio >= 0.8 or (bool(_title_word_count(s) or _has_company_suffix(s)) and ratio >= 0.5 and len(s.split()) <= 8)
+    return ratio >= 0.8 or (
+        bool(_title_word_count(s) or _has_company_suffix(s)) and ratio >= 0.5 and len(s.split()) <= 8
+    )
 
 
 def _looks_like_location_piece(text: str) -> bool:
@@ -1087,7 +1091,9 @@ def _cert_from_line(line: str) -> ParsedCertification | None:
     ]
     if not parts:
         return None
-    name = _tidy_cert_text(re.sub(rf"\b{_MONTH}[ \t]*,?[ \t]*{_YEAR}\b|\b{_YEAR}\b", "", parts[0], flags=re.IGNORECASE))
+    name = _tidy_cert_text(
+        re.sub(rf"\b{_MONTH}[ \t]*,?[ \t]*{_YEAR}\b|\b{_YEAR}\b", "", parts[0], flags=re.IGNORECASE)
+    )
     # keep "Associate"/"Professional" level suffixes that belong to the certification name
     if len(parts) > 1 and re.match(
         r"^(?:Associate|Professional|Specialty|Foundational|Practitioner)\b", parts[1]
@@ -1095,7 +1101,9 @@ def _cert_from_line(line: str) -> ParsedCertification | None:
         name = f"{name} – {parts[1].split(',')[0].strip()}"
         parts = parts[:1] + parts[2:]
     if issuer is None and len(parts) > 1:
-        cand = _tidy_cert_text(re.sub(rf"\b{_MONTH}[ \t]*,?[ \t]*{_YEAR}\b|\b{_YEAR}\b", "", parts[1], flags=re.IGNORECASE))
+        cand = _tidy_cert_text(
+            re.sub(rf"\b{_MONTH}[ \t]*,?[ \t]*{_YEAR}\b|\b{_YEAR}\b", "", parts[1], flags=re.IGNORECASE)
+        )
         if cand and len(cand) <= 80 and not cand.isdigit():
             issuer = cand
     if not name or len(name) < 2 or not any(ch.isalpha() for ch in name):

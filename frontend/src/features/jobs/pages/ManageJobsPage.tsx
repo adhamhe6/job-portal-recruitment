@@ -15,7 +15,7 @@ import { useUrlState } from '@/hooks/useUrlState'
 import type { JobListItem } from '@/lib/api'
 import { JOB_STATUS_LABELS } from '@/lib/enums'
 import { dates, deadlineHint, fmt } from '@/lib/format'
-import { cn } from '@/lib/utils'
+import { cn, pluralize } from '@/lib/utils'
 import { paths } from '@/routes/paths'
 import { useManagedJobs } from '../api/jobs'
 import { JobRowActions } from '../components/JobRowActions'
@@ -90,7 +90,7 @@ export default function ManageJobsPage() {
         <Link
           to={`${paths.applications}?job_id=${j.id}`}
           className="rounded-sm font-medium tabular hover:text-primary hover:underline"
-          aria-label={`${j.application_count ?? 0} applications for ${j.title}`}
+          aria-label={`${pluralize(j.application_count ?? 0, 'application')} for ${j.title}`}
         >
           {fmt.int(j.application_count ?? 0)}
         </Link>
@@ -247,7 +247,7 @@ export default function ManageJobsPage() {
                         to={`${paths.applications}?job_id=${j.id}`}
                         className="font-medium text-foreground hover:underline"
                       >
-                        {fmt.int(j.application_count ?? 0)} applications
+                        {pluralize(j.application_count ?? 0, 'application')}
                       </Link>
                       {j.application_deadline && <span>Deadline {dates.date(j.application_deadline)}</span>}
                     </div>

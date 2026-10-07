@@ -112,7 +112,9 @@ def test_contact_full_header():
 
 
 def test_contact_portfolio_and_credentials_in_name():
-    r = parse_resume(FRONTEND_TEXT.replace("github.com/alexkim", "https://alexkim.dev | github.com/alexkim"), today=TODAY)
+    r = parse_resume(
+        FRONTEND_TEXT.replace("github.com/alexkim", "https://alexkim.dev | github.com/alexkim"), today=TODAY
+    )
     assert r.contact.name == "Alex Kim" and r.contact.portfolio_url == "https://alexkim.dev"
     n = parse_resume(NURSE_TEXT, today=TODAY).contact
     assert n.name == "Maria Gonzalez"  # "MARIA GONZALEZ, RN": upper case folded, credential dropped
@@ -139,7 +141,9 @@ def test_name_detection(lines, expected):
 
 
 def test_email_phone_and_location_edge_cases():
-    c, _ = extract_contact(["Jo Bloggs", "Tel: 2018-2021", "mail: JO.B@Example.COM", "Phone +44 (0)20 7946 0958", "London, UK"])
+    c, _ = extract_contact(
+        ["Jo Bloggs", "Tel: 2018-2021", "mail: JO.B@Example.COM", "Phone +44 (0)20 7946 0958", "London, UK"]
+    )
     assert c.email == "jo.b@example.com"  # lower-cased
     assert c.phone == "+44 (0)20 7946 0958"  # a year range is not a phone number
     assert c.location == "London, UK"
@@ -158,7 +162,11 @@ def test_phone_not_taken_from_date_ranges():
 def test_urls_from_hyperlink_targets():
     c, _ = extract_contact(
         ["Jo Bloggs", "LinkedIn | GitHub"],
-        links=["https://www.linkedin.com/in/jo-bloggs/", "https://github.com/jobloggs/repo", "mailto:jo@x.example"],
+        links=[
+            "https://www.linkedin.com/in/jo-bloggs/",
+            "https://github.com/jobloggs/repo",
+            "mailto:jo@x.example",
+        ],
     )
     assert c.linkedin_url == "https://www.linkedin.com/in/jo-bloggs"
     assert c.github_url == "https://github.com/jobloggs"
@@ -178,7 +186,17 @@ Skills
 Python, Django, SQL
 """
     payload = json.dumps(parse_resume(text, today=TODAY).to_dict()).lower()
-    for token in ("1990", "female", "married", "german", "birth", "marital", "nationality", "gender", "age: 34"):
+    for token in (
+        "1990",
+        "female",
+        "married",
+        "german",
+        "birth",
+        "marital",
+        "nationality",
+        "gender",
+        "age: 34",
+    ):
         assert token not in payload
 
 
@@ -207,7 +225,9 @@ def test_date_ranges(line, start, end, current):
     assert (r.start, r.end, r.is_current) == (start, end, current)
 
 
-@pytest.mark.parametrize("line", ["no dates here", "Founded in 1850", "2030 - 2031", "Dec 2021 - Jan 2020", "version 3.2.1"])
+@pytest.mark.parametrize(
+    "line", ["no dates here", "Founded in 1850", "2030 - 2031", "Dec 2021 - Jan 2020", "version 3.2.1"]
+)
 def test_non_ranges_and_invalid_ranges_are_ignored(line):
     assert find_date_range(line, TODAY) is None
 
@@ -263,27 +283,59 @@ def test_experience_inline_layouts():
 
 def test_experience_company_first_and_dates_underneath():
     exps = parse_experiences(
-        ["Acme Corp", "Senior Project Manager", "2017 - 2021", "Managed teams.", "Beta Industries", "Project Coordinator", "2014 - 2017"],
+        [
+            "Acme Corp",
+            "Senior Project Manager",
+            "2017 - 2021",
+            "Managed teams.",
+            "Beta Industries",
+            "Project Coordinator",
+            "2014 - 2017",
+        ],
         TODAY,
     )
-    assert [(e.title, e.company) for e in exps] == [("Senior Project Manager", "Acme Corp"), ("Project Coordinator", "Beta Industries")]
+    assert [(e.title, e.company) for e in exps] == [
+        ("Senior Project Manager", "Acme Corp"),
+        ("Project Coordinator", "Beta Industries"),
+    ]
     assert exps[0].description == "Managed teams."
 
 
 def test_experience_dates_on_own_line_then_header():
-    exps = parse_experiences(["2019 – 2021", "Junior Analyst", "Contoso Ltd.", "Wrote SQL reports", "2022 - Present", "Analyst", "Fabrikam"], TODAY)
-    assert [(e.title, e.company) for e in exps] == [("Junior Analyst", "Contoso Ltd."), ("Analyst", "Fabrikam")]
+    exps = parse_experiences(
+        [
+            "2019 – 2021",
+            "Junior Analyst",
+            "Contoso Ltd.",
+            "Wrote SQL reports",
+            "2022 - Present",
+            "Analyst",
+            "Fabrikam",
+        ],
+        TODAY,
+    )
+    assert [(e.title, e.company) for e in exps] == [
+        ("Junior Analyst", "Contoso Ltd."),
+        ("Analyst", "Fabrikam"),
+    ]
 
 
 def test_bullets_with_dates_do_not_create_entries():
     exps = parse_experiences(
-        ["Engineer, Acme   2020 - 2022", "• Migrated everything between 2019-2020 without downtime", "• Wrote docs"], TODAY
+        [
+            "Engineer, Acme   2020 - 2022",
+            "• Migrated everything between 2019-2020 without downtime",
+            "• Wrote docs",
+        ],
+        TODAY,
     )
     assert len(exps) == 1 and "between 2019-2020" in (exps[0].description or "")
 
 
 def test_experience_without_any_dates_is_low_confidence_and_has_no_dates():
-    exps = parse_experiences(["Barista", "Corner Cafe", "• Served customers", "Cashier", "Mega Mart", "• Handled payments"], TODAY)
+    exps = parse_experiences(
+        ["Barista", "Corner Cafe", "• Served customers", "Cashier", "Mega Mart", "• Handled payments"], TODAY
+    )
     assert len(exps) == 2
     assert all(e.start_date is None and e.confidence <= 0.4 for e in exps)
 
@@ -307,7 +359,9 @@ def test_skills_listed_vs_prose_confidence():
 
 
 def test_ambiguous_skills_need_a_skills_context():
-    prose = extract_skills_from_text("Experience\nBuilt services in Go and Rust, analysed data in R, wrote C, used Excel and Swift daily.")
+    prose = extract_skills_from_text(
+        "Experience\nBuilt services in Go and Rust, analysed data in R, wrote C, used Excel and Swift daily."
+    )
     assert not names(prose) & {"Go", "Rust", "R", "C", "Excel", "Swift"}
     listed = extract_skills_from_text("Skills\nGo, Rust, R, C, Swift, Excel, Ruby")
     assert {"Go", "Rust", "R", "C", "Swift", "Excel", "Ruby"} <= names(listed)
@@ -315,12 +369,18 @@ def test_ambiguous_skills_need_a_skills_context():
     line = extract_skills_from_text("Experience\nTech: Python, Go, Docker, Kubernetes")
     assert "Go" in names(line)
     # ... but a sentence that merely contains commas does not
-    sentence = extract_skills_from_text("Experience\nI built Python, Docker and Kubernetes tooling for Go developers, mostly on weekends.")
+    sentence = extract_skills_from_text(
+        "Experience\nI built Python, Docker and Kubernetes tooling for Go developers, mostly on weekends."
+    )
     assert "Go" not in names(sentence) and "Python" in names(sentence)
 
 
 def test_go_golang_exact_case_in_sentence_is_not_enough():
-    for text in ("Experience\nWrote microservices in Go.", "Experience\nWrote microservices in Golang.", "Experience\nGo to market strategy"):
+    for text in (
+        "Experience\nWrote microservices in Go.",
+        "Experience\nWrote microservices in Golang.",
+        "Experience\nGo to market strategy",
+    ):
         assert "Go" not in names(extract_skills_from_text(text)), text
 
 
@@ -345,7 +405,11 @@ def test_word_boundary_matching_and_aliases(text, expected):
 
 
 def test_longest_match_wins_and_substrings_do_not_match():
-    found = names(extract_skills_from_text("Experience\nBuilt apps with React Native. Wrote JavaScript. Used MySQL and PostgreSQL."))
+    found = names(
+        extract_skills_from_text(
+            "Experience\nBuilt apps with React Native. Wrote JavaScript. Used MySQL and PostgreSQL."
+        )
+    )
     assert "React Native" in found and "React" not in found
     assert "JavaScript" in found and "Java" not in found
     assert "MySQL" in found and "SQL" not in found  # "MySQL" must not leak a bare "SQL"
@@ -360,16 +424,30 @@ def test_c_is_not_matched_inside_c_plus_plus_or_c_sharp():
 def test_weak_words_and_short_aliases_do_not_create_false_positives():
     text = "Experience\nAdministered 5 ml doses. Worked a 40 hr week with a rest period; monitoring patient vitals; react quickly; lean teams; epic workload."
     found = names(extract_skills_from_text(text))
-    assert not found & {"Machine Learning", "REST APIs", "Monitoring", "React", "Process Improvement", "Electronic Health Records", "Employee Relations"}
+    assert not found & {
+        "Machine Learning",
+        "REST APIs",
+        "Monitoring",
+        "React",
+        "Process Improvement",
+        "Electronic Health Records",
+        "Employee Relations",
+    }
 
 
 def test_skills_in_emails_and_urls_are_ignored():
-    found = names(extract_skills_from_text("Contact\nSkills\nPython\nExperience\njohn.react@example.com github.com/u/go-tools"))
+    found = names(
+        extract_skills_from_text(
+            "Contact\nSkills\nPython\nExperience\njohn.react@example.com github.com/u/go-tools"
+        )
+    )
     assert found == {"Python"}
 
 
 def test_skills_from_ignored_sections_are_not_mined():
-    found = names(extract_skills_from_text("Interests\nPython hiking, Kubernetes cooking\nReferences\nDocker Inc."))
+    found = names(
+        extract_skills_from_text("Interests\nPython hiking, Kubernetes cooking\nReferences\nDocker Inc.")
+    )
     assert found == set()
 
 
@@ -414,7 +492,9 @@ def test_degree_level_mapping(text, level):
     assert level.value in {e.value for e in EducationLevel}
 
 
-@pytest.mark.parametrize("text", ["Cambridge, MA", "Certificate in Welding", "Studied at the school of hard knocks", "Diploma"])
+@pytest.mark.parametrize(
+    "text", ["Cambridge, MA", "Certificate in Welding", "Studied at the school of hard knocks", "Diploma"]
+)
 def test_no_degree_level_guessed(text):
     assert map_degree_level(text) is None
 
@@ -434,9 +514,17 @@ def test_education_entries_institution_degree_field_and_years():
     assert len(edus) == 3
     a, b, c = edus
     assert (a.institution, a.degree_level, a.field_of_study, a.start_year, a.end_year) == (
-        "Technical University of Berlin", "BACHELOR", "Computer Science", 2009, 2013,
+        "Technical University of Berlin",
+        "BACHELOR",
+        "Computer Science",
+        2009,
+        2013,
     )
-    assert (b.institution, b.degree_level, b.field_of_study) == ("KTH Royal Institute of Technology", "MASTER", "Software Engineering")
+    assert (b.institution, b.degree_level, b.field_of_study) == (
+        "KTH Royal Institute of Technology",
+        "MASTER",
+        "Software Engineering",
+    )
     assert (b.start_year, b.end_year) == (2013, 2015)
     assert (c.institution, c.degree_level, c.field_of_study) == ("Reed College", "BACHELOR", "Economics")
 
@@ -457,7 +545,11 @@ def test_education_requires_something_recognisable():
 
 def test_certifications_from_section_and_known_patterns():
     certs = parse_certifications(
-        ["AWS Certified Solutions Architect – Associate (Amazon Web Services), 2021", "Certified Kubernetes Administrator (CKA)", "• PMP, 2019"],
+        [
+            "AWS Certified Solutions Architect – Associate (Amazon Web Services), 2021",
+            "Certified Kubernetes Administrator (CKA)",
+            "• PMP, 2019",
+        ],
         [],
     )
     by_name = {c.name: c for c in certs}
@@ -468,22 +560,31 @@ def test_certifications_from_section_and_known_patterns():
 
 
 def test_certification_month_year_gives_issued_on_and_known_patterns_found_outside_section():
-    certs = parse_certifications(["Scrum Master — Scrum Alliance, Mar 2022"], ["Experience", "Holds CISSP and PMP credentials"])
+    certs = parse_certifications(
+        ["Scrum Master — Scrum Alliance, Mar 2022"], ["Experience", "Holds CISSP and PMP credentials"]
+    )
     assert certs[0].issued_on == date(2022, 3, 1) and certs[0].issuer == "Scrum Alliance"
     found = {c.name for c in certs}
     assert {"CISSP", "PMP"} <= found
-    assert all(c.confidence < 0.7 for c in certs if c.name in {"CISSP", "PMP"})  # not in a certifications section
+    assert all(
+        c.confidence < 0.7 for c in certs if c.name in {"CISSP", "PMP"}
+    )  # not in a certifications section
 
 
 def test_certifications_deduplicated():
-    certs = parse_certifications(["Certified Kubernetes Administrator (CKA)"], ["Certified Kubernetes Administrator (CKA)", "CKA"])
+    certs = parse_certifications(
+        ["Certified Kubernetes Administrator (CKA)"], ["Certified Kubernetes Administrator (CKA)", "CKA"]
+    )
     assert len(certs) == 1
 
 
 @pytest.mark.parametrize(
     ("line", "expected"),
     [
-        ("English (Native), German (Fluent), French - Basic", [("English", "NATIVE"), ("German", "FLUENT"), ("French", "BASIC")]),
+        (
+            "English (Native), German (Fluent), French - Basic",
+            [("English", "NATIVE"), ("German", "FLUENT"), ("French", "BASIC")],
+        ),
         ("Spanish: Conversational | Arabic - Native", [("Spanish", "CONVERSATIONAL"), ("Arabic", "NATIVE")]),
         ("German B2, English C1", [("German", "CONVERSATIONAL"), ("English", "FLUENT")]),
         ("English, German", [("English", None), ("German", None)]),
@@ -512,17 +613,24 @@ Engineer, Beta   Jan 2018 - Dec 2020
     r = parse_resume(text, today=TODAY)
     yoe = r.years_of_experience
     assert yoe is not None and yoe.basis == "employment_history"
-    assert yoe.value == pytest.approx(6.0, abs=0.1)  # 2015-2020 once; the 2018-2019 overlap is not double counted
+    assert yoe.value == pytest.approx(
+        6.0, abs=0.1
+    )  # 2015-2020 once; the 2018-2019 overlap is not double counted
 
 
 def test_years_stated_when_no_dated_experience():
-    r = parse_resume("Jo Bloggs\nSummary\nDeveloper with over 7 years of professional experience in fintech.", today=TODAY)
+    r = parse_resume(
+        "Jo Bloggs\nSummary\nDeveloper with over 7 years of professional experience in fintech.", today=TODAY
+    )
     assert r.years_of_experience is not None
     assert (r.years_of_experience.basis, r.years_of_experience.value) == ("stated", 7.0)
     assert parse_resume("Jo Bloggs\nSummary\nCurious beginner.", today=TODAY).years_of_experience is None
 
 
-@pytest.mark.parametrize("phrase", ["8+ years of experience", "5 years' experience", "12 yrs experience", "3 years of Python experience"])
+@pytest.mark.parametrize(
+    "phrase",
+    ["8+ years of experience", "5 years' experience", "12 yrs experience", "3 years of Python experience"],
+)
 def test_stated_years_phrases(phrase):
     assert parse_resume(f"Summary\nEngineer with {phrase}.", today=TODAY).years_of_experience is not None
 
@@ -532,7 +640,9 @@ def test_summary_and_headline():
     assert r.summary is not None and r.summary.startswith("Backend engineer with 8+ years")
     assert r.headline == "Senior Backend Engineer" and (r.headline_confidence or 0) >= 0.7
     r2 = parse_resume("Priya Nair\nExperience\nAcme Corp\nSenior Project Manager\n2017 - 2021\n", today=TODAY)
-    assert r2.headline == "Senior Project Manager" and (r2.headline_confidence or 1) < 0.7  # derived from the latest title only
+    assert (
+        r2.headline == "Senior Project Manager" and (r2.headline_confidence or 1) < 0.7
+    )  # derived from the latest title only
 
 
 # --- full documents ----------------------------------------------------------------------------------------------
@@ -540,11 +650,22 @@ def test_summary_and_headline():
 
 def test_backend_resume_end_to_end():
     r = parse_resume(BACKEND_TEXT, today=TODAY)
-    assert [e.title for e in r.experiences] == ["Senior Backend Engineer", "Backend Developer", "Software Engineer"]
+    assert [e.title for e in r.experiences] == [
+        "Senior Backend Engineer",
+        "Backend Developer",
+        "Software Engineer",
+    ]
     assert r.experiences[0].is_current and r.experiences[2].end_date == date(2016, 12, 31)
     assert len(r.educations) == 1 and r.educations[0].degree_level == "BACHELOR"
-    assert {c.name for c in r.certifications} >= {"AWS Certified Solutions Architect – Associate", "Certified Kubernetes Administrator (CKA)"}
-    assert {(lang.language, lang.proficiency) for lang in r.languages} == {("English", "FLUENT"), ("German", "NATIVE"), ("French", "BASIC")}
+    assert {c.name for c in r.certifications} >= {
+        "AWS Certified Solutions Architect – Associate",
+        "Certified Kubernetes Administrator (CKA)",
+    }
+    assert {(lang.language, lang.proficiency) for lang in r.languages} == {
+        ("English", "FLUENT"),
+        ("German", "NATIVE"),
+        ("French", "BASIC"),
+    }
     assert {"Python", "FastAPI", "PostgreSQL", "Docker", "Kubernetes", "AWS", "Go"} <= names(r.skills)
     assert r.warnings == []
 
@@ -571,15 +692,32 @@ def test_nurse_resume_end_to_end():
     assert r.experiences[1].location == "Austin, TX"
     assert r.educations[0].degree_level == "BACHELOR" and r.educations[0].field_of_study == "Nursing"
     assert {"Patient Care", "Critical Care"} <= names(r.skills)
-    assert not names(r.skills) & {"React", "Machine Learning", "Python"}  # "5 ml", "reading about React" (Interests) are noise
-    assert {c.name for c in r.certifications} >= {"Registered Nurse (RN) License", "BLS Certified", "ACLS Certified"}
+    assert not names(r.skills) & {
+        "React",
+        "Machine Learning",
+        "Python",
+    }  # "5 ml", "reading about React" (Interests) are noise
+    assert {c.name for c in r.certifications} >= {
+        "Registered Nurse (RN) License",
+        "BLS Certified",
+        "ACLS Certified",
+    }
 
 
 def test_to_dict_is_json_serialisable_and_stable():
     d = parse_resume(BACKEND_TEXT, today=TODAY).to_dict()
     assert json.loads(json.dumps(d)) == d
     assert d == parse_resume(BACKEND_TEXT, today=TODAY).to_dict()  # deterministic
-    assert set(d) >= {"contact", "skills", "experiences", "educations", "certifications", "languages", "years_of_experience", "sections"}
+    assert set(d) >= {
+        "contact",
+        "skills",
+        "experiences",
+        "educations",
+        "certifications",
+        "languages",
+        "years_of_experience",
+        "sections",
+    }
 
 
 # --- robustness --------------------------------------------------------------------------------------------------
@@ -606,7 +744,9 @@ def test_parser_never_crashes_and_stays_fast(text):
 
 
 def test_non_resume_text_yields_empty_suggestions_not_guesses():
-    r = parse_resume("The quick brown fox jumps over the lazy dog. It was a sunny day in the park.", today=TODAY)
+    r = parse_resume(
+        "The quick brown fox jumps over the lazy dog. It was a sunny day in the park.", today=TODAY
+    )
     assert r.contact.name is None and r.contact.email is None
     assert not (r.experiences or r.educations or r.certifications or r.languages or r.skills)
     assert r.years_of_experience is None and r.summary is None

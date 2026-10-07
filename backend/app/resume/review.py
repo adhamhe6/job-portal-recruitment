@@ -311,7 +311,9 @@ async def apply_extracted(
         if (current is not None and current.status == SkillStatus.CONFIRMED) or skill.id in new_skill_ids:
             skipped.append(SkippedItem(section="skills", index=i, reason="ALREADY_ON_PROFILE"))
             continue
-        if current is not None:  # a suggestion (or one the user dismissed earlier, now explicitly chosen again)
+        if (
+            current is not None
+        ):  # a suggestion (or one the user dismissed earlier, now explicitly chosen again)
             current.status = SkillStatus.CONFIRMED
         else:
             session.add(

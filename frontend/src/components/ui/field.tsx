@@ -56,7 +56,7 @@ export function Field({
     : children
 
   return (
-    <div className={cn('grid gap-1.5', className)}>
+    <div className={cn('grid content-start gap-1.5', className)}>
       <Label htmlFor={id} className={labelClassName}>
         {label}
         {required && (

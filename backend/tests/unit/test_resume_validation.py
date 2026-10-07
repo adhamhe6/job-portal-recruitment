@@ -57,7 +57,7 @@ def reason(exc: pytest.ExceptionInfo[Exception]) -> str:
         ("name\u202egpj.exe.pdf", "namegpj.exe.pdf"),  # right-to-left override removed
         ("zero\u200bwidth.pdf", "zerowidth.pdf"),
         ("  .hidden.pdf  ", "hidden.pdf"),
-        ("CV: Jane <Doe> | \"final\"?.pdf", "CV_ Jane _Doe_ _ _final__.pdf"),
+        ('CV: Jane <Doe> | "final"?.pdf', "CV_ Jane _Doe_ _ _final__.pdf"),
         ("", "resume"),
         (None, "resume"),
         ("///", "resume"),
@@ -75,7 +75,9 @@ def test_sanitize_filename_length_limit_keeps_extension():
     assert len(sanitize_filename("b" * 500)) <= 120
 
 
-@pytest.mark.parametrize(("name", "ext"), [("cv.PDF", ".pdf"), ("cv.tar.docx", ".docx"), ("noext", ""), (".pdf", "")])
+@pytest.mark.parametrize(
+    ("name", "ext"), [("cv.PDF", ".pdf"), ("cv.tar.docx", ".docx"), ("noext", ""), (".pdf", "")]
+)
 def test_extension_of(name, ext):
     assert extension_of(name) == ext
 
@@ -102,12 +104,25 @@ def test_sniff_head():
     assert sniff_head(b"MZ\x90\x00") == "unknown" and sniff_head(b"") == "unknown"
 
 
-@pytest.mark.parametrize("declared", [None, "", "application/octet-stream", "application/pdf", "application/pdf; charset=binary", "APPLICATION/PDF", "application/x-pdf"])
+@pytest.mark.parametrize(
+    "declared",
+    [
+        None,
+        "",
+        "application/octet-stream",
+        "application/pdf",
+        "application/pdf; charset=binary",
+        "APPLICATION/PDF",
+        "application/x-pdf",
+    ],
+)
 def test_declared_type_accepted_for_pdf(declared):
     check_declared_content_type(declared, DocumentKind.PDF)
 
 
-@pytest.mark.parametrize("declared", ["image/png", "text/html", "application/msword", DOCX, "application/zip", "application/json"])
+@pytest.mark.parametrize(
+    "declared", ["image/png", "text/html", "application/msword", DOCX, "application/zip", "application/json"]
+)
 def test_declared_type_mismatch_for_pdf(declared):
     with pytest.raises(UnsupportedMediaError) as exc:
         check_declared_content_type(declared, DocumentKind.PDF)
@@ -252,12 +267,25 @@ def test_too_many_members_rejected():
     ("data", "expected_reason"),
     [
         (fx.traversal_docx(), "UNSAFE_MEMBER_NAME"),
-        (fx.zip_bytes({"[Content_Types].xml": fx.CONTENT_TYPES_XML, "word/document.xml": b"x", "/abs/evil": b"x"}), "UNSAFE_MEMBER_NAME"),
-        (fx.zip_bytes({"[Content_Types].xml": fx.CONTENT_TYPES_XML, "word/document.xml": b"x", "C:/evil": b"x"}), "UNSAFE_MEMBER_NAME"),
+        (
+            fx.zip_bytes(
+                {"[Content_Types].xml": fx.CONTENT_TYPES_XML, "word/document.xml": b"x", "/abs/evil": b"x"}
+            ),
+            "UNSAFE_MEMBER_NAME",
+        ),
+        (
+            fx.zip_bytes(
+                {"[Content_Types].xml": fx.CONTENT_TYPES_XML, "word/document.xml": b"x", "C:/evil": b"x"}
+            ),
+            "UNSAFE_MEMBER_NAME",
+        ),
         (fx.macro_docx(), "MACROS"),
         (fx.xlsx_like(), "MISSING_PARTS"),
         (fx.zip_bytes({"hello.txt": b"hi"}), "MISSING_PARTS"),
-        (fx.zip_bytes({"[Content_Types].xml": b"<Types/>", "word/document.xml": b"<w:document/>"}), "NOT_A_WORD_DOCUMENT"),
+        (
+            fx.zip_bytes({"[Content_Types].xml": b"<Types/>", "word/document.xml": b"<w:document/>"}),
+            "NOT_A_WORD_DOCUMENT",
+        ),
         (b"PK\x03\x04" + b"garbage" * 50, "NOT_A_ZIP"),
     ],
 )
@@ -268,7 +296,15 @@ async def test_docx_package_rules(data, expected_reason):
 
 
 async def test_corrupt_member_crc_is_rejected():
-    good = bytearray(fx.zip_bytes({"[Content_Types].xml": fx.CONTENT_TYPES_XML, "word/document.xml": b"<w:document>hello hello hello</w:document>"}, compression=zipfile.ZIP_STORED))
+    good = bytearray(
+        fx.zip_bytes(
+            {
+                "[Content_Types].xml": fx.CONTENT_TYPES_XML,
+                "word/document.xml": b"<w:document>hello hello hello</w:document>",
+            },
+            compression=zipfile.ZIP_STORED,
+        )
+    )
     idx = bytes(good).index(b"hello hello")
     good[idx] ^= 0xFF  # flip a byte inside the stored data: the CRC no longer matches
     with pytest.raises(UnsupportedMediaError) as exc:
@@ -281,7 +317,7 @@ async def test_duplicate_member_names_rejected():
     with zipfile.ZipFile(buf, "w") as zf:
         zf.writestr("[Content_Types].xml", fx.CONTENT_TYPES_XML)
         zf.writestr("word/document.xml", b"<w:document/>")
-        with pytest.warns(UserWarning):
+        with pytest.warns(UserWarning, match="Duplicate name"):
             zf.writestr("word/document.xml", b"<w:document>other</w:document>")
     with pytest.raises(UnsupportedMediaError) as exc:
         await receive(buf.getvalue(), "cv.docx", DOCX)

@@ -45,7 +45,12 @@ async def test_upload_is_processed_end_to_end_and_reports_status(client, session
     assert body["original_filename"] == "Jane CV.pdf" and body["content_type"] == "application/pdf"
     p = body["processing"]
     assert p["task_status"] == "COMPLETED" and p["progress"] == 100 and p["stage"] == "done"
-    assert p["parser_version"] == "v1" and p["page_count"] == 1 and p["text_char_count"] > 500 and p["was_truncated"] is False
+    assert (
+        p["parser_version"] == "v1"
+        and p["page_count"] == 1
+        and p["text_char_count"] > 500
+        and p["was_truncated"] is False
+    )
     assert p["has_embedding"] is True and p["embedding_model"] and p["embedding_version"] == "v1"
     assert p["duration_ms"] is not None and p["error_code"] is None and p["attempts"] == 1
     assert body["task_id"] == p["task_id"]
@@ -55,7 +60,11 @@ async def test_upload_is_processed_end_to_end_and_reports_status(client, session
     assert t.status_code == 200
     tj = t.json()
     assert tj["status"] == "COMPLETED" and tj["progress"] == 100 and tj["type"] == "PROCESS_RESUME"
-    assert tj["result"]["status"] == "PROCESSED" and tj["result"]["skills_found"] >= 10 and tj["result"]["embedding"] is True
+    assert (
+        tj["result"]["status"] == "PROCESSED"
+        and tj["result"]["skills_found"] >= 10
+        and tj["result"]["embedding"] is True
+    )
 
     # GET /resumes/{id} and the list agree; the response never leaks storage details
     g = await client.get(f"/api/v1/resumes/{body['id']}", headers=cand["h"])
@@ -68,9 +77,18 @@ async def test_upload_is_processed_end_to_end_and_reports_status(client, session
     # database state
     resume = await session.get(Resume, uuid.UUID(body["id"]))
     assert resume is not None and resume.status.value == "PROCESSED"
-    result = (await session.execute(select(ResumeProcessingResult).where(ResumeProcessingResult.resume_id == resume.id))).scalar_one()
-    assert result.status.value == "COMPLETED" and result.embedding is not None and len(result.embedding) == 256
-    assert "Jane Doe" in (result.extracted_text or "") and result.parsed_data["contact"]["email"] == "jane.doe@example.com"
+    result = (
+        await session.execute(
+            select(ResumeProcessingResult).where(ResumeProcessingResult.resume_id == resume.id)
+        )
+    ).scalar_one()
+    assert (
+        result.status.value == "COMPLETED" and result.embedding is not None and len(result.embedding) == 256
+    )
+    assert (
+        "Jane Doe" in (result.extracted_text or "")
+        and result.parsed_data["contact"]["email"] == "jane.doe@example.com"
+    )
 
     # in-app notification, exactly once
     n = await client.get("/api/v1/notifications", headers=cand["h"])
@@ -84,15 +102,27 @@ async def test_skills_are_only_suggested_and_the_candidate_index_is_built(client
     profile = await my_profile(client, cand)
     by_name = {s["skill"]["name"]: s for s in profile["skills"]}
     assert {"Python", "FastAPI", "PostgreSQL", "Docker", "Kubernetes"} <= set(by_name)
-    assert all(s["source"] == "RESUME" and s["status"] == "SUGGESTED" and 0 < s["confidence"] <= 1 for s in profile["skills"])
+    assert all(
+        s["source"] == "RESUME" and s["status"] == "SUGGESTED" and 0 < s["confidence"] <= 1
+        for s in profile["skills"]
+    )
     assert by_name["Python"]["confidence"] > by_name["Celery"]["confidence"]  # listed beats prose-only
     # nothing else was created automatically for a registered candidate
-    assert profile["experiences"] == [] and profile["educations"] == [] and profile["certifications"] == [] and profile["languages"] == []
+    assert (
+        profile["experiences"] == []
+        and profile["educations"] == []
+        and profile["certifications"] == []
+        and profile["languages"] == []
+    )
     assert profile["headline"] is None and profile["summary"] is None
     assert profile["primary_resume"]["id"] == body["id"]
     # the candidate's search index + embedding were refreshed from the résumé text
     cp = await session.get(CandidateProfile, uuid.UUID(profile["id"]))
-    assert cp is not None and cp.embedding is not None and "Backend engineer with 8+ years" in (cp.search_text or "")
+    assert (
+        cp is not None
+        and cp.embedding is not None
+        and "Backend engineer with 8+ years" in (cp.search_text or "")
+    )
     assert "Python" in (cp.skills_text or "")
 
 
@@ -105,22 +135,36 @@ async def test_review_apply_and_match_scores_change(client, session):
         return next((i for i in items if i["candidate_id"] == cid), None)
 
     before = await client.get(f"/api/v1/matches/jobs/{job['id']}/candidates", headers=rec["h"])
-    assert before.status_code == 200 and score_for(before.json()["items"], cand["candidate_id"]) is None  # no data → not in the pool
+    assert (
+        before.status_code == 200 and score_for(before.json()["items"], cand["candidate_id"]) is None
+    )  # no data → not in the pool
 
     body = await upload_ok(client, cand, fx.backend_pdf())
     after_upload = await client.get(f"/api/v1/matches/jobs/{job['id']}/candidates", headers=rec["h"])
     row = score_for(after_upload.json()["items"], cand["candidate_id"])
     assert row is not None, "the processed résumé put the candidate into the job's ranking"
     s1 = row["overall_score"]
-    assert s1 > 0.3 and row["breakdown"]["required_skills"] > 0  # SUGGESTED skills already count (non-rejected)
+    assert (
+        s1 > 0.3 and row["breakdown"]["required_skills"] > 0
+    )  # SUGGESTED skills already count (non-rejected)
 
     ex = await extracted(client, cand, body["id"])
     assert ex["parser_version"] == "v1" and ex["contact"]["email"] == "jane.doe@example.com"
-    assert ex["years_of_experience"]["basis"] == "employment_history" and ex["years_of_experience"]["value"] > 10
-    assert [e["title"] for e in ex["experiences"]] == ["Senior Backend Engineer", "Backend Developer", "Software Engineer"]
+    assert (
+        ex["years_of_experience"]["basis"] == "employment_history" and ex["years_of_experience"]["value"] > 10
+    )
+    assert [e["title"] for e in ex["experiences"]] == [
+        "Senior Backend Engineer",
+        "Backend Developer",
+        "Software Engineer",
+    ]
     assert all(e["already_on_profile"] is False for e in ex["experiences"])
     sk = {s["name"]: s for s in ex["skills"]}
-    assert sk["Python"]["skill_id"] and sk["Python"]["status"] == "SUGGESTED" and sk["Python"]["already_on_profile"] is False
+    assert (
+        sk["Python"]["skill_id"]
+        and sk["Python"]["status"] == "SUGGESTED"
+        and sk["Python"]["already_on_profile"] is False
+    )
     assert ex["educations"][0]["degree_level"] == "BACHELOR"
 
     # apply: confirm all skills, copy the work history, education, certifications, languages and profile fields
@@ -128,29 +172,51 @@ async def test_review_apply_and_match_scores_change(client, session):
         f"/api/v1/resumes/{body['id']}/extracted/apply",
         headers=cand["h"],
         json={
-            "skills": "all", "experiences": "all", "educations": "all", "certifications": "all", "languages": "all",
+            "skills": "all",
+            "experiences": "all",
+            "educations": "all",
+            "certifications": "all",
+            "languages": "all",
             "fields": ["summary", "headline", "location", "years_experience", "linkedin_url", "github_url"],
         },
     )
     assert ap.status_code == 200, ap.text
     res = ap.json()
-    assert res["applied"]["skills"] >= 10 and res["applied"]["experiences"] == 3 and res["applied"]["educations"] == 1
+    assert (
+        res["applied"]["skills"] >= 10
+        and res["applied"]["experiences"] == 3
+        and res["applied"]["educations"] == 1
+    )
     assert res["applied"]["certifications"] >= 2 and res["applied"]["languages"] == 3
-    assert set(res["fields_applied"]) == {"summary", "headline", "location", "years_experience", "linkedin_url", "github_url"}
+    assert set(res["fields_applied"]) == {
+        "summary",
+        "headline",
+        "location",
+        "years_experience",
+        "linkedin_url",
+        "github_url",
+    }
 
     profile = await my_profile(client, cand)
     assert profile["headline"] == "Senior Backend Engineer" and profile["location"] == "Berlin, Germany"
-    assert profile["summary"].startswith("Backend engineer with 8+ years") and float(profile["years_experience"]) > 10
+    assert (
+        profile["summary"].startswith("Backend engineer with 8+ years")
+        and float(profile["years_experience"]) > 10
+    )
     assert profile["linkedin_url"] == "https://www.linkedin.com/in/janedoe"
     assert all(s["status"] == "CONFIRMED" and s["source"] == "RESUME" for s in profile["skills"])
     assert len(profile["experiences"]) == 3 and all(e["source"] == "RESUME" for e in profile["experiences"])
-    assert profile["educations"][0]["source"] == "RESUME" and {lang["language"] for lang in profile["languages"]} == {"English", "German", "French"}
+    assert profile["educations"][0]["source"] == "RESUME" and {
+        lang["language"] for lang in profile["languages"]
+    } == {"English", "German", "French"}
     assert any(c["name"].startswith("AWS Certified") for c in profile["certifications"])
     assert next(i for i in profile["completion"]["items"] if i["key"] == "resume")["done"] is True
 
     # the review view now reflects the profile
     ex2 = await extracted(client, cand, body["id"])
-    assert all(e["already_on_profile"] for e in ex2["experiences"]) and all(s["already_on_profile"] for s in ex2["skills"])
+    assert all(e["already_on_profile"] for e in ex2["experiences"]) and all(
+        s["already_on_profile"] for s in ex2["skills"]
+    )
 
     # the index, the embedding and the match all moved
     cp = await session.get(CandidateProfile, uuid.UUID(profile["id"]))
@@ -166,7 +232,11 @@ async def test_review_apply_and_match_scores_change(client, session):
 async def test_apply_never_overwrites_user_data_and_skips_duplicates(client):
     cand = await register_candidate(client)
     h = cand["h"]
-    mine = await client.patch("/api/v1/candidates/me", headers=h, json={"headline": "My own headline", "location": "Hamburg, Germany"})
+    mine = await client.patch(
+        "/api/v1/candidates/me",
+        headers=h,
+        json={"headline": "My own headline", "location": "Hamburg, Germany"},
+    )
     assert mine.status_code == 200
     await client.post("/api/v1/candidates/me/skills", headers=h, json={"name": "Python"})  # user-confirmed
     body = await upload_ok(client, cand, fx.backend_pdf())
@@ -180,7 +250,10 @@ async def test_apply_never_overwrites_user_data_and_skips_duplicates(client):
     r1 = (await client.post(f"/api/v1/resumes/{body['id']}/extracted/apply", headers=h, json=req)).json()
     assert r1["fields_applied"] == ["summary"]  # empty field filled
     skipped = {(s["section"], s["reason"]) for s in r1["skipped"]}
-    assert ("profile.headline", "FIELD_NOT_EMPTY") in skipped and ("profile.location", "FIELD_NOT_EMPTY") in skipped
+    assert ("profile.headline", "FIELD_NOT_EMPTY") in skipped and (
+        "profile.location",
+        "FIELD_NOT_EMPTY",
+    ) in skipped
     prof = await my_profile(client, cand)
     assert prof["headline"] == "My own headline" and prof["location"] == "Hamburg, Germany"
 
@@ -193,13 +266,19 @@ async def test_apply_never_overwrites_user_data_and_skips_duplicates(client):
     # overwrite has to be requested explicitly, per field
     r3 = (
         await client.post(
-            f"/api/v1/resumes/{body['id']}/extracted/apply", headers=h, json={"fields": ["headline", "location"], "overwrite": ["headline"]}
+            f"/api/v1/resumes/{body['id']}/extracted/apply",
+            headers=h,
+            json={"fields": ["headline", "location"], "overwrite": ["headline"]},
         )
     ).json()
     assert r3["fields_applied"] == ["headline"]
     prof = await my_profile(client, cand)
     assert prof["headline"] == "Senior Backend Engineer" and prof["location"] == "Hamburg, Germany"
-    bad = await client.post(f"/api/v1/resumes/{body['id']}/extracted/apply", headers=h, json={"fields": ["headline"], "overwrite": ["location"]})
+    bad = await client.post(
+        f"/api/v1/resumes/{body['id']}/extracted/apply",
+        headers=h,
+        json={"fields": ["headline"], "overwrite": ["location"]},
+    )
     assert bad.status_code == 422
 
 
@@ -208,7 +287,13 @@ async def test_corrections_are_stored_as_suggestions_and_never_touch_the_raw_tex
     h = cand["h"]
     body = await upload_ok(client, cand, fx.backend_pdf())
     rid = body["id"]
-    raw_before = (await session.execute(select(ResumeProcessingResult.extracted_text).where(ResumeProcessingResult.resume_id == uuid.UUID(rid)))).scalar_one()
+    raw_before = (
+        await session.execute(
+            select(ResumeProcessingResult.extracted_text).where(
+                ResumeProcessingResult.resume_id == uuid.UUID(rid)
+            )
+        )
+    ).scalar_one()
     ex = await extracted(client, cand, rid)
     assert ex["has_corrections"] is False
     celery = next(s for s in ex["skills"] if s["name"] == "Celery")
@@ -220,7 +305,9 @@ async def test_corrections_are_stored_as_suggestions_and_never_touch_the_raw_tex
         json={
             "summary": "Corrected summary written by the candidate.",
             "skills": [{"index": celery["index"], "remove": True}],
-            "experiences": [{"index": exp0["index"], "title": "Staff Backend Engineer", "start_date": "2020-02-01"}],
+            "experiences": [
+                {"index": exp0["index"], "title": "Staff Backend Engineer", "start_date": "2020-02-01"}
+            ],
             "languages": [{"index": 2, "proficiency": "CONVERSATIONAL"}],
             "contact": {"phone": "+49 30 1234567"},
         },
@@ -229,29 +316,60 @@ async def test_corrections_are_stored_as_suggestions_and_never_touch_the_raw_tex
     pj = patch.json()
     assert pj["has_corrections"] is True and pj["summary"] == "Corrected summary written by the candidate."
     assert all(s["name"] != "Celery" for s in pj["skills"])  # removed suggestions are hidden...
-    assert {s["index"] for s in pj["skills"]} == {s["index"] for s in ex["skills"]} - {celery["index"]}  # ...and indices stay stable
+    assert {s["index"] for s in pj["skills"]} == {s["index"] for s in ex["skills"]} - {
+        celery["index"]
+    }  # ...and indices stay stable
     e0 = next(e for e in pj["experiences"] if e["index"] == exp0["index"])
-    assert e0["title"] == "Staff Backend Engineer" and e0["start_date"] == "2020-02-01" and e0["corrected"] is True
+    assert (
+        e0["title"] == "Staff Backend Engineer"
+        and e0["start_date"] == "2020-02-01"
+        and e0["corrected"] is True
+    )
     assert next(e for e in pj["experiences"] if e["index"] != exp0["index"])["corrected"] is False
-    assert pj["contact"]["phone"] == "+49 30 1234567" and pj["languages"][2]["proficiency"] == "CONVERSATIONAL"
+    assert (
+        pj["contact"]["phone"] == "+49 30 1234567" and pj["languages"][2]["proficiency"] == "CONVERSATIONAL"
+    )
 
     session.expire_all()
-    stored = (await session.execute(select(ResumeProcessingResult).where(ResumeProcessingResult.resume_id == uuid.UUID(rid)))).scalar_one()
+    stored = (
+        await session.execute(
+            select(ResumeProcessingResult).where(ResumeProcessingResult.resume_id == uuid.UUID(rid))
+        )
+    ).scalar_one()
     assert stored.extracted_text == raw_before  # the raw text is untouched
     assert stored.parsed_data["has_corrections"] is True
 
     # corrected values are what gets applied; removed suggestions are skipped by "all"
-    ap = await client.post(f"/api/v1/resumes/{rid}/extracted/apply", headers=h, json={"skills": "all", "experiences": [exp0["index"]], "languages": "all"})
+    ap = await client.post(
+        f"/api/v1/resumes/{rid}/extracted/apply",
+        headers=h,
+        json={"skills": "all", "experiences": [exp0["index"]], "languages": "all"},
+    )
     assert ap.status_code == 200
     prof = await my_profile(client, cand)
     assert "Celery" not in {s["skill"]["name"] for s in prof["skills"] if s["status"] == "CONFIRMED"}
-    assert prof["experiences"][0]["title"] == "Staff Backend Engineer" and prof["experiences"][0]["start_date"] == "2020-02-01"
+    assert (
+        prof["experiences"][0]["title"] == "Staff Backend Engineer"
+        and prof["experiences"][0]["start_date"] == "2020-02-01"
+    )
     assert {lang["language"]: lang["proficiency"] for lang in prof["languages"]}["French"] == "CONVERSATIONAL"
 
     # validation of corrections
-    assert (await client.patch(f"/api/v1/resumes/{rid}/extracted", headers=h, json={"skills": [{"index": 9999, "remove": True}]})).status_code == 422
-    assert (await client.patch(f"/api/v1/resumes/{rid}/extracted", headers=h, json={"experiences": [{"index": 0, "start_date": "2021-01-01", "end_date": "2020-01-01"}]})).status_code == 422
-    assert (await client.patch(f"/api/v1/resumes/{rid}/extracted", headers=h, json={"unknown": 1})).status_code == 422
+    assert (
+        await client.patch(
+            f"/api/v1/resumes/{rid}/extracted", headers=h, json={"skills": [{"index": 9999, "remove": True}]}
+        )
+    ).status_code == 422
+    assert (
+        await client.patch(
+            f"/api/v1/resumes/{rid}/extracted",
+            headers=h,
+            json={"experiences": [{"index": 0, "start_date": "2021-01-01", "end_date": "2020-01-01"}]},
+        )
+    ).status_code == 422
+    assert (
+        await client.patch(f"/api/v1/resumes/{rid}/extracted", headers=h, json={"unknown": 1})
+    ).status_code == 422
 
 
 async def test_experience_missing_required_fields_is_reported_not_guessed(client):
@@ -263,18 +381,30 @@ async def test_experience_missing_required_fields_is_reported_not_guessed(client
     assert len(ex["experiences"]) == 1
     e = ex["experiences"][0]
     assert e["start_date"] is None and e["missing_for_apply"] == ["start_date"] and e["confidence"] < 0.5
-    ap = await client.post(f"/api/v1/resumes/{body['id']}/extracted/apply", headers=h, json={"experiences": "all"})
+    ap = await client.post(
+        f"/api/v1/resumes/{body['id']}/extracted/apply", headers=h, json={"experiences": "all"}
+    )
     assert ap.json()["applied"] == {} and ap.json()["skipped"][0]["reason"] == "MISSING_START_DATE"
     # the candidate supplies the missing field, then applies
-    await client.patch(f"/api/v1/resumes/{body['id']}/extracted", headers=h, json={"experiences": [{"index": 0, "start_date": "2019-05-01", "end_date": "2021-05-01"}]})
-    ap2 = await client.post(f"/api/v1/resumes/{body['id']}/extracted/apply", headers=h, json={"experiences": "all"})
+    await client.patch(
+        f"/api/v1/resumes/{body['id']}/extracted",
+        headers=h,
+        json={"experiences": [{"index": 0, "start_date": "2019-05-01", "end_date": "2021-05-01"}]},
+    )
+    ap2 = await client.post(
+        f"/api/v1/resumes/{body['id']}/extracted/apply", headers=h, json={"experiences": "all"}
+    )
     assert ap2.json()["applied"] == {"experiences": 1}
 
 
 async def test_docx_with_tables_flows_through_the_same_pipeline(client):
     cand = await register_candidate(client)
     body = await upload_ok(client, cand, fx.frontend_docx(tables=True), "alex.docx", content_type=DOCX)
-    assert body["status"] == "PROCESSED" and body["content_type"] == DOCX and body["processing"]["page_count"] is None
+    assert (
+        body["status"] == "PROCESSED"
+        and body["content_type"] == DOCX
+        and body["processing"]["page_count"] is None
+    )
     ex = await extracted(client, cand, body["id"])
     names = {s["name"] for s in ex["skills"]}
     assert {"React", "TypeScript", "Next.js", "Tailwind CSS"} <= names and "Python" not in names
@@ -289,10 +419,14 @@ async def test_reprocessing_is_idempotent(client, session):
     # the candidate rejects a suggestion and confirms another
     prof = await my_profile(client, cand)
     sk = {s["skill"]["name"]: s for s in prof["skills"]}
-    await client.delete(f"/api/v1/candidates/me/skills/{sk['Celery']['id']}", headers=h)  # RESUME source → REJECTED, remembered
-    await client.patch(f"/api/v1/candidates/me/skills/{sk['Python']['id']}", headers=h, json={"status": "CONFIRMED"})
+    await client.delete(
+        f"/api/v1/candidates/me/skills/{sk['Celery']['id']}", headers=h
+    )  # RESUME source → REJECTED, remembered
+    await client.patch(
+        f"/api/v1/candidates/me/skills/{sk['Python']['id']}", headers=h, json={"status": "CONFIRMED"}
+    )
     n_before = len(prof["skills"])
-    first = (await extracted(client, cand, rid))
+    first = await extracted(client, cand, rid)
 
     r = await client.post(f"/api/v1/resumes/{rid}/process", headers=h)
     assert r.status_code == 202 and r.json()["task_id"]
@@ -305,16 +439,30 @@ async def test_reprocessing_is_idempotent(client, session):
     assert len(prof2["skills"]) == n_before  # no duplicate suggestions
     assert sk2["Celery"]["status"] == "REJECTED"  # a dismissed suggestion is not resurrected
     assert sk2["Python"]["status"] == "CONFIRMED"  # nor is a confirmed one downgraded
-    count = await session.scalar(select(func.count()).select_from(CandidateSkill).where(CandidateSkill.candidate_id == uuid.UUID(prof["id"])))
+    count = await session.scalar(
+        select(func.count())
+        .select_from(CandidateSkill)
+        .where(CandidateSkill.candidate_id == uuid.UUID(prof["id"]))
+    )
     assert count == n_before
     second = await extracted(client, cand, rid)
     assert [s["name"] for s in second["skills"]] == [s["name"] for s in first["skills"]]
-    docs = await session.scalar(select(func.count()).select_from(ResumeDocument).where(ResumeDocument.resume_id == uuid.UUID(rid)))
-    results = await session.scalar(select(func.count()).select_from(ResumeProcessingResult).where(ResumeProcessingResult.resume_id == uuid.UUID(rid)))
+    docs = await session.scalar(
+        select(func.count()).select_from(ResumeDocument).where(ResumeDocument.resume_id == uuid.UUID(rid))
+    )
+    results = await session.scalar(
+        select(func.count())
+        .select_from(ResumeProcessingResult)
+        .where(ResumeProcessingResult.resume_id == uuid.UUID(rid))
+    )
     assert docs == 1 and results == 1
     # one notification for the same résumé document, not one per run
     notes = await session.scalar(
-        select(func.count()).select_from(Notification).where(Notification.resume_id == uuid.UUID(rid), Notification.type == NotificationType.RESUME_PROCESSED)
+        select(func.count())
+        .select_from(Notification)
+        .where(
+            Notification.resume_id == uuid.UUID(rid), Notification.type == NotificationType.RESUME_PROCESSED
+        )
     )
     assert notes == 1
 
@@ -325,7 +473,11 @@ async def test_identical_upload_returns_the_existing_resume(client, session):
     first = await upload(client, cand, pdf, "one.pdf")
     second = await upload(client, cand, pdf, "renamed-copy.pdf")
     assert first.status_code == 202 and second.status_code == 200
-    assert second.json()["id"] == first.json()["id"] and second.json()["duplicate"] is True and second.json()["original_filename"] == "one.pdf"
+    assert (
+        second.json()["id"] == first.json()["id"]
+        and second.json()["duplicate"] is True
+        and second.json()["original_filename"] == "one.pdf"
+    )
     n = await session.scalar(select(func.count()).select_from(Resume))
     assert n == 1
     # a different file is a new résumé; another candidate may upload the same bytes freely
@@ -342,11 +494,17 @@ async def test_primary_selection_and_listing(client, session):
     c = await upload_ok(client, cand, fx.nurse_pdf(), "c.pdf", set_primary=False)
     assert (a["is_primary"], b["is_primary"], c["is_primary"]) == (True, True, False)
     lst = (await client.get("/api/v1/resumes", headers=cand["h"])).json()
-    assert lst["total"] == 3 and lst["items"][0]["id"] == b["id"] and [i["is_primary"] for i in lst["items"]].count(True) == 1
+    assert (
+        lst["total"] == 3
+        and lst["items"][0]["id"] == b["id"]
+        and [i["is_primary"] for i in lst["items"]].count(True) == 1
+    )
 
     p = await client.post(f"/api/v1/resumes/{c['id']}/primary", headers=cand["h"])
     assert p.status_code == 200 and p.json()["is_primary"] is True
-    primaries = [i for i in (await client.get("/api/v1/resumes", headers=cand["h"])).json()["items"] if i["is_primary"]]
+    primaries = [
+        i for i in (await client.get("/api/v1/resumes", headers=cand["h"])).json()["items"] if i["is_primary"]
+    ]
     assert [i["id"] for i in primaries] == [c["id"]]
     # the profile's primary résumé follows, and so does the matching text (nurse content now drives the index)
     assert (await my_profile(client, cand))["primary_resume"]["id"] == c["id"]
@@ -369,7 +527,14 @@ async def test_delete_promotes_next_primary_removes_file_and_refuses_when_in_use
     b = await upload_ok(client, cand, fx.frontend_pdf(), "b.pdf")  # primary
     c = await upload_ok(client, cand, fx.nurse_pdf(), "c.pdf", set_primary=False)
 
-    keys = {r: (await session.execute(select(ResumeDocument.storage_key).where(ResumeDocument.resume_id == uuid.UUID(r)))).scalar_one() for r in (a["id"], b["id"], c["id"])}
+    keys = {
+        r: (
+            await session.execute(
+                select(ResumeDocument.storage_key).where(ResumeDocument.resume_id == uuid.UUID(r))
+            )
+        ).scalar_one()
+        for r in (a["id"], b["id"], c["id"])
+    }
     storage = get_storage()
     assert all([await storage.exists(k) for k in keys.values()])
 
@@ -383,11 +548,16 @@ async def test_delete_promotes_next_primary_removes_file_and_refuses_when_in_use
 
     # attach a résumé to an application → cannot be deleted (409), nothing is lost
     await client.patch("/api/v1/candidates/me", headers=h, json={"headline": "x"})
-    app = await client.post("/api/v1/applications", headers=h, json={"job_id": job["id"], "resume_id": a["id"]})
+    app = await client.post(
+        "/api/v1/applications", headers=h, json={"job_id": job["id"], "resume_id": a["id"]}
+    )
     assert app.status_code == 201, app.text
     blocked = await client.delete(f"/api/v1/resumes/{a['id']}", headers=h)
     assert blocked.status_code == 409 and blocked.json()["error"]["code"] == "RESUME_IN_USE"
-    assert await storage.exists(keys[a["id"]]) and (await client.get(f"/api/v1/resumes/{a['id']}", headers=h)).status_code == 200
+    assert (
+        await storage.exists(keys[a["id"]])
+        and (await client.get(f"/api/v1/resumes/{a['id']}", headers=h)).status_code == 200
+    )
 
     # deleting the last primary candidate leaves a consistent state
     assert (await client.delete(f"/api/v1/resumes/{c['id']}", headers=h)).status_code == 204
@@ -400,18 +570,30 @@ async def test_download_headers_and_content(client):
     cand = await register_candidate(client)
     pdf = fx.backend_pdf()
     body = await upload_ok(client, cand, pdf, "../../Jané's CV: draft.pdf")
-    assert body["original_filename"] == "Jané's CV_ draft.pdf"  # path components and reserved characters stripped
+    assert (
+        body["original_filename"] == "Jané's CV_ draft.pdf"
+    )  # path components and reserved characters stripped
     r = await client.get(f"/api/v1/resumes/{body['id']}/file", headers=cand["h"])
     assert r.status_code == 200 and r.content == pdf
     assert r.headers["content-type"] == "application/pdf"
     cd = r.headers["content-disposition"]
-    assert cd.startswith("attachment;") and "filename*=UTF-8''Jan%C3%A9%27s%20CV_%20draft.pdf" in cd and "\r" not in cd and "\n" not in cd
+    assert (
+        cd.startswith("attachment;")
+        and "filename*=UTF-8''Jan%C3%A9%27s%20CV_%20draft.pdf" in cd
+        and "\r" not in cd
+        and "\n" not in cd
+    )
     assert r.headers["x-content-type-options"] == "nosniff"
     assert r.headers["cache-control"] == "private, no-store"
     assert int(r.headers["content-length"]) == len(pdf)
 
-    inline = await client.get(f"/api/v1/resumes/{body['id']}/file", headers=cand["h"], params={"inline": "true"})
-    assert inline.headers["content-disposition"].startswith("inline;") and inline.headers["content-type"] == "application/pdf"
+    inline = await client.get(
+        f"/api/v1/resumes/{body['id']}/file", headers=cand["h"], params={"inline": "true"}
+    )
+    assert (
+        inline.headers["content-disposition"].startswith("inline;")
+        and inline.headers["content-type"] == "application/pdf"
+    )
 
     docx = fx.frontend_docx()
     drow = await upload_ok(client, cand, docx, "alex.docx", content_type=DOCX)
@@ -428,4 +610,3 @@ async def test_api_uses_content_type_by_sniffing_not_the_client(client):
     b = await upload(client, cand, fx.frontend_pdf(), "b.pdf", content_type=None)
     assert a.status_code == 202 and a.json()["content_type"] == "application/pdf"
     assert b.status_code == 202 and b.json()["content_type"] == "application/pdf"
-

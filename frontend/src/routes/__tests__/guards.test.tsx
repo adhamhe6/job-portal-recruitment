@@ -4,23 +4,71 @@ import type { Role } from '@/lib/api'
 import { renderApp, signInAs, waitForBoot } from '@/test/test-utils'
 
 const mainNav = () => within(screen.getByRole('navigation', { name: 'Main' }))
-const navLabels = () => mainNav().getAllByRole('link').map((a) => (a.getAttribute('aria-label') ?? a.textContent ?? '').replace(/\d+$/, '').replace(/, \d+ unread/, '').trim())
+const navLabels = () =>
+  mainNav()
+    .getAllByRole('link')
+    .map((a) =>
+      (a.getAttribute('aria-label') ?? a.textContent ?? '')
+        .replace(/\d+$/, '')
+        .replace(/, \d+ unread/, '')
+        .trim(),
+    )
 
 const EXPECTED_NAV: Record<Role, string[]> = {
-  CANDIDATE: ['Dashboard', 'Find Jobs', 'Recommended Jobs', 'Applications', 'Interviews', 'Résumé', 'Profile', 'Notifications', 'Settings'],
-  RECRUITER: ['Dashboard', 'Jobs', 'Candidates', 'Applications', 'Interviews', 'Candidate Matching', 'Reports', 'Notifications', 'Settings'],
-  HIRING_MANAGER: ['Dashboard', 'Jobs', 'Applications', 'Interviews', 'Candidate Matching', 'Notifications', 'Settings'],
-  ADMIN: ['Dashboard', 'Users', 'Companies', 'Jobs', 'Applications', 'System Monitoring', 'Reports', 'Settings'],
+  CANDIDATE: [
+    'Dashboard',
+    'Find Jobs',
+    'Recommended Jobs',
+    'Applications',
+    'Interviews',
+    'Résumé',
+    'Profile',
+    'Notifications',
+    'Settings',
+  ],
+  RECRUITER: [
+    'Dashboard',
+    'Jobs',
+    'Candidates',
+    'Applications',
+    'Interviews',
+    'Candidate Matching',
+    'Reports',
+    'Notifications',
+    'Settings',
+  ],
+  HIRING_MANAGER: [
+    'Dashboard',
+    'Jobs',
+    'Applications',
+    'Interviews',
+    'Candidate Matching',
+    'Notifications',
+    'Settings',
+  ],
+  ADMIN: [
+    'Dashboard',
+    'Users',
+    'Companies',
+    'Jobs',
+    'Applications',
+    'System Monitoring',
+    'Reports',
+    'Settings',
+  ],
 }
 
 describe('role-specific navigation', () => {
-  it.each(Object.entries(EXPECTED_NAV) as [Role, string[]][])('%s sees exactly their navigation', async (role, labels) => {
-    signInAs(role)
-    renderApp('/dashboard')
-    await waitForBoot()
-    await screen.findByRole('navigation', { name: 'Main' })
-    expect(navLabels()).toEqual(labels)
-  })
+  it.each(Object.entries(EXPECTED_NAV) as [Role, string[]][])(
+    '%s sees exactly their navigation',
+    async (role, labels) => {
+      signInAs(role)
+      renderApp('/dashboard')
+      await waitForBoot()
+      await screen.findByRole('navigation', { name: 'Main' })
+      expect(navLabels()).toEqual(labels)
+    },
+  )
 
   it('marks the current page in the sidebar', async () => {
     signInAs('RECRUITER')
@@ -70,36 +118,32 @@ describe('route guards', () => {
     expect(anon.router.state.location.pathname).toBe('/login')
   })
 
-  it('renders an honest placeholder for every wave-2 page (route table is wired)', async () => {
-    const cases: [Role, string, string][] = [
-      ['CANDIDATE', '/dashboard', 'Dashboard'],
-      ['CANDIDATE', '/recommended', 'Recommended jobs'],
-      ['CANDIDATE', '/applications', 'My applications'],
-      ['CANDIDATE', '/applications/abc', 'Application'],
-      ['CANDIDATE', '/interviews', 'My interviews'],
-      ['CANDIDATE', '/resume', 'Résumé'],
-      ['CANDIDATE', '/profile', 'Profile'],
-      ['RECRUITER', '/dashboard', 'Dashboard'],
-      ['RECRUITER', '/candidates', 'Candidates'],
-      ['RECRUITER', '/candidates/abc', 'Candidate'],
-      ['RECRUITER', '/applications', 'Applications'],
-      ['RECRUITER', '/interviews', 'Interviews'],
-      ['RECRUITER', '/matching', 'Candidate matching'],
-      ['RECRUITER', '/matching/abc', 'Candidate matching'],
-      ['RECRUITER', '/reports', 'Reports'],
-      ['RECRUITER', '/settings/company', 'Company settings'],
-      ['RECRUITER', '/settings/team', 'Team'],
-      ['ADMIN', '/dashboard', 'Dashboard'],
-      ['ADMIN', '/admin/companies', 'Companies'],
-      ['ADMIN', '/admin/system', 'System monitoring'],
-    ]
-    for (const [role, url, title] of cases) {
-      signInAs(role)
-      const view = renderApp(url)
-      expect(await screen.findByRole('heading', { name: title, level: 1 }), `${role} ${url}`).toBeInTheDocument()
-      expect(screen.getByText(/under construction/i)).toBeInTheDocument()
-      view.unmount()
-    }
+  it.each<[Role, string, string]>([
+    ['CANDIDATE', '/dashboard', 'Dashboard'],
+    ['CANDIDATE', '/recommended', 'Recommended jobs'],
+    ['CANDIDATE', '/applications', 'My applications'],
+    ['CANDIDATE', '/applications/abc', 'Application'],
+    ['CANDIDATE', '/interviews', 'My interviews'],
+    ['CANDIDATE', '/resume', 'Résumé'],
+    ['CANDIDATE', '/profile', 'Profile'],
+    ['RECRUITER', '/dashboard', 'Dashboard'],
+    ['RECRUITER', '/candidates', 'Candidates'],
+    ['RECRUITER', '/candidates/abc', 'Candidate'],
+    ['RECRUITER', '/applications', 'Applications'],
+    ['RECRUITER', '/interviews', 'Interviews'],
+    ['RECRUITER', '/matching', 'Candidate matching'],
+    ['RECRUITER', '/matching/abc', 'Candidate matching'],
+    ['RECRUITER', '/reports', 'Reports'],
+    ['RECRUITER', '/settings/company', 'Company settings'],
+    ['RECRUITER', '/settings/team', 'Team'],
+    ['ADMIN', '/dashboard', 'Dashboard'],
+    ['ADMIN', '/admin/companies', 'Companies'],
+    ['ADMIN', '/admin/system', 'System monitoring'],
+  ])('%s: %s renders an honest placeholder (route table is wired)', async (role, url, title) => {
+    signInAs(role)
+    renderApp(url)
+    expect(await screen.findByRole('heading', { name: title, level: 1 })).toBeInTheDocument()
+    expect(screen.getByText(/under construction/i)).toBeInTheDocument()
   })
 
   it('unknown URLs get a friendly 404', async () => {

@@ -46,7 +46,7 @@ from app.schemas.match import (
 )
 from app.search.candidates import visibility_predicate
 from app.services.access import CandidateAccess, candidate_access_for, load_job_for_staff
-from app.services.common import paginate
+from app.services.common import escape_like, paginate
 from app.services.scheduling import schedule_candidate_refresh, schedule_job_match
 from app.services.tasks import Dispatcher, TaskService
 
@@ -107,7 +107,7 @@ class MatchQueryService:
                 exists().where(CandidateSkill.candidate_id == CandidateProfile.id, CandidateSkill.skill_id == sid, CandidateSkill.status != SkillStatus.REJECTED)
             )
         if location:
-            stmt = stmt.where(CandidateProfile.location.ilike(f"%{location.strip().replace('%', '').replace('_', '')}%"))
+            stmt = stmt.where(CandidateProfile.location.ilike(f"%{escape_like(location.strip())}%"))
         if availability:
             stmt = stmt.where(CandidateProfile.availability.in_(availability))
         if applicants_only:
@@ -234,7 +234,7 @@ class MatchQueryService:
         if employment_types:
             stmt = stmt.where(Job.employment_type.in_(employment_types))
         if location:
-            stmt = stmt.where(Job.location.ilike(f"%{location.strip().replace('%', '').replace('_', '')}%"))
+            stmt = stmt.where(Job.location.ilike(f"%{escape_like(location.strip())}%"))
         for sid in skill_ids or []:
             stmt = stmt.where(exists().where(JobSkill.job_id == Job.id, JobSkill.skill_id == sid))
         order = [Job.published_at.desc().nulls_last()] if sort == "newest" else [CandidateJobMatch.overall_score.desc()]

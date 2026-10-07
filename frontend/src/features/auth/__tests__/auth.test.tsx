@@ -53,7 +53,11 @@ describe('login', () => {
   })
 
   it('shows a clear message for wrong credentials and stays on the page', async () => {
-    server.use(http.post('/api/v1/auth/login', () => HttpResponse.json(errorBody('INVALID_CREDENTIALS', 'Invalid email or password'), { status: 401 })))
+    server.use(
+      http.post('/api/v1/auth/login', () =>
+        HttpResponse.json(errorBody('INVALID_CREDENTIALS', 'Invalid email or password'), { status: 401 }),
+      ),
+    )
     const { user, router } = renderApp('/login')
     await fillLogin(user, 'alex@example.com', 'wrong-password')
     await user.click(screen.getByRole('button', { name: 'Sign in' }))
@@ -77,7 +81,9 @@ describe('login', () => {
         HttpResponse.json({
           demo_mode: true,
           demo_password: 'DemoPass123!',
-          demo_accounts: [{ role: 'RECRUITER', label: 'Recruiter — Northwind Labs', email: 'recruiter@demo.example' }],
+          demo_accounts: [
+            { role: 'RECRUITER', label: 'Recruiter — Northwind Labs', email: 'recruiter@demo.example' },
+          ],
         }),
       ),
       http.post('/api/v1/auth/login', async ({ request }) => {
@@ -112,7 +118,9 @@ describe('session', () => {
     renderApp('/dashboard')
     await waitForBoot()
     expect(await screen.findByRole('heading', { name: 'Dashboard' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: new RegExp(`Account menu for ${rec.first_name}`) })).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: new RegExp(`Account menu for ${rec.first_name}`) }),
+    ).toBeInTheDocument()
     expect(tokenStore.get()).toBe('access-token-1')
   })
 
@@ -180,9 +188,13 @@ describe('session', () => {
     server.use(
       http.post('/api/v1/auth/refresh', () => {
         refreshes++
-        return refreshes === 1 ? HttpResponse.json(tokenFor(candidate)) : HttpResponse.json(errorBody('INVALID_REFRESH_TOKEN', 'expired'), { status: 401 })
+        return refreshes === 1
+          ? HttpResponse.json(tokenFor(candidate))
+          : HttpResponse.json(errorBody('INVALID_REFRESH_TOKEN', 'expired'), { status: 401 })
       }),
-      http.get('/api/v1/notifications', () => HttpResponse.json(errorBody('TOKEN_EXPIRED', 'Token has expired'), { status: 401 })),
+      http.get('/api/v1/notifications', () =>
+        HttpResponse.json(errorBody('TOKEN_EXPIRED', 'Token has expired'), { status: 401 }),
+      ),
     )
     const { router } = renderApp('/notifications')
     await waitFor(() => expect(router.state.location.pathname).toBe('/login'))
@@ -205,7 +217,14 @@ describe('registration', () => {
   })
 
   it('maps EMAIL_ALREADY_REGISTERED onto the email field', async () => {
-    server.use(http.post('/api/v1/auth/register', () => HttpResponse.json(errorBody('EMAIL_ALREADY_REGISTERED', 'An account with this email already exists'), { status: 409 })))
+    server.use(
+      http.post('/api/v1/auth/register', () =>
+        HttpResponse.json(
+          errorBody('EMAIL_ALREADY_REGISTERED', 'An account with this email already exists'),
+          { status: 409 },
+        ),
+      ),
+    )
     const { user } = renderApp('/register')
     await user.type(await screen.findByLabelText(/^first name/i), 'Ada')
     await user.type(screen.getByLabelText(/^last name/i), 'Lovelace')
@@ -235,7 +254,13 @@ describe('registration', () => {
     await user.type(screen.getByLabelText(/^confirm password/i, { selector: 'input' }), 'CorrectHorse42')
     await user.click(screen.getByRole('button', { name: 'Create account' }))
     await waitFor(() => expect(router.state.location.pathname).toBe('/dashboard'))
-    expect(payload).toEqual({ first_name: 'Ada', last_name: 'Lovelace', email: 'ada@example.com', password: 'CorrectHorse42', phone: null })
+    expect(payload).toEqual({
+      first_name: 'Ada',
+      last_name: 'Lovelace',
+      email: 'ada@example.com',
+      password: 'CorrectHorse42',
+      phone: null,
+    })
   })
 
   it('employer registration maps COMPANY_NAME_TAKEN onto the company field and normalises the website', async () => {
@@ -243,7 +268,9 @@ describe('registration', () => {
     server.use(
       http.post('/api/v1/auth/register/employer', async ({ request }) => {
         payload = (await request.json()) as Record<string, unknown>
-        return HttpResponse.json(errorBody('COMPANY_NAME_TAKEN', 'A company with this name already exists'), { status: 409 })
+        return HttpResponse.json(errorBody('COMPANY_NAME_TAKEN', 'A company with this name already exists'), {
+          status: 409,
+        })
       }),
     )
     const { user } = renderApp('/register/employer')
@@ -257,6 +284,10 @@ describe('registration', () => {
     await user.click(screen.getByRole('button', { name: 'Create company account' }))
     expect(await screen.findByText('A company with this name already exists')).toBeInTheDocument()
     expect(screen.getByLabelText(/^company name/i)).toHaveAttribute('aria-invalid', 'true')
-    expect(payload).toMatchObject({ company_name: 'Acme Robotics', company_website: 'https://acme.example', company_size: null })
+    expect(payload).toMatchObject({
+      company_name: 'Acme Robotics',
+      company_website: 'https://acme.example',
+      company_size: null,
+    })
   })
 })

@@ -45,7 +45,7 @@ from app.schemas.application import (
     NoteOut,
 )
 from app.services.access import is_admin, is_staff, load_application_for_user
-from app.services.common import paginate, record_audit, utcnow
+from app.services.common import escape_like, paginate, record_audit, utcnow
 from app.services.jobs import is_open_for_applications
 from app.services.notifications import NotificationService
 from app.services.scheduling import schedule_job_match
@@ -279,7 +279,7 @@ class ApplicationService:
         if active_only:
             stmt = stmt.where(Application.status.not_in(list(TERMINAL)))
         if q and q.strip():
-            like = f"%{q.strip().lower().replace('%', '').replace('_', '')}%"
+            like = f"%{escape_like(q.strip().lower())}%"
             stmt = stmt.where(or_(func.lower(CandidateProfile.display_name).like(like), func.lower(Job.title).like(like)))
         order = {
             "newest": [Application.applied_at.desc()],

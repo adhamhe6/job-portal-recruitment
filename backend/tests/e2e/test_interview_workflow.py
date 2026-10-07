@@ -96,7 +96,7 @@ async def test_full_interview_workflow(client, monkeypatch):
     assert cv.status_code == 200
     body = cv.json()
     assert body["audience"] == "candidate" and body["can_confirm"] is True
-    assert body["job_title"] == "Backend Engineer" and body["interviewers"] == ["Sam Recruiter"]
+    assert body["job_title"] == sl["job"]["title"] and body["interviewers"] == ["Sam Recruiter"]
     assert body["location"] == "HQ, room 4" and body["timezone"] == "UTC" and body["status"] == "SCHEDULED"
     assert not (_walk_keys(body) & FORBIDDEN_KEYS), _walk_keys(body) & FORBIDDEN_KEYS
     assert "Probe distributed systems" not in cv.text and "salary expectations" not in cv.text

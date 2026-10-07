@@ -23,12 +23,15 @@ function currencyFormatter(currency: string, compact: boolean): Intl.NumberForma
         style: 'currency',
         currency,
         notation: compact ? 'compact' : 'standard',
-        maximumFractionDigits: compact ? 1 : 0,
+        // Explicit min AND max: engines disagree on the default when only one is given ("€80K" vs "€80.0K").
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
       })
     } catch {
       // Unknown currency code: fall back to a plain number with the code as prefix.
       f = new Intl.NumberFormat('en-US', {
-        maximumFractionDigits: compact ? 1 : 0,
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
         notation: compact ? 'compact' : 'standard',
       })
     }

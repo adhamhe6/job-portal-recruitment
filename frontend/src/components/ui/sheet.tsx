@@ -3,6 +3,7 @@ import { cva, type VariantProps } from 'class-variance-authority'
 import { X } from 'lucide-react'
 import type * as React from 'react'
 import { cn } from '@/lib/utils'
+import { useRestoreFocus } from './use-restore-focus'
 
 /** Slide-over panel (mobile navigation, filter drawers, detail panels). Built on Radix Dialog: focus trap, Esc, return focus. */
 export const Sheet = SheetPrimitive.Root
@@ -25,27 +26,42 @@ const sheetVariants = cva(
   },
 )
 
-export function SheetContent({
+type SheetContentProps = React.ComponentProps<typeof SheetPrimitive.Content> &
+  VariantProps<typeof sheetVariants> & { hideClose?: boolean }
+
+export function SheetContent(props: SheetContentProps) {
+  return (
+    <SheetPrimitive.Portal>
+      <SheetPrimitive.Overlay className="fixed inset-0 z-50 bg-slate-950/50 backdrop-blur-[2px] data-[state=closed]:animate-fade-out data-[state=open]:animate-fade-in" />
+      {/* Inner component mounts only while open, so it can remember what had focus at that moment. */}
+      <SheetContentInner {...props} />
+    </SheetPrimitive.Portal>
+  )
+}
+
+function SheetContentInner({
   side,
   className,
   children,
   hideClose,
+  onCloseAutoFocus,
   ...props
-}: React.ComponentProps<typeof SheetPrimitive.Content> &
-  VariantProps<typeof sheetVariants> & { hideClose?: boolean }) {
+}: SheetContentProps) {
+  const restoreFocus = useRestoreFocus(onCloseAutoFocus)
   return (
-    <SheetPrimitive.Portal>
-      <SheetPrimitive.Overlay className="fixed inset-0 z-50 bg-slate-950/50 backdrop-blur-[2px] data-[state=closed]:animate-fade-out data-[state=open]:animate-fade-in" />
-      <SheetPrimitive.Content className={cn(sheetVariants({ side }), className)} {...props}>
-        {children}
-        {!hideClose && (
-          <SheetPrimitive.Close className="absolute top-3.5 right-3.5 inline-flex size-8 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground">
-            <X className="size-4" aria-hidden />
-            <span className="sr-only">Close</span>
-          </SheetPrimitive.Close>
-        )}
-      </SheetPrimitive.Content>
-    </SheetPrimitive.Portal>
+    <SheetPrimitive.Content
+      className={cn(sheetVariants({ side }), className)}
+      onCloseAutoFocus={restoreFocus}
+      {...props}
+    >
+      {children}
+      {!hideClose && (
+        <SheetPrimitive.Close className="absolute top-3.5 right-3.5 inline-flex size-8 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground">
+          <X className="size-4" aria-hidden />
+          <span className="sr-only">Close</span>
+        </SheetPrimitive.Close>
+      )}
+    </SheetPrimitive.Content>
   )
 }
 export function SheetHeader({ className, ...props }: React.ComponentProps<'div'>) {

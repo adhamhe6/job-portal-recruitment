@@ -3,6 +3,7 @@ import { render, screen, waitFor, type RenderResult } from '@testing-library/rea
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import type { ReactElement, ReactNode } from 'react'
+import { Toaster } from 'sonner'
 import { createMemoryRouter, MemoryRouter, RouterProvider } from 'react-router-dom'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { AuthProvider } from '@/features/auth/components/AuthProvider'
@@ -19,11 +20,20 @@ export function signInAs(role: Role, overrides: Parameters<typeof makeUser>[1] =
   return user
 }
 
-function Providers({ children, client }: { children: ReactNode; client: ReturnType<typeof createQueryClient> }) {
+function Providers({
+  children,
+  client,
+}: {
+  children: ReactNode
+  client: ReturnType<typeof createQueryClient>
+}) {
   return (
     <QueryClientProvider client={client}>
       <AuthProvider>
-        <TooltipProvider>{children}</TooltipProvider>
+        <TooltipProvider>
+          {children}
+          <Toaster />
+        </TooltipProvider>
       </AuthProvider>
     </QueryClientProvider>
   )
@@ -31,12 +41,18 @@ function Providers({ children, client }: { children: ReactNode; client: ReturnTy
 
 function testClient() {
   const client = createQueryClient()
-  client.setDefaultOptions({ queries: { retry: false, staleTime: 0, gcTime: Infinity }, mutations: { retry: false } })
+  client.setDefaultOptions({
+    queries: { retry: false, staleTime: 0, gcTime: Infinity },
+    mutations: { retry: false },
+  })
   return client
 }
 
 /** Render the REAL route table at `url` with auth + query providers (the integration-style entry point). */
-export function renderApp(url: string): RenderResult & { router: ReturnType<typeof createMemoryRouter>; user: ReturnType<typeof userEvent.setup> } {
+export function renderApp(url: string): RenderResult & {
+  router: ReturnType<typeof createMemoryRouter>
+  user: ReturnType<typeof userEvent.setup>
+} {
   const client = testClient()
   const router = createMemoryRouter(routes, { initialEntries: [url] })
   const result = render(
@@ -59,4 +75,5 @@ export function renderWithProviders(ui: ReactElement, { route = '/' }: { route?:
 }
 
 /** Wait until the boot spinner is gone. */
-export const waitForBoot = () => waitFor(() => expect(screen.queryByText(/Loading TalentLens/i)).not.toBeInTheDocument())
+export const waitForBoot = () =>
+  waitFor(() => expect(screen.queryByText(/Loading TalentLens/i)).not.toBeInTheDocument())

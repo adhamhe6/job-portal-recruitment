@@ -1,8 +1,11 @@
 import '@testing-library/jest-dom/vitest'
-import { cleanup } from '@testing-library/react'
+import { cleanup, configure } from '@testing-library/react'
 import { afterAll, afterEach, beforeAll } from 'vitest'
 import { tokenStore } from '@/lib/api'
 import { server } from './server'
+
+// Lazy route chunks are transformed on first import, which can take a few seconds on a cold cache.
+configure({ asyncUtilTimeout: 6000 })
 
 // jsdom gaps that Radix UI / cmdk / charts rely on.
 class ResizeObserverStub {

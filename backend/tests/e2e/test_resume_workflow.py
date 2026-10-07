@@ -635,3 +635,19 @@ async def test_concurrent_uploads_keep_one_copy_of_identical_files_and_one_prima
     assert (
         lst["total"] == 4 and [i["is_primary"] for i in lst["items"]].count(True) == 1
     )  # the partial unique index never fired
+
+
+async def test_apply_accepts_boolean_shorthands(client):
+    cand = await register_candidate(client)
+    body = await upload_ok(client, cand, fx.backend_pdf())
+    r = await client.post(
+        f"/api/v1/resumes/{body['id']}/extracted/apply",
+        headers=cand["h"],
+        json={"skills": True, "experiences": [0], "summary": True, "headline": True, "overwrite": {"summary": True}},
+    )
+    assert r.status_code == 200, r.text
+    res = r.json()
+    assert res["applied"]["skills"] >= 10 and res["applied"]["experiences"] == 1 and set(res["fields_applied"]) == {"summary", "headline"}
+    # empty body is a valid no-op; unknown keys are rejected rather than silently ignored
+    assert (await client.post(f"/api/v1/resumes/{body['id']}/extracted/apply", headers=cand["h"], json={})).json() == {"applied": {}, "fields_applied": [], "skipped": []}
+    assert (await client.post(f"/api/v1/resumes/{body['id']}/extracted/apply", headers=cand["h"], json={"everything": True})).status_code == 422

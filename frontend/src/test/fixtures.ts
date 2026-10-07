@@ -1,4 +1,14 @@
-import type { JobDetail, JobListItem, JobPublic, Me, NotificationOut, Paginated, Role, SkillOut, TokenResponse } from '@/lib/api'
+import type {
+  JobDetail,
+  JobListItem,
+  JobPublic,
+  Me,
+  NotificationOut,
+  Paginated,
+  Role,
+  SkillOut,
+  TokenResponse,
+} from '@/lib/api'
 
 /** Typed factories for API payloads. Defaults are valid; override what a test cares about. */
 
@@ -6,18 +16,65 @@ let seq = 0
 export const uid = (prefix = 'id') => `${prefix}-${++seq}`
 
 const PERMISSIONS: Record<Role, string[]> = {
-  CANDIDATE: ['apply_to_jobs', 'create_skill', 'manage_own_profile', 'upload_resume', 'view_interviews', 'view_recommendations'],
-  RECRUITER: [
-    'manage_own_company', 'create_skill', 'manage_jobs', 'view_company_jobs', 'search_candidates', 'view_candidates',
-    'manage_applications', 'review_applications', 'import_resumes', 'schedule_interviews', 'view_interviews',
-    'provide_feedback', 'view_matches', 'run_matching', 'view_reports',
+  CANDIDATE: [
+    'apply_to_jobs',
+    'create_skill',
+    'manage_own_profile',
+    'upload_resume',
+    'view_interviews',
+    'view_recommendations',
   ],
-  HIRING_MANAGER: ['view_company_jobs', 'view_candidates', 'review_applications', 'view_interviews', 'provide_feedback', 'view_matches', 'view_reports'],
+  RECRUITER: [
+    'manage_own_company',
+    'create_skill',
+    'manage_jobs',
+    'view_company_jobs',
+    'search_candidates',
+    'view_candidates',
+    'manage_applications',
+    'review_applications',
+    'import_resumes',
+    'schedule_interviews',
+    'view_interviews',
+    'provide_feedback',
+    'view_matches',
+    'run_matching',
+    'view_reports',
+  ],
+  HIRING_MANAGER: [
+    'view_company_jobs',
+    'view_candidates',
+    'review_applications',
+    'view_interviews',
+    'provide_feedback',
+    'view_matches',
+    'view_reports',
+  ],
   ADMIN: [
-    'manage_users', 'manage_companies', 'manage_own_company', 'create_skill', 'manage_skills', 'manage_jobs', 'view_company_jobs',
-    'search_candidates', 'view_candidates', 'manage_applications', 'review_applications', 'manage_own_profile', 'apply_to_jobs',
-    'upload_resume', 'import_resumes', 'schedule_interviews', 'view_interviews', 'provide_feedback', 'view_matches', 'run_matching',
-    'view_recommendations', 'view_reports', 'view_admin_reports', 'monitor_system',
+    'manage_users',
+    'manage_companies',
+    'manage_own_company',
+    'create_skill',
+    'manage_skills',
+    'manage_jobs',
+    'view_company_jobs',
+    'search_candidates',
+    'view_candidates',
+    'manage_applications',
+    'review_applications',
+    'manage_own_profile',
+    'apply_to_jobs',
+    'upload_resume',
+    'import_resumes',
+    'schedule_interviews',
+    'view_interviews',
+    'provide_feedback',
+    'view_matches',
+    'run_matching',
+    'view_recommendations',
+    'view_reports',
+    'view_admin_reports',
+    'monitor_system',
   ],
 }
 
@@ -36,7 +93,9 @@ export function makeUser(role: Role = 'CANDIDATE', overrides: Partial<Me> = {}):
     company_id: staff ? COMPANY_ID : null,
     last_login_at: null,
     created_at: '2026-01-01T00:00:00Z',
-    company: staff ? { id: COMPANY_ID, name: 'Northwind Labs', slug: 'northwind-labs', logo_url: null } : null,
+    company: staff
+      ? { id: COMPANY_ID, name: 'Northwind Labs', slug: 'northwind-labs', logo_url: null }
+      : null,
     candidate_id: role === 'CANDIDATE' ? 'cand-1' : null,
     is_company_admin: role === 'RECRUITER',
     permissions: PERMISSIONS[role],
@@ -94,7 +153,13 @@ const company = {
   logo_url: null,
 }
 
-export const skill = (name: string, id = `skill-${name.toLowerCase()}`): SkillOut => ({ id, name, category: 'Languages', family: null, is_verified: true })
+export const skill = (name: string, id = `skill-${name.toLowerCase()}`): SkillOut => ({
+  id,
+  name,
+  category: 'Languages',
+  family: null,
+  is_verified: true,
+})
 
 export function makeJobPublic(overrides: Partial<JobPublic> = {}): JobPublic {
   return {
@@ -172,4 +237,6 @@ export function makeNotification(overrides: Partial<NotificationOut> = {}): Noti
   }
 }
 
-export const errorBody = (code: string, message: string, details: unknown = null) => ({ error: { code, message, details, request_id: 'req-test' } })
+export const errorBody = (code: string, message: string, details: unknown = null) => ({
+  error: { code, message, details, request_id: 'req-test' },
+})

@@ -47,6 +47,8 @@ async def world(client):
         "hm_other": hm_other,
         "rec_b": rec_b,
         "admin": admin,
+        "cand": sl["cand"],
+        "start": s,
         "other_cand": other_cand,
         "iv": iv,
         "iv2": iv2,

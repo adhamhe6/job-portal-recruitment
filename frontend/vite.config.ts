@@ -52,6 +52,7 @@ export default defineConfig({
     css: false,
     include: ['src/**/*.test.{ts,tsx}'],
     restoreMocks: true,
+    testTimeout: 20_000,
     coverage: {
       provider: 'v8',
       include: ['src/**/*.{ts,tsx}'],

@@ -183,15 +183,6 @@ class ExtractedLanguage(BaseModel):
     missing_for_apply: list[str] = Field(default_factory=list)
 
 
-class ExtractedYears(BaseModel):
-    value: float | None = None
-    basis: str | None = Field(
-        default=None,
-        description="employment_history (union of dated jobs) | stated (explicit claim) | corrected",
-    )
-    stated: float | None = None
-
-
 class ExtractedResume(BaseModel):
     """Everything the parser suggests for the profile, with confidence scores. Nothing here is applied automatically
     except skills (as unconfirmed suggestions); raw text is never returned."""
@@ -203,7 +194,12 @@ class ExtractedResume(BaseModel):
     contact: ExtractedContact
     headline: str | None = None
     summary: str | None = None
-    years_of_experience: ExtractedYears | None = None
+    years_of_experience: float | None = Field(
+        default=None, description="Total years: the union of dated jobs, or an explicit claim in the résumé"
+    )
+    years_basis: str | None = Field(
+        default=None, description="employment_history (union of dated jobs) | stated (explicit claim) | corrected"
+    )
     skills: list[ExtractedSkill]
     experiences: list[ExtractedExperience]
     educations: list[ExtractedEducation]
@@ -323,6 +319,9 @@ class ExtractedPatch(BaseModel):
 
 
 Selection = Annotated[list[int] | Literal["all"], Field(description="Suggestion indices to copy, or `all`")]
+_PROFILE_FIELDS = (
+    "summary", "headline", "location", "years_experience", "linkedin_url", "github_url", "portfolio_url", "phone",
+)
 ProfileField = Literal[
     "summary",
     "headline",
@@ -367,6 +366,33 @@ class ApplyRequest(BaseModel):
         default_factory=list,
         description="Fields (subset of `fields`) that may replace an existing non-empty value",
     )
+
+    @model_validator(mode="before")
+    @classmethod
+    def _shorthands(cls, data: Any) -> Any:
+        """Accept the obvious shorthands: ``"skills": true`` (= all), ``"summary": true`` (= fields: [summary]) and
+        ``"overwrite": true`` / ``{"summary": true}`` (= overwrite every / the listed selected fields)."""
+        if not isinstance(data, dict):
+            return data
+        d = dict(data)
+        for section in ("skills", "experiences", "educations", "certifications", "languages"):
+            if d.get(section) is True:
+                d[section] = "all"
+            elif d.get(section) in (False, None):
+                d.pop(section, None)
+        fields = [str(f) for f in (d.get("fields") or [])]
+        for name in _PROFILE_FIELDS:
+            if name in d and d.pop(name) is True and name not in fields:
+                fields.append(name)
+        d["fields"] = fields
+        overwrite = d.get("overwrite")
+        if overwrite is True:
+            d["overwrite"] = list(fields)
+        elif isinstance(overwrite, dict):
+            d["overwrite"] = [k for k, v in overwrite.items() if v is True]
+        elif overwrite in (False, None):
+            d["overwrite"] = []
+        return d
 
     @model_validator(mode="after")
     def _overwrite_subset(self) -> ApplyRequest:

@@ -33,7 +33,6 @@ from app.schemas.resume import (
     ExtractedPatch,
     ExtractedResume,
     ExtractedSkill,
-    ExtractedYears,
     SkippedItem,
 )
 
@@ -162,11 +161,8 @@ async def build_extracted(
         ),
         headline=parsed.get("headline"),
         summary=parsed.get("summary"),
-        years_of_experience=ExtractedYears(
-            value=yoe.get("value"), basis=yoe.get("basis"), stated=yoe.get("stated")
-        )
-        if isinstance(yoe, Mapping)
-        else None,
+        years_of_experience=yoe.get("value") if isinstance(yoe, Mapping) else None,
+        years_basis=yoe.get("basis") if isinstance(yoe, Mapping) else None,
         skills=skills,
         experiences=experiences,
         educations=educations,

@@ -6,9 +6,17 @@ import { api, ApiError, buildQuery, onSessionExpired, refreshSession, tokenStore
 
 describe('buildQuery', () => {
   it('repeats array params and drops empty values', () => {
-    expect(buildQuery({ skill: ['Python', 'SQL'], q: 'dev ops', page: 2, empty: '', none: undefined, nul: null, flag: false })).toBe(
-      '?skill=Python&skill=SQL&q=dev+ops&page=2&flag=false',
-    )
+    expect(
+      buildQuery({
+        skill: ['Python', 'SQL'],
+        q: 'dev ops',
+        page: 2,
+        empty: '',
+        none: undefined,
+        nul: null,
+        flag: false,
+      }),
+    ).toBe('?skill=Python&skill=SQL&q=dev+ops&page=2&flag=false')
     expect(buildQuery({})).toBe('')
     expect(buildQuery(undefined)).toBe('')
   })
@@ -16,10 +24,20 @@ describe('buildQuery', () => {
 
 describe('error normalisation', () => {
   it('turns the backend error envelope into an ApiError', async () => {
-    server.use(http.get('/api/v1/boom', () => HttpResponse.json(errorBody('JOB_NOT_FOUND', 'Job not found', { a: 1 }), { status: 404 })))
+    server.use(
+      http.get('/api/v1/boom', () =>
+        HttpResponse.json(errorBody('JOB_NOT_FOUND', 'Job not found', { a: 1 }), { status: 404 }),
+      ),
+    )
     const err = await api.get('/boom').catch((e: unknown) => e)
     expect(err).toBeInstanceOf(ApiError)
-    expect(err).toMatchObject({ status: 404, code: 'JOB_NOT_FOUND', message: 'Job not found', details: { a: 1 }, requestId: 'req-test' })
+    expect(err).toMatchObject({
+      status: 404,
+      code: 'JOB_NOT_FOUND',
+      message: 'Job not found',
+      details: { a: 1 },
+      requestId: 'req-test',
+    })
   })
 
   it('maps validation details to field errors and strips pydantic prefixes', async () => {
@@ -28,18 +46,32 @@ describe('error normalisation', () => {
         HttpResponse.json(
           errorBody('VALIDATION_ERROR', 'Request validation failed', [
             { field: 'title', message: 'String should have at least 3 characters', type: 'string_too_short' },
-            { field: 'salary_max', message: 'Value error, salary_max must be >= salary_min', type: 'value_error' },
+            {
+              field: 'salary_max',
+              message: 'Value error, salary_max must be >= salary_min',
+              type: 'value_error',
+            },
           ]),
           { status: 422 },
         ),
       ),
     )
     const err = (await api.post('/x', {}).catch((e: unknown) => e)) as ApiError
-    expect(err.fieldErrors).toEqual({ title: 'String should have at least 3 characters', salary_max: 'salary_max must be >= salary_min' })
+    expect(err.fieldErrors).toEqual({
+      title: 'String should have at least 3 characters',
+      salary_max: 'salary_max must be >= salary_min',
+    })
   })
 
   it('exposes string detail lists (PUBLISH_VALIDATION_FAILED)', async () => {
-    server.use(http.post('/api/v1/y', () => HttpResponse.json(errorBody('PUBLISH_VALIDATION_FAILED', 'Cannot publish', ['Add at least one required skill']), { status: 422 })))
+    server.use(
+      http.post('/api/v1/y', () =>
+        HttpResponse.json(
+          errorBody('PUBLISH_VALIDATION_FAILED', 'Cannot publish', ['Add at least one required skill']),
+          { status: 422 },
+        ),
+      ),
+    )
     const err = (await api.post('/y').catch((e: unknown) => e)) as ApiError
     expect(err.detailMessages).toEqual(['Add at least one required skill'])
     expect(err.is('PUBLISH_VALIDATION_FAILED')).toBe(true)
@@ -88,7 +120,9 @@ describe('authentication', () => {
       http.get('/api/v1/private', ({ request }) => {
         const auth = request.headers.get('authorization')
         seen.push(auth)
-        return auth === 'Bearer fresh' ? HttpResponse.json({ ok: 1 }) : HttpResponse.json(errorBody('TOKEN_EXPIRED', 'Token has expired'), { status: 401 })
+        return auth === 'Bearer fresh'
+          ? HttpResponse.json({ ok: 1 })
+          : HttpResponse.json(errorBody('TOKEN_EXPIRED', 'Token has expired'), { status: 401 })
       }),
       http.post('/api/v1/auth/refresh', () => {
         refreshes++
@@ -105,8 +139,16 @@ describe('authentication', () => {
     tokenStore.set('expired')
     let refreshes = 0
     server.use(
-      http.get('/api/v1/a', ({ request }) => (request.headers.get('authorization') === 'Bearer fresh' ? HttpResponse.json({ a: 1 }) : HttpResponse.json(errorBody('TOKEN_EXPIRED', 'x'), { status: 401 }))),
-      http.get('/api/v1/b', ({ request }) => (request.headers.get('authorization') === 'Bearer fresh' ? HttpResponse.json({ b: 1 }) : HttpResponse.json(errorBody('TOKEN_EXPIRED', 'x'), { status: 401 }))),
+      http.get('/api/v1/a', ({ request }) =>
+        request.headers.get('authorization') === 'Bearer fresh'
+          ? HttpResponse.json({ a: 1 })
+          : HttpResponse.json(errorBody('TOKEN_EXPIRED', 'x'), { status: 401 }),
+      ),
+      http.get('/api/v1/b', ({ request }) =>
+        request.headers.get('authorization') === 'Bearer fresh'
+          ? HttpResponse.json({ b: 1 })
+          : HttpResponse.json(errorBody('TOKEN_EXPIRED', 'x'), { status: 401 }),
+      ),
       http.post('/api/v1/auth/refresh', async () => {
         refreshes++
         await new Promise((r) => setTimeout(r, 30))
@@ -122,7 +164,11 @@ describe('authentication', () => {
     tokenStore.set('expired')
     const expired = vi.fn()
     const off = onSessionExpired(expired)
-    server.use(http.get('/api/v1/private', () => HttpResponse.json(errorBody('TOKEN_EXPIRED', 'Token has expired'), { status: 401 })))
+    server.use(
+      http.get('/api/v1/private', () =>
+        HttpResponse.json(errorBody('TOKEN_EXPIRED', 'Token has expired'), { status: 401 }),
+      ),
+    )
     const err = (await api.get('/private').catch((e: unknown) => e)) as ApiError
     off()
     expect(err).toMatchObject({ status: 401, code: 'TOKEN_EXPIRED' })
@@ -133,7 +179,9 @@ describe('authentication', () => {
   it('does not try to refresh for anonymous 401s', async () => {
     let refreshes = 0
     server.use(
-      http.get('/api/v1/private', () => HttpResponse.json(errorBody('UNAUTHORIZED', 'Not authenticated'), { status: 401 })),
+      http.get('/api/v1/private', () =>
+        HttpResponse.json(errorBody('UNAUTHORIZED', 'Not authenticated'), { status: 401 }),
+      ),
       http.post('/api/v1/auth/refresh', () => {
         refreshes++
         return HttpResponse.json({}, { status: 401 })

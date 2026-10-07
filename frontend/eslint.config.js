@@ -34,6 +34,10 @@ export default tseslint.config(
     },
   },
   {
+    files: ['public/**/*.js'],
+    languageOptions: { globals: { ...globals.browser } },
+  },
+  {
     files: ['scripts/**/*.{js,mjs,ts}', 'vite.config.ts', '*.config.{js,ts}'],
     languageOptions: { globals: { ...globals.node } },
     rules: { 'no-console': 'off' },

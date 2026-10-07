@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Eye, Rocket, Save } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { useForm, type SubmitErrorHandler } from 'react-hook-form'
+import { useForm, useWatch, type SubmitErrorHandler } from 'react-hook-form'
 import { Link, useBlocker, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { ConfirmDialog } from '@/components/common/ConfirmDialog'
@@ -108,12 +108,12 @@ function JobForm({ job }: { job?: JobDetail }) {
     handleSubmit,
     setError,
     reset,
-    watch,
+    control,
     control,
     formState: { errors, isDirty },
   } = form
 
-  const description = watch('description')
+  const description = useWatch({ control, name: 'description' })
   const status = job?.status ?? 'DRAFT'
   const isLive = editing && status !== 'DRAFT'
 

@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 
 /**
@@ -16,13 +16,17 @@ export type UrlStateShape = Record<string, Scalar | string[]>
 
 export function useUrlState<T extends UrlStateShape>(defaults: T) {
   const [params, setParams] = useSearchParams()
+  // Latest params for callbacks (event handlers read it; it is written in an effect and by `update` itself, never during render).
   const latest = useRef(params)
-  latest.current = params
-  const defs = useRef(defaults)
+  useEffect(() => {
+    latest.current = params
+  }, [params])
+  // Defaults are captured once, so callers may pass an inline object literal.
+  const [defs] = useState(defaults)
 
   const state = useMemo(() => {
     const out: Record<string, Scalar | string[]> = {}
-    for (const [key, def] of Object.entries(defs.current)) {
+    for (const [key, def] of Object.entries(defs)) {
       if (Array.isArray(def)) {
         const all = params.getAll(key)
         out[key] = all.length ? all : def
@@ -36,14 +40,14 @@ export function useUrlState<T extends UrlStateShape>(defaults: T) {
       }
     }
     return out as T
-  }, [params])
+  }, [params, defs])
 
   const update = useCallback(
     (
       patch: Partial<T>,
       { resetPage = true, replace = true }: { resetPage?: boolean; replace?: boolean } = {},
     ) => {
-      const d = defs.current
+      const d = defs
       const next = new URLSearchParams(latest.current)
       const merged: Record<string, unknown> = { ...patch }
       if (resetPage && 'page' in d && !('page' in patch)) merged.page = d.page
@@ -61,17 +65,17 @@ export function useUrlState<T extends UrlStateShape>(defaults: T) {
       latest.current = next
       setParams(next, { replace })
     },
-    [setParams],
+    [setParams, defs],
   )
 
   const reset = useCallback(
     (keys?: (keyof T)[]) => {
       const next = new URLSearchParams(latest.current)
-      for (const key of keys ?? Object.keys(defs.current)) next.delete(String(key))
+      for (const key of keys ?? Object.keys(defs)) next.delete(String(key))
       latest.current = next
       setParams(next, { replace: true })
     },
-    [setParams],
+    [setParams, defs],
   )
 
   return [state, update, reset] as const

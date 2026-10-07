@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Monitor, Moon, Sun } from 'lucide-react'
 import { useState } from 'react'
-import { useForm } from 'react-hook-form'
+import { useForm, useWatch } from 'react-hook-form'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { PasswordInput, PasswordRules } from '@/components/common/PasswordInput'
@@ -108,10 +108,10 @@ function PasswordCard() {
     register,
     handleSubmit,
     setError,
-    watch,
+    control,
     formState: { errors, isSubmitting },
   } = form
-  const newPassword = watch('new_password')
+  const newPassword = useWatch({ control, name: 'new_password' })
 
   const onSubmit = handleSubmit(async (values) => {
     setFormError(null)

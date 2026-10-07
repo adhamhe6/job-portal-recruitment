@@ -58,12 +58,12 @@ def U(value: str | uuid.UUID) -> uuid.UUID:
 
 async def set_job_status(job_id: str, status: str) -> None:
     """Force a job into a status, keeping the ``published_at_set`` invariant intact."""
-    await sql(
-        "UPDATE jobs SET status = :s, published_at = CASE WHEN :s = 'DRAFT' THEN published_at ELSE COALESCE(published_at, now()) END,"
-        " closed_at = CASE WHEN :s IN ('CLOSED', 'ARCHIVED') THEN COALESCE(closed_at, now()) ELSE closed_at END WHERE id = :id",
-        s=status,
-        id=U(job_id),
-    )
+    sets = ["status = :s"]
+    if status != "DRAFT":
+        sets.append("published_at = COALESCE(published_at, now())")
+    if status in ("CLOSED", "ARCHIVED"):
+        sets.append("closed_at = COALESCE(closed_at, now())")
+    await sql(f"UPDATE jobs SET {', '.join(sets)} WHERE id = :id", s=status, id=U(job_id))
 
 
 async def expire_deadline(job_id: str, days_ago: int = 1) -> None:

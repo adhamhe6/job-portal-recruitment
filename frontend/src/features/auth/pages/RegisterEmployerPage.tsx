@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useState } from 'react'
-import { useForm } from 'react-hook-form'
+import { useForm, useWatch } from 'react-hook-form'
 import { Link, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { PasswordInput, PasswordRules } from '@/components/common/PasswordInput'
@@ -43,7 +43,7 @@ export default function RegisterEmployerPage() {
     register,
     handleSubmit,
     setError,
-    watch,
+    control,
     formState: { errors, isSubmitting },
   } = useForm<EmployerValues>({
     resolver: zodResolver(employerSchema),
@@ -62,7 +62,7 @@ export default function RegisterEmployerPage() {
       company_size: '',
     },
   })
-  const password = watch('password')
+  const password = useWatch({ control, name: 'password' })
 
   const onSubmit = handleSubmit(
     async (v) => {

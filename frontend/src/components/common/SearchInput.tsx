@@ -15,7 +15,6 @@ export function SearchInput({
   label,
   className,
   delay = 350,
-  autoFocus,
   id,
 }: {
   value: string
@@ -25,7 +24,6 @@ export function SearchInput({
   label?: string
   className?: string
   delay?: number
-  autoFocus?: boolean
   id?: string
 }) {
   const [local, setLocal] = useState(value)
@@ -60,7 +58,6 @@ export function SearchInput({
         aria-label={label ?? placeholder}
         placeholder={placeholder}
         value={local}
-        autoFocus={autoFocus}
         onChange={(e) => setLocal(e.target.value)}
         onKeyDown={(e) => {
           if (e.key === 'Enter') onChangeRef.current(local)

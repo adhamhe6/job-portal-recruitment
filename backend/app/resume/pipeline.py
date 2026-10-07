@@ -334,6 +334,16 @@ async def run_process_resume(ctx: TaskContext) -> dict[str, Any]:
         await record_failure(ctx, loaded, exc.code, exc.message, started)
         raise
     except RetryableError:
+        if (
+            ctx.attempt >= settings.task_max_attempts
+        ):  # the worker is about to give up: do not leave the résumé "processing"
+            await record_failure(
+                ctx,
+                loaded,
+                "TEMPORARY_FAILURE",
+                "Processing could not be completed because a required service was unavailable. Please try again later.",
+                started,
+            )
         raise
     except asyncio.CancelledError:
         await asyncio.shield(

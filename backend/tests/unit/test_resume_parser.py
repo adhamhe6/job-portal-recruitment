@@ -788,16 +788,38 @@ def test_pipe_separated_header_and_parenthesised_location():
         ],
         TODAY,
     )
-    assert (exps[0].title, exps[0].company, exps[0].location) == ("Senior Software Engineer", "Stripe", "San Francisco, CA")
-    assert (exps[1].title, exps[1].company, exps[1].location) == ("Data Scientist", "Alibaba Cloud", "Hangzhou, China")
+    assert (exps[0].title, exps[0].company, exps[0].location) == (
+        "Senior Software Engineer",
+        "Stripe",
+        "San Francisco, CA",
+    )
+    assert (exps[1].title, exps[1].company, exps[1].location) == (
+        "Data Scientist",
+        "Alibaba Cloud",
+        "Hangzhou, China",
+    )
 
 
 def test_degree_with_parenthesised_abbreviation_and_gpa_line():
-    edus = parse_educations(["Bachelor of Science (B.Sc.) in Computer Science, University of Washington, 2011 - 2015", "GPA: 3.8/4.0"], TODAY)
+    edus = parse_educations(
+        [
+            "Bachelor of Science (B.Sc.) in Computer Science, University of Washington, 2011 - 2015",
+            "GPA: 3.8/4.0",
+        ],
+        TODAY,
+    )
     assert len(edus) == 1
-    assert (edus[0].degree, edus[0].field_of_study, edus[0].institution) == ("Bachelor of Science", "Computer Science", "University of Washington")
+    assert (edus[0].degree, edus[0].field_of_study, edus[0].institution) == (
+        "Bachelor of Science",
+        "Computer Science",
+        "University of Washington",
+    )
 
 
 def test_bullet_separated_skills_line_and_proficiency_annotations():
-    found = names(extract_skills_from_text("Skills\n• Python • Java • Kotlin • AWS\nPython (Expert), Java (Intermediate), SQL (Advanced)"))
+    found = names(
+        extract_skills_from_text(
+            "Skills\n• Python • Java • Kotlin • AWS\nPython (Expert), Java (Intermediate), SQL (Advanced)"
+        )
+    )
     assert {"Python", "Java", "Kotlin", "AWS", "SQL"} <= found

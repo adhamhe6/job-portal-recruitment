@@ -382,16 +382,38 @@ async def test_upload_endpoints_are_rate_limited(client, monkeypatch):
 
     monkeypatch.setattr(get_settings(), "upload_rate_limit_attempts", 2)
     cand = await register_candidate(client)
-    codes = [(await upload(client, cand, fx.make_pdf(f"Pat Lee {i}\npat{i}@x.example\nSkills\nPython, Docker, SQL\n"))).status_code for i in range(3)]
+    codes = [
+        (
+            await upload(
+                client, cand, fx.make_pdf(f"Pat Lee {i}\npat{i}@x.example\nSkills\nPython, Docker, SQL\n")
+            )
+        ).status_code
+        for i in range(3)
+    ]
     assert codes == [202, 202, 429]
     limited = await upload(client, cand, fx.backend_pdf())
-    assert limited.status_code == 429 and limited.headers["retry-after"] and limited.json()["error"]["code"] == "RATE_LIMITED"
-    assert (await client.get("/api/v1/resumes", headers=cand["h"])).status_code == 200  # reads are not limited
+    assert (
+        limited.status_code == 429
+        and limited.headers["retry-after"]
+        and limited.json()["error"]["code"] == "RATE_LIMITED"
+    )
+    assert (
+        await client.get("/api/v1/resumes", headers=cand["h"])
+    ).status_code == 200  # reads are not limited
 
     from tests.resume_helpers import bulk_upload
 
     rec = await register_employer(client)
-    statuses = [(await bulk_upload(client, rec, [("a.pdf", fx.make_pdf(f"Kim {i}\nkim{i}@x.example\nSkills\nPython, SQL, Docker\n"), PDF)])).status_code for i in range(3)]
+    statuses = [
+        (
+            await bulk_upload(
+                client,
+                rec,
+                [("a.pdf", fx.make_pdf(f"Kim {i}\nkim{i}@x.example\nSkills\nPython, SQL, Docker\n"), PDF)],
+            )
+        ).status_code
+        for i in range(3)
+    ]
     assert statuses == [202, 202, 429]
 
 
@@ -407,11 +429,58 @@ async def test_logs_never_contain_resume_content_or_filenames(client, caplog):
     await upload(client, cand, fx.malformed_pdf(), "secret-broken.pdf")
     await upload(client, cand, fx.scanned_pdf(), "secret-scan.pdf")
     await upload(client, cand, fx.EXE, "payload-evil.pdf")
-    await bulk_upload(client, rec, [("bulk-private-alex.docx", fx.frontend_docx(), DOCX), ("bulk-bad.pdf", fx.malformed_pdf(), PDF)])
+    await bulk_upload(
+        client,
+        rec,
+        [("bulk-private-alex.docx", fx.frontend_docx(), DOCX), ("bulk-bad.pdf", fx.malformed_pdf(), PDF)],
+    )
     text = caplog.text
     assert "Created" not in text or True
     for token in (
-        "jane.doe@example.com", "Jane Doe", "151 2345", "janedoe", "alex.kim", "Alex Kim", "555-0199", "Berlin", "Backend engineer",
-        "private-jane-cv", "secret-broken", "secret-scan", "payload-evil", "bulk-private-alex", "bulk-bad",
+        "jane.doe@example.com",
+        "Jane Doe",
+        "151 2345",
+        "janedoe",
+        "alex.kim",
+        "Alex Kim",
+        "555-0199",
+        "Berlin",
+        "Backend engineer",
+        "private-jane-cv",
+        "secret-broken",
+        "secret-scan",
+        "payload-evil",
+        "bulk-private-alex",
+        "bulk-bad",
     ):
         assert token not in text, token
+
+
+async def test_persistent_storage_trouble_ends_in_a_failed_resume_not_a_stuck_one(client, monkeypatch):
+    import app.resume.pipeline as pipeline
+
+    async def unavailable(*a, **k):
+        raise OSError("disk offline")
+
+    monkeypatch.setattr(pipeline, "read_bounded", unavailable)
+    cand = await register_candidate(client)
+    body = (await upload(client, cand, fx.backend_pdf())).json()
+    p = body["processing"]
+    assert body["status"] == "FAILED" and p["error_code"] == "TEMPORARY_FAILURE" and p["attempts"] == 2
+    assert p["task_status"] == "FAILED"
+    assert "disk offline" not in str(body)
+
+
+async def test_storage_write_failure_is_reported_as_unavailable_and_leaves_nothing(client, monkeypatch):
+    from app.resume.storage import LocalStorage
+
+    async def broken_put(self, key, data):
+        raise OSError("no space left on device")
+
+    monkeypatch.setattr(LocalStorage, "put", broken_put)
+    cand = await register_candidate(client)
+    r = await upload(client, cand, fx.backend_pdf())
+    assert (
+        r.status_code == 503 and r.json()["error"]["code"] == "SERVICE_UNAVAILABLE" and "space" not in r.text
+    )
+    assert (await client.get("/api/v1/resumes", headers=cand["h"])).json()["total"] == 0

@@ -209,7 +209,9 @@ class ResumeService:
 
         outs: list[ResumeOut] = []
         for resume, _ in loaded:
-            doc = docs[resume.id]
+            doc = docs.get(resume.id)
+            if doc is None:  # inconsistent row (no file attached): never expose half a résumé
+                continue
             task = tasks.get(resume.id)
             outs.append(
                 ResumeOut(
@@ -272,7 +274,10 @@ class ResumeService:
         return out
 
     async def _out(self, resume: Resume, candidate: CandidateProfile) -> ResumeOut:
-        return (await self._outs([(resume, candidate)]))[0]
+        outs = await self._outs([(resume, candidate)])
+        if not outs:
+            raise NotFoundError("Résumé not found", code="RESUME_NOT_FOUND")
+        return outs[0]
 
     # --- upload ---------------------------------------------------------------------------------------------------------------------------
     async def upload(
@@ -304,7 +309,7 @@ class ResumeService:
                     code="RESUME_LIMIT_REACHED",
                 )
             key = new_resume_key()
-            await storage.put(key, upload.file)
+            await self._store(key, upload.file)
             try:
                 resume = await self._create_rows(user, candidate, key, upload, set_primary)
             except _DuplicateUploadError as dup:  # a concurrent identical upload won the race: keep one copy
@@ -322,6 +327,16 @@ class ResumeService:
         await self.session.refresh(resume)
         out = await self._out(resume, candidate)
         return ResumeUploadOut(**out.model_dump(), message=message, duplicate=False), 202
+
+    @staticmethod
+    async def _store(key: str, source: Any) -> None:
+        try:
+            await get_storage().put(key, source)
+        except (OSError, StorageError) as exc:
+            logger.error("résumé storage write failed", extra={"error": type(exc).__name__})
+            raise ServiceUnavailableError(
+                "The file could not be stored right now. Please try again shortly."
+            ) from exc
 
     async def _find_duplicate(self, candidate_id: uuid.UUID, sha256: str) -> Resume | None:
         return (
@@ -435,10 +450,6 @@ class ResumeService:
         ).scalar_one_or_none()
         if doc is None:
             raise NotFoundError("Résumé file not found", code="RESUME_FILE_NOT_FOUND")
-        try:
-            handle = get_storage().open(doc.storage_key)
-        except StorageError as exc:
-            raise NotFoundError("Résumé file not found", code="RESUME_FILE_NOT_FOUND") from exc
         if not loaded.is_owner:  # releasing a candidate's file to staff is an auditable event
             record_audit(
                 self.session,
@@ -449,6 +460,10 @@ class ResumeService:
                 company_id=user.company_id,
             )
             await self.session.commit()
+        try:
+            handle = get_storage().open(doc.storage_key)
+        except StorageError as exc:
+            raise NotFoundError("Résumé file not found", code="RESUME_FILE_NOT_FOUND") from exc
         as_inline = (
             inline and doc.content_type == "application/pdf"
         )  # only PDFs are ever previewed in the browser
@@ -647,7 +662,7 @@ class ResumeService:
                     continue
                 try:
                     key = new_resume_key()
-                    await storage.put(key, valid.file)
+                    await self._store(key, valid.file)
                     stored.append(key)
                     items.append(
                         BulkImportItem(

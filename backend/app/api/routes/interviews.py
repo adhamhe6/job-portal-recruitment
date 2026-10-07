@@ -205,6 +205,7 @@ async def submit_feedback(
     "/{interview_id}/feedback",
     response_model=FeedbackOut,
     summary="Update my feedback",
+    description="Replaces the caller's own feedback entry (rating, recommendation and texts). `submitted_at` keeps the time of the first submission.",
     responses={
         **COMMON_ERRORS,
         404: {

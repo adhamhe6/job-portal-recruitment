@@ -622,8 +622,16 @@ async def test_concurrent_uploads_keep_one_copy_of_identical_files_and_one_prima
     assert len({r.json()["id"] for r in same}) == 1
     assert await session.scalar(select(func.count()).select_from(Resume)) == 1
 
-    others = [fx.frontend_pdf(), fx.nurse_pdf(), fx.make_pdf("Pat Lee\npat@x.example\nSkills\nPython, Docker, SQL, Redis\n")]
-    mixed = await asyncio.gather(*[upload(client, cand, data, f"other{i}.pdf") for i, data in enumerate(others)])
+    others = [
+        fx.frontend_pdf(),
+        fx.nurse_pdf(),
+        fx.make_pdf("Pat Lee\npat@x.example\nSkills\nPython, Docker, SQL, Redis\n"),
+    ]
+    mixed = await asyncio.gather(
+        *[upload(client, cand, data, f"other{i}.pdf") for i, data in enumerate(others)]
+    )
     assert all(r.status_code == 202 for r in mixed), [r.text for r in mixed]
     lst = (await client.get("/api/v1/resumes", headers=cand["h"])).json()
-    assert lst["total"] == 4 and [i["is_primary"] for i in lst["items"]].count(True) == 1  # the partial unique index never fired
+    assert (
+        lst["total"] == 4 and [i["is_primary"] for i in lst["items"]].count(True) == 1
+    )  # the partial unique index never fired

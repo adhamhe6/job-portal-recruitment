@@ -116,6 +116,19 @@ async def test_recruiter_dashboard_numbers(world):
     )
 
 
+async def test_top_matches_include_applicants_who_left_the_marketplace(world):
+    """c5 applied to J2 and then opted out of the marketplace: still visible to the company (an applicant), also on J1's matches."""
+    await sql(
+        "UPDATE candidate_profiles SET is_searchable = false WHERE id = :c",
+        c=uuid.UUID(world["cands"]["c5"]["candidate_id"]),
+    )
+    await bust_cache()
+    d = (await get(world["client"], "/reports/recruiter-dashboard", world["rec"])).json()
+    names = [t["candidate_name"] for t in d["top_matching_candidates"]]
+    assert "Cand5 Tester" in names and "Zed Hidden" not in names
+    assert [t["score"] for t in d["top_matching_candidates"]] == [0.91, 0.8, 0.7, 0.66, 0.62]
+
+
 async def test_period_filters_and_granularity(world):
     c = world["client"]
     # c3 and c5 applied 5 days ago, c1 applied 40 days ago (all history shifted with them)

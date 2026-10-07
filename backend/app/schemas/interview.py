@@ -123,6 +123,16 @@ class InterviewUpdate(_SlotFields):
     Send ``start_at`` alone to move the interview while keeping its duration. ``participants``, when present,
     replaces the participant list."""
 
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "start_at": "2030-05-21T09:00:00",
+                "end_at": "2030-05-21T10:00:00",
+                "timezone": "Europe/Berlin",
+                "notes": "Moved at the candidate's request",
+            }
+        }
+    )
     interview_type: InterviewType | None = None
     start_at: datetime | None = None
     end_at: datetime | None = None
@@ -134,6 +144,9 @@ class InterviewUpdate(_SlotFields):
 
 
 class CancelRequest(BaseModel):
+    model_config = ConfigDict(
+        json_schema_extra={"example": {"reason": "Interviewer unavailable; will be rescheduled next week"}}
+    )
     reason: str = Field(
         min_length=3, max_length=500, description="Internal reason (not sent to the candidate)"
     )

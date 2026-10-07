@@ -651,7 +651,9 @@ _PAREN_GROUP = re.compile(r"\(([^()]{2,60})\)")
 
 def _split_header_text(text: str) -> list[str]:
     located: list[str] = []
-    for m in _PAREN_GROUP.finditer(text):  # "Alibaba Cloud (Hangzhou, China)": the parenthesis is the location
+    for m in _PAREN_GROUP.finditer(
+        text
+    ):  # "Alibaba Cloud (Hangzhou, China)": the parenthesis is the location
         if _looks_like_location_piece(m.group(1)):
             located.append(m.group(1).strip())
             text = text.replace(m.group(0), " ")
@@ -783,7 +785,13 @@ def parse_experiences(lines: Sequence[str], today: date | None = None) -> list[P
         if not (title or company):
             continue
         has_dates = a.rng.start is not None
-        confidence = 0.4 + (0.2 if has_dates else 0.0) + bonus + (0.15 if company else 0.0) - (0.1 if inherited else 0.0)
+        confidence = (
+            0.4
+            + (0.2 if has_dates else 0.0)
+            + bonus
+            + (0.15 if company else 0.0)
+            - (0.1 if inherited else 0.0)
+        )
         entries.append(
             ParsedExperience(
                 title=(title or None) and title[:200],

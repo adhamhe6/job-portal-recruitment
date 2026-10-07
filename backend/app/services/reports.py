@@ -700,7 +700,9 @@ class ReportService:
                 setattr(activity[b], st.value.lower(), int(n))
                 activity[b].total += int(n)
 
-        jx = aliased(Job)  # an alias keeps visibility_predicate's own Job subquery uncorrelated from this one
+        # Aliases keep visibility_predicate's own Job / Application subquery uncorrelated from this query's tables:
+        # "has applied to any job of my company" must not collapse into "applied to this very job".
+        jx, ax = aliased(Job), aliased(Application)
         top_rows = (
             await s.execute(
                 select(
@@ -710,17 +712,17 @@ class ReportService:
                     CandidateProfile.headline,
                     jx.id,
                     jx.title,
-                    A.id,
+                    ax.id,
                 )
                 .select_from(Mt)
                 .join(jx, jx.id == Mt.job_id)
                 .join(CandidateProfile, CandidateProfile.id == Mt.candidate_id)
                 .outerjoin(
-                    A,
+                    ax,
                     and_(
-                        A.job_id == Mt.job_id,
-                        A.candidate_id == Mt.candidate_id,
-                        A.status != ApplicationStatus.WITHDRAWN,
+                        ax.job_id == Mt.job_id,
+                        ax.candidate_id == Mt.candidate_id,
+                        ax.status != ApplicationStatus.WITHDRAWN,
                     ),
                 )
                 .where(

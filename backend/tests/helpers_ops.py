@@ -184,6 +184,9 @@ async def build_pipeline(client: AsyncClient) -> dict[str, Any]:
     opt_out = await client.patch(f"{API}/candidates/me", headers=zed["h"], json={"is_searchable": False})
     assert opt_out.status_code == 200, opt_out.text
     cid = {k: v["candidate_id"] for k, v in cands.items()}
+    # The inline worker already scored the applicants while they applied; replace those rows with the planned ones.
+    # (Later applications / job edits re-run the matcher, so tests that assert scores must not trigger it.)
+    await sql("DELETE FROM candidate_job_matches")
     for job, who, score in (
         (j1, "c1", 0.91), (j1, "c2", 0.80), (j1, "c3", 0.62), (j1, "c5", 0.70), (j2, "c4", 0.40), (j2, "c5", 0.20),
         (j2, "c6", 0.66), (j3, "c1", 0.99), (j3, "c5", 0.99),

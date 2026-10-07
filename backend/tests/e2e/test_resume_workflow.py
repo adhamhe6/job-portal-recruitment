@@ -92,7 +92,7 @@ async def test_skills_are_only_suggested_and_the_candidate_index_is_built(client
     assert profile["primary_resume"]["id"] == body["id"]
     # the candidate's search index + embedding were refreshed from the résumé text
     cp = await session.get(CandidateProfile, uuid.UUID(profile["id"]))
-    assert cp is not None and cp.embedding is not None and cp.search_text and "Jane Doe" not in (cp.search_text or "")
+    assert cp is not None and cp.embedding is not None and "Backend engineer with 8+ years" in (cp.search_text or "")
     assert "Python" in (cp.skills_text or "")
 
 

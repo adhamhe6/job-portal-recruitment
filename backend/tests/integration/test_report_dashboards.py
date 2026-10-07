@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import uuid
 from datetime import date, timedelta
 
 import pytest
@@ -178,19 +179,13 @@ async def test_dashboard_is_cached_and_every_relevant_write_invalidates_it(world
     assert after["kpis"]["applications_in_screening"] == 0 and after["kpis"]["shortlisted"] == 2
     assert stage_counts(after)["SHORTLISTED"] == 5
 
-    # a new application from a new candidate
-    newbie = await register_candidate(c, first="Newbie", last="Late")
-    ap = await c.post(f"{API}/applications", headers=newbie["h"], json={"job_id": world["j1"]["id"]})
-    assert ap.status_code == 201
-    again = (await get(c, "/reports/recruiter-dashboard", rec)).json()
-    assert again["kpis"]["total_applications"] == 8 and again["recent_applications"][0]["candidate_name"] == "Newbie Late"
-
     # an interview (INTERVIEWS domain)
     from tests.helpers_ops import schedule, utc_slot
 
     s, e = utc_slot(days=1, hour=14)
     assert (await schedule(c, rec, world["apps"]["c7"], [world["rec2"]], start=s, end=e)).status_code == 201
     assert (await get(c, "/reports/recruiter-dashboard", rec)).json()["kpis"]["upcoming_interviews"] == 2
+    assert (await get(c, "/reports/recruiter-dashboard", rec)).json()["generated_at"] != after["generated_at"]
 
     # a job lifecycle change (JOBS domain)
     assert (await c.post(f"{API}/jobs/{world['j2']['id']}/close", headers=rec["h"])).status_code == 200
@@ -212,6 +207,23 @@ async def test_dashboard_is_cached_and_every_relevant_write_invalidates_it(world
     assert hm["scope"] == "assigned_jobs" and hm["kpis"]["total_applications"] != fresh["kpis"]["total_applications"]
     narrow = (await get(c, "/reports/recruiter-dashboard", rec, from_date=TODAY().isoformat())).json()
     assert len(narrow["applications_over_time"]) == 1
+
+
+async def test_new_application_shows_up_immediately(world):
+    c, rec = world["client"], world["rec"]
+    before = (await get(c, "/reports/recruiter-dashboard", rec)).json()
+    newbie = await register_candidate(c, first="Newbie", last="Late")
+    ap = await c.post(f"{API}/applications", headers=newbie["h"], json={"job_id": world["j1"]["id"]})
+    assert ap.status_code == 201
+    after = (await get(c, "/reports/recruiter-dashboard", rec)).json()
+    assert before["kpis"]["total_applications"] == 7 and after["kpis"]["total_applications"] == 8
+    assert after["recent_applications"][0]["candidate_name"] == "Newbie Late" and after["recent_applications"][0]["status"] == "APPLIED"
+    assert after["applications_over_time"][-1]["count"] == 8
+    assert {s["stage"]: s["count"] for s in after["funnel"]}["APPLIED"] == 8
+    assert after["kpis"]["avg_applications_per_job"] == 4.0
+    # the applicant sees it on their own dashboard, which was never computed before
+    mine = (await get(c, "/reports/candidate-dashboard", newbie)).json()
+    assert mine["total_applications"] == 1 and mine["active_applications"] == 1
 
 
 async def test_candidate_dashboard(world):
@@ -256,9 +268,9 @@ async def test_candidate_dashboard_live_parts_and_resume(world):
     candidate_id = cand["candidate_id"]
     await sql(
         "INSERT INTO resumes (id, candidate_id, status, is_primary) VALUES (gen_random_uuid(), :c, 'PROCESSED', true)",
-        c=__import__("uuid").UUID(candidate_id),
+        c=uuid.UUID(candidate_id),
     )
-    rid = (await sql("SELECT id FROM resumes WHERE candidate_id = :c", c=__import__("uuid").UUID(candidate_id)))[0][0]
+    rid = (await sql("SELECT id FROM resumes WHERE candidate_id = :c", c=uuid.UUID(candidate_id)))[0][0]
     await sql(
         "INSERT INTO resume_documents (id, resume_id, storage_key, original_filename, content_type, size_bytes, sha256) "
         "VALUES (gen_random_uuid(), :r, 'key-1', 'cv.pdf', 'application/pdf', 1234, 'abc')", r=rid,

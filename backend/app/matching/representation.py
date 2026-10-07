@@ -43,9 +43,8 @@ def clean(text: str | None, limit: int | None = None) -> str:
     if not limit or len(t) <= limit:
         return t
     cut = t[:limit]
-    if not t[
-        limit
-    ].isspace():  # the cut falls inside a word: drop the partial word (a single overlong word is hard-cut)
+    # the cut falls inside a word: drop the partial word (a single overlong word is hard-cut)
+    if not t[limit].isspace():
         cut = cut.rsplit(" ", 1)[0]
     return cut.rstrip()
 

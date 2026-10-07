@@ -313,9 +313,13 @@ class ResumeService:
             try:
                 resume = await self._create_rows(user, candidate, key, upload, set_primary)
             except _DuplicateUploadError as dup:  # a concurrent identical upload won the race: keep one copy
-                await self.session.rollback()
+                existing_id = dup.existing.id
+                await self.session.rollback()  # expires every loaded object: fetch the winner afresh
                 await storage.delete(key)
-                return await self._duplicate(user, candidate, dup.existing, set_primary)
+                winner = await self.session.get(Resume, existing_id)
+                if winner is None:  # deleted in the meantime: report it rather than guess
+                    raise ConflictError("Please retry the upload.", code="UPLOAD_CONFLICT") from None
+                return await self._duplicate(user, candidate, winner, set_primary)
             except BaseException:
                 await self.session.rollback()
                 await storage.delete(key)

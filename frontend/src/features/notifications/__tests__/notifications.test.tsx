@@ -66,8 +66,22 @@ describe('notification bell', () => {
         sizeRequested = new URL(request.url).searchParams.get('page_size')
         return HttpResponse.json(
           page([
-            makeNotification({ id: 'n1', title: 'Application update', message: 'Your application was shortlisted.', application_id: 'app-9', job_id: 'job-9' }),
-            makeNotification({ id: 'n2', title: 'Old news', is_read: true, type: 'NEW_JOB_RECOMMENDATION', application_id: null, job_id: 'job-3' }),
+            makeNotification({
+              id: 'n1',
+              title: 'Application update',
+              message: 'Your application was shortlisted.',
+              application_id: 'app-9',
+              job_id: 'job-9',
+            }),
+            makeNotification({
+              id: 'n2',
+              title: 'Old news',
+              message: 'Something else.',
+              is_read: true,
+              type: 'NEW_JOB_RECOMMENDATION',
+              application_id: null,
+              job_id: 'job-3',
+            }),
           ]),
         )
       }),
@@ -114,7 +128,11 @@ describe('notification bell', () => {
     signInAs('CANDIDATE')
     let fail = true
     server.use(
-      http.get('/api/v1/notifications', () => (fail ? HttpResponse.json(errorBody('INTERNAL_ERROR', 'x'), { status: 500 }) : HttpResponse.json(page([])))),
+      http.get('/api/v1/notifications', () =>
+        fail
+          ? HttpResponse.json(errorBody('INTERNAL_ERROR', 'x'), { status: 500 })
+          : HttpResponse.json(page([])),
+      ),
     )
     const { user } = renderApp('/dashboard')
     await user.click(await bell())
@@ -143,20 +161,41 @@ describe('notifications page', () => {
         const p = new URL(request.url).searchParams
         params.push(p)
         const all = [
-          makeNotification({ id: 'a', title: 'Interview scheduled', type: 'INTERVIEW_SCHEDULED', interview_id: 'int-1', application_id: 'app-1' }),
-          makeNotification({ id: 'b', title: 'Résumé processed', type: 'RESUME_PROCESSED', resume_id: 'r-1', application_id: null, job_id: null, is_read: true }),
+          makeNotification({
+            id: 'a',
+            title: 'Interview scheduled',
+            type: 'INTERVIEW_SCHEDULED',
+            interview_id: 'int-1',
+            application_id: 'app-1',
+          }),
+          makeNotification({
+            id: 'b',
+            title: 'Résumé processed',
+            type: 'RESUME_PROCESSED',
+            resume_id: 'r-1',
+            application_id: null,
+            job_id: null,
+            is_read: true,
+          }),
         ]
-        return HttpResponse.json(page(p.get('unread_only') === 'true' ? all.filter((n) => !n.is_read) : all, { page_size: 15 }))
+        return HttpResponse.json(
+          page(p.get('unread_only') === 'true' ? all.filter((n) => !n.is_read) : all, { page_size: 15 }),
+        )
       }),
     )
     const { user, router } = renderApp('/notifications')
-    expect(await screen.findByRole('link', { name: /Interview scheduled/ })).toHaveAttribute('href', '/interviews/int-1')
+    expect(await screen.findByRole('link', { name: /Interview scheduled/ })).toHaveAttribute(
+      'href',
+      '/interviews/int-1',
+    )
     expect(screen.getByRole('link', { name: /Résumé processed/ })).toHaveAttribute('href', '/resume')
 
     await user.click(screen.getByRole('tab', { name: /Unread/ }))
     await waitFor(() => expect(router.state.location.search).toContain('filter=unread'))
     await waitFor(() => expect(params[params.length - 1]!.get('unread_only')).toBe('true'))
-    await waitFor(() => expect(screen.queryByRole('link', { name: /Résumé processed/ })).not.toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.queryByRole('link', { name: /Résumé processed/ })).not.toBeInTheDocument(),
+    )
   })
 
   it('marks one read when opened, and everything read with the header button', async () => {
@@ -164,7 +203,14 @@ describe('notifications page', () => {
     const read: string[] = []
     let all = 0
     server.use(
-      http.get('/api/v1/notifications', () => HttpResponse.json(page([makeNotification({ id: 'x1', title: 'First' }), makeNotification({ id: 'x2', title: 'Second' })]))),
+      http.get('/api/v1/notifications', () =>
+        HttpResponse.json(
+          page([
+            makeNotification({ id: 'x1', title: 'First' }),
+            makeNotification({ id: 'x2', title: 'Second' }),
+          ]),
+        ),
+      ),
       http.post('/api/v1/notifications/:id/read', ({ params }) => {
         read.push(String(params.id))
         return HttpResponse.json(makeNotification({ id: String(params.id), is_read: true }))
@@ -175,10 +221,10 @@ describe('notifications page', () => {
       }),
     )
     const { user } = renderApp('/notifications')
-    await user.click(await screen.findByRole('link', { name: /First/ }))
-    await waitFor(() => expect(read).toEqual(['x1']))
     await user.click(await screen.findByRole('button', { name: 'Mark all as read' }))
     await waitFor(() => expect(all).toBe(1))
+    await user.click(await screen.findByRole('link', { name: /First/ }))
+    await waitFor(() => expect(read).toEqual(['x1']))
   })
 
   it('paginates', async () => {
@@ -187,7 +233,13 @@ describe('notifications page', () => {
     server.use(
       http.get('/api/v1/notifications', ({ request }) => {
         pages.push(new URL(request.url).searchParams.get('page') ?? '')
-        return HttpResponse.json(page([makeNotification({ title: `Item on page ${pages[pages.length - 1]}` })], { total: 40, pages: 3, page_size: 15 }))
+        return HttpResponse.json(
+          page([makeNotification({ title: `Item on page ${pages[pages.length - 1]}` })], {
+            total: 40,
+            pages: 3,
+            page_size: 15,
+          }),
+        )
       }),
     )
     const { user, router } = renderApp('/notifications')
@@ -209,9 +261,18 @@ describe('notifications page', () => {
 describe('notificationHref', () => {
   const base = { job_id: null, application_id: null, interview_id: null, resume_id: null }
   it.each([
-    [{ ...base, type: 'INTERVIEW_SCHEDULED' as const, interview_id: 'i1', application_id: 'a1' }, '/interviews/i1'],
-    [{ ...base, type: 'APPLICATION_STATUS_CHANGED' as const, application_id: 'a1', job_id: 'j1' }, '/applications/a1'],
-    [{ ...base, type: 'APPLICATION_SUBMITTED' as const, application_id: 'a2', job_id: 'j1' }, '/applications/a2'],
+    [
+      { ...base, type: 'INTERVIEW_SCHEDULED' as const, interview_id: 'i1', application_id: 'a1' },
+      '/interviews/i1',
+    ],
+    [
+      { ...base, type: 'APPLICATION_STATUS_CHANGED' as const, application_id: 'a1', job_id: 'j1' },
+      '/applications/a1',
+    ],
+    [
+      { ...base, type: 'APPLICATION_SUBMITTED' as const, application_id: 'a2', job_id: 'j1' },
+      '/applications/a2',
+    ],
     [{ ...base, type: 'NEW_CANDIDATE_MATCH' as const, job_id: 'j1' }, '/matching/j1'],
     [{ ...base, type: 'NEW_JOB_RECOMMENDATION' as const, job_id: 'j7' }, '/jobs/j7'],
     [{ ...base, type: 'RESUME_FAILED' as const, resume_id: 'r1' }, '/resume'],

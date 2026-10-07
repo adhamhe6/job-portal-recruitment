@@ -215,8 +215,9 @@ class MatchingService:
             rows.append(self._row(job, c, jf, cf, result))
             results.append((cid, result.overall))
         await self._upsert(rows)
-        # Drop stale rows for candidates that are no longer in the pool (e.g. opted out of the marketplace).
-        if cand_ids:
+        # Drop stale rows for candidates that are no longer in the pool (e.g. opted out of the marketplace or withdrew). Only when the
+        # whole pool was evaluated (the job has an embedding): without one only applicants are scored and the rest must be kept.
+        if job.embedding is not None:
             await self.session.execute(
                 text("DELETE FROM candidate_job_matches WHERE job_id = :j AND candidate_id <> ALL(:ids)"), {"j": job_id, "ids": cand_ids}
             )
@@ -357,7 +358,10 @@ class MatchingService:
         await self.session.commit()
         return (
             await self.session.execute(
-                select(CandidateJobMatch).where(CandidateJobMatch.job_id == job.id, CandidateJobMatch.candidate_id == cand.id)
+                select(CandidateJobMatch)
+                .where(CandidateJobMatch.job_id == job.id, CandidateJobMatch.candidate_id == cand.id)
+                # The upsert bypasses the ORM: without this the stale row already in the identity map would be returned as is.
+                .execution_options(populate_existing=True)
             )
         ).scalar_one()
 

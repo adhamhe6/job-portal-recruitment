@@ -7,7 +7,13 @@ import { server } from '@/test/server'
 import { renderApp, signInAs } from '@/test/test-utils'
 
 const JOBS = [
-  makeJobListItem({ id: 'draft-1', title: 'Draft Role', status: 'DRAFT', published_at: null, application_count: 0 }),
+  makeJobListItem({
+    id: 'draft-1',
+    title: 'Draft Role',
+    status: 'DRAFT',
+    published_at: null,
+    application_count: 0,
+  }),
   makeJobListItem({ id: 'live-1', title: 'Live Role', status: 'PUBLISHED', application_count: 4 }),
   makeJobListItem({ id: 'paused-1', title: 'Paused Role', status: 'PAUSED', application_count: 1 }),
   makeJobListItem({ id: 'closed-1', title: 'Closed Role', status: 'CLOSED', application_count: 2 }),
@@ -51,7 +57,10 @@ describe('jobs management list', () => {
     const { user, router } = renderApp('/manage/jobs')
     const row = (await screen.findByRole('link', { name: 'Live Role' })).closest('tr')!
     expect(within(row).getByText('Published')).toBeInTheDocument()
-    expect(within(row).getByRole('link', { name: /4 applications for Live Role/ })).toHaveAttribute('href', '/applications?job_id=live-1')
+    expect(within(row).getByRole('link', { name: /4 applications for Live Role/ })).toHaveAttribute(
+      'href',
+      '/applications?job_id=live-1',
+    )
     expect(calls[calls.length - 1]!.has('status')).toBe(false)
     expect(calls[calls.length - 1]!.get('sort')).toBe('newest')
 
@@ -76,7 +85,10 @@ describe('jobs management list', () => {
     server.use(http.get('/api/v1/jobs', () => HttpResponse.json(page([]))))
     renderApp('/manage/jobs')
     expect(await screen.findByRole('heading', { name: 'No jobs yet' })).toBeInTheDocument()
-    expect(screen.getAllByRole('link', { name: /create a job|new job/i })[0]).toHaveAttribute('href', '/manage/jobs/new')
+    expect(screen.getAllByRole('link', { name: /create a job|new job/i })[0]).toHaveAttribute(
+      'href',
+      '/manage/jobs/new',
+    )
   })
 
   it('shows a filtered-empty state with "Clear filters"', async () => {
@@ -91,7 +103,13 @@ describe('jobs management list', () => {
   it('surfaces load errors with retry', async () => {
     signInAs('RECRUITER')
     let fail = true
-    server.use(http.get('/api/v1/jobs', () => (fail ? HttpResponse.json(errorBody('INTERNAL_ERROR', 'x'), { status: 500 }) : HttpResponse.json(page(JOBS)))))
+    server.use(
+      http.get('/api/v1/jobs', () =>
+        fail
+          ? HttpResponse.json(errorBody('INTERNAL_ERROR', 'x'), { status: 500 })
+          : HttpResponse.json(page(JOBS)),
+      ),
+    )
     const { user } = renderApp('/manage/jobs')
     expect(await screen.findByRole('alert')).toHaveTextContent(/service unavailable/i)
     fail = false
@@ -104,10 +122,26 @@ describe('jobs management list', () => {
     listHandler()
     const { user } = renderApp('/manage/jobs')
     let menu = await openMenu(user, 'Draft Role')
-    expect(within(menu).getAllByRole('menuitem').map((m) => m.textContent)).toEqual(['View job', 'Edit', 'Applications', 'Candidate matching', 'Publish', 'Archive', 'Delete draft'])
+    expect(
+      within(menu)
+        .getAllByRole('menuitem')
+        .map((m) => m.textContent?.trim()),
+    ).toEqual([
+      'View job',
+      'Edit',
+      'Applications',
+      'Candidate matching',
+      'Publish',
+      'Archive',
+      'Delete draft',
+    ])
     await user.keyboard('{Escape}')
     menu = await openMenu(user, 'Paused Role')
-    expect(within(menu).getAllByRole('menuitem').map((m) => m.textContent)).toEqual(['View job', 'Edit', 'Applications', 'Candidate matching', 'Resume', 'Close'])
+    expect(
+      within(menu)
+        .getAllByRole('menuitem')
+        .map((m) => m.textContent?.trim()),
+    ).toEqual(['View job', 'Edit', 'Applications', 'Candidate matching', 'Resume', 'Close'])
     await user.keyboard('{Escape}')
     menu = await openMenu(user, 'Closed Role')
     expect(within(menu).queryByRole('menuitem', { name: 'Edit' })).not.toBeInTheDocument() // closed jobs are read-only
@@ -119,7 +153,11 @@ describe('jobs management list', () => {
     listHandler()
     const { user } = renderApp('/manage/jobs')
     const menu = await openMenu(user, 'Live Role')
-    expect(within(menu).getAllByRole('menuitem').map((m) => m.textContent)).toEqual(['View job', 'Applications', 'Candidate matching'])
+    expect(
+      within(menu)
+        .getAllByRole('menuitem')
+        .map((m) => m.textContent?.trim()),
+    ).toEqual(['View job', 'Applications', 'Candidate matching'])
     expect(screen.queryByRole('link', { name: /new job/i })).not.toBeInTheDocument()
   })
 })
@@ -152,7 +190,9 @@ describe('lifecycle actions with confirmation', () => {
     signInAs('RECRUITER')
     listHandler()
     let called = false
-    server.use(http.post('/api/v1/jobs/:id/close', () => ((called = true), HttpResponse.json(makeJobDetail()))))
+    server.use(
+      http.post('/api/v1/jobs/:id/close', () => ((called = true), HttpResponse.json(makeJobDetail()))),
+    )
     const { user } = renderApp('/manage/jobs')
     const menu = await openMenu(user, 'Live Role')
     await user.click(within(menu).getByRole('menuitem', { name: 'Close' }))
@@ -206,7 +246,14 @@ describe('lifecycle actions with confirmation', () => {
     listHandler()
     server.use(
       http.post('/api/v1/jobs/:id/pause', () =>
-        HttpResponse.json(errorBody('INVALID_STATE_TRANSITION', 'A closed job cannot become paused', { from: 'CLOSED', to: 'PAUSED', allowed: ['ARCHIVED'] }), { status: 409 }),
+        HttpResponse.json(
+          errorBody('INVALID_STATE_TRANSITION', 'A closed job cannot become paused', {
+            from: 'CLOSED',
+            to: 'PAUSED',
+            allowed: ['ARCHIVED'],
+          }),
+          { status: 409 },
+        ),
       ),
     )
     const { user } = renderApp('/manage/jobs')
@@ -224,7 +271,13 @@ describe('lifecycle actions with confirmation', () => {
     listHandler()
     server.use(
       http.post('/api/v1/jobs/:id/publish', () =>
-        HttpResponse.json(errorBody('PUBLISH_VALIDATION_FAILED', 'This job cannot be published yet', ['Description must be at least 30 characters', 'Add at least one required skill']), { status: 422 }),
+        HttpResponse.json(
+          errorBody('PUBLISH_VALIDATION_FAILED', 'This job cannot be published yet', [
+            'Description must be at least 30 characters',
+            'Add at least one required skill',
+          ]),
+          { status: 422 },
+        ),
       ),
     )
     const { user } = renderApp('/manage/jobs')
@@ -235,15 +288,35 @@ describe('lifecycle actions with confirmation', () => {
     expect(await within(dialog).findByText("This job can't be published yet")).toBeInTheDocument()
     expect(within(dialog).getByText('Description must be at least 30 characters')).toBeInTheDocument()
     expect(within(dialog).getByText('Add at least one required skill')).toBeInTheDocument()
-    expect(within(dialog).getByRole('link', { name: 'Edit this job' })).toHaveAttribute('href', '/manage/jobs/draft-1/edit')
+    expect(within(dialog).getByRole('link', { name: 'Edit this job' })).toHaveAttribute(
+      'href',
+      '/manage/jobs/draft-1/edit',
+    )
   })
 
   it('works from the job detail page too (close -> status updates in place)', async () => {
     signInAs('RECRUITER')
     let status: 'PUBLISHED' | 'CLOSED' = 'PUBLISHED'
     server.use(
-      http.get('/api/v1/jobs/job-1', () => HttpResponse.json(makeJobDetail({ id: 'job-1', status, allowed_transitions: status === 'PUBLISHED' ? ['CLOSED', 'PAUSED'] : ['ARCHIVED'] }))),
-      http.get('/api/v1/jobs/job-1/stats', () => HttpResponse.json({ job_id: 'job-1', applications_total: 0, applications_by_status: {}, matches_computed: 0, last_matched_at: null, extra: {} })),
+      http.get('/api/v1/jobs/job-1', () =>
+        HttpResponse.json(
+          makeJobDetail({
+            id: 'job-1',
+            status,
+            allowed_transitions: status === 'PUBLISHED' ? ['CLOSED', 'PAUSED'] : ['ARCHIVED'],
+          }),
+        ),
+      ),
+      http.get('/api/v1/jobs/job-1/stats', () =>
+        HttpResponse.json({
+          job_id: 'job-1',
+          applications_total: 0,
+          applications_by_status: {},
+          matches_computed: 0,
+          last_matched_at: null,
+          extra: {},
+        }),
+      ),
       http.post('/api/v1/jobs/job-1/close', () => {
         status = 'CLOSED'
         return HttpResponse.json(makeJobDetail({ id: 'job-1', status, allowed_transitions: ['ARCHIVED'] }))
@@ -251,7 +324,9 @@ describe('lifecycle actions with confirmation', () => {
     )
     const { user } = renderApp('/jobs/job-1')
     await user.click(await screen.findByRole('button', { name: 'Close' }))
-    await user.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Close job' }))
+    await user.click(
+      within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Close job' }),
+    )
     expect(await screen.findByRole('button', { name: 'Archive' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Pause' })).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'Edit job' })).not.toBeInTheDocument() // closed => read-only

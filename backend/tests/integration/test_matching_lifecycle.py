@@ -119,7 +119,9 @@ async def test_stale_detail_is_recomputed_on_read(client: AsyncClient) -> None:
     d = (await client.get(f"{RANK}/{jid}/candidates/{cid}", headers=w["rec"]["h"])).json()
     assert d["explanation"]["experience"]["status"] == "BELOW" and d["breakdown"]["experience"] < 1.0
     after = await match_row(jid, cid)
-    assert after.candidate_hash != before.candidate_hash and after.experience_score if False else after.candidate_hash != before.candidate_hash
+    assert after.candidate_hash != before.candidate_hash and after.overall_score < before.overall_score
+    again = (await client.get(f"{RANK}/{jid}/candidates/{cid}", headers=w["rec"]["h"])).json()
+    assert again["explanation"] == d["explanation"] and again["overall_score"] == d["overall_score"] == after.overall_score
 
 
 async def test_embedding_version_bump_marks_everything_stale_and_re_embeds(client: AsyncClient, monkeypatch: pytest.MonkeyPatch) -> None:

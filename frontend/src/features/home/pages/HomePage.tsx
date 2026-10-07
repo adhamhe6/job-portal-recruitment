@@ -179,6 +179,7 @@ export default function HomePage() {
         <JobResults
           query={featured}
           skeletons={3}
+          hidePagination
           onPageChange={() => {}}
           empty={
             <NoResults

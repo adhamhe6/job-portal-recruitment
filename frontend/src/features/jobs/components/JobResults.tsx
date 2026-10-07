@@ -17,6 +17,7 @@ export function JobResults({
   highlightSkills,
   skeletons = 5,
   label = 'jobs',
+  hidePagination,
 }: {
   query: UseQueryResult<Paginated<JobListItem>>
   empty: ReactNode
@@ -24,6 +25,7 @@ export function JobResults({
   highlightSkills?: string[]
   skeletons?: number
   label?: string
+  hidePagination?: boolean
 }) {
   if (query.isPending) {
     return (
@@ -58,15 +60,17 @@ export function JobResults({
           </li>
         ))}
       </ul>
-      <Pagination
-        page={data.page}
-        pages={data.pages}
-        total={data.total}
-        pageSize={data.page_size}
-        onPageChange={onPageChange}
-        label={label}
-        className="mt-4"
-      />
+      {!hidePagination && (
+        <Pagination
+          page={data.page}
+          pages={data.pages}
+          total={data.total}
+          pageSize={data.page_size}
+          onPageChange={onPageChange}
+          label={label}
+          className="mt-4"
+        />
+      )}
     </div>
   )
 }

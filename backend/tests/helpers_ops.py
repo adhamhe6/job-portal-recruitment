@@ -116,3 +116,79 @@ async def age_application(application_id: str, *, applied_days_ago: int) -> None
         d=applied_days_ago,
         id=uuid.UUID(application_id),
     )
+
+
+# --------------------------------------------------------------------------------------------------------------------
+# deterministic reporting dataset
+# --------------------------------------------------------------------------------------------------------------------
+async def bust_cache() -> None:
+    """Direct SQL changes bypass the cache domains; drop Redis so the next report is recomputed."""
+    from app.cache.redis_cache import get_redis
+
+    await get_redis().flushdb()
+
+
+async def put_match(job_id: str, candidate_id: str, score: float, summary: str = "Good overall fit") -> None:
+    await sql(
+        "INSERT INTO candidate_job_matches (id, job_id, candidate_id, overall_score, semantic_score, raw_cosine, explanation, "
+        "matching_version, embedding_model, embedding_version, job_hash, candidate_hash, generated_at) "
+        "VALUES (gen_random_uuid(), :j, :c, :s, :s, :s, CAST(:e AS jsonb), 'v1', 'wordllama-l2-supercat-256', 'v1', 'h', 'h', now())",
+        j=uuid.UUID(job_id), c=uuid.UUID(candidate_id), s=score, e='{"summary": "%s"}' % summary,
+    )  # fmt: skip
+
+
+async def build_pipeline(client: AsyncClient) -> dict[str, Any]:
+    """A small company pipeline whose report numbers can be computed by hand.
+
+    Jobs (company A): J1 + J2 PUBLISHED (J2 deadline in 3 days, assigned to the hiring manager), J3 DRAFT.
+    Applications, all received today (current status in brackets):
+      c1 J1 SCREENING>SHORTLISTED>INTERVIEW>OFFER>HIRED   (HIRED)
+      c2 J1 SCREENING>SHORTLISTED>INTERVIEW>REJECTED      (REJECTED)
+      c3 J1 SCREENING                                     (SCREENING, source SEARCH)
+      c4 J2 SCREENING>SHORTLISTED, interview in 2 days    (INTERVIEW)
+      c5 J2                                               (APPLIED)
+      c6 J2 withdrawn by the candidate                    (WITHDRAWN)
+      c7 J2 SCREENING>SHORTLISTED                         (SHORTLISTED, source REFERRAL)
+    Stored match scores: c1/J1 .91, c2/J1 .80, c3/J1 .62, c5/J1 .70, c4/J2 .40, c5/J2 .20, c6/J2 .66, c1/J3 .99 (draft),
+    c5/J3 .99 (draft) and z/J1 .95 where z never applied and opted out of the marketplace.
+    """
+    co = await company_with_staff(client)
+    rec = co["rec"]
+    j1 = await create_job(client, rec, publish=True, title="Dash Job One")
+    j2 = await create_job(
+        client, rec, publish=True, title="Dash Job Two", hiring_manager_id=co["hm"]["id"],
+        application_deadline=(datetime.now().date() + timedelta(days=3)).isoformat(),
+    )  # fmt: skip
+    j3 = await create_job(client, rec, title="Dash Draft")
+    cands = {f"c{i}": await register_candidate(client, first=f"Cand{i}", last="Tester") for i in range(1, 8)}
+    apps: dict[str, str] = {}
+    plan = {
+        "c1": (j1, "DIRECT", ["SCREENING", "SHORTLISTED", "INTERVIEW", "OFFER", "HIRED"]),
+        "c2": (j1, "DIRECT", ["SCREENING", "SHORTLISTED", "INTERVIEW", "REJECTED"]),
+        "c3": (j1, "SEARCH", ["SCREENING"]),
+        "c4": (j2, "DIRECT", ["SCREENING", "SHORTLISTED"]),
+        "c5": (j2, "DIRECT", []),
+        "c6": (j2, "DIRECT", []),
+        "c7": (j2, "REFERRAL", ["SCREENING", "SHORTLISTED"]),
+    }
+    for key, (job, source, path) in plan.items():
+        apps[key] = (await apply_to(client, cands[key], job["id"], source=source))["id"]
+        if path:
+            await set_status(client, rec, apps[key], *path)
+    wd = await client.post(f"{API}/applications/{apps['c6']}/withdraw", headers=cands["c6"]["h"])
+    assert wd.status_code == 200, wd.text
+    s, e = utc_slot(days=2, hour=10)
+    iv = await schedule(client, rec, apps["c4"], [co["rec2"]], start=s, end=e)
+    assert iv.status_code == 201, iv.text
+    zed = await register_candidate(client, first="Zed", last="Hidden")
+    opt_out = await client.patch(f"{API}/candidates/me", headers=zed["h"], json={"is_searchable": False})
+    assert opt_out.status_code == 200, opt_out.text
+    cid = {k: v["candidate_id"] for k, v in cands.items()}
+    for job, who, score in (
+        (j1, "c1", 0.91), (j1, "c2", 0.80), (j1, "c3", 0.62), (j1, "c5", 0.70), (j2, "c4", 0.40), (j2, "c5", 0.20),
+        (j2, "c6", 0.66), (j3, "c1", 0.99), (j3, "c5", 0.99),
+    ):  # fmt: skip
+        await put_match(job["id"], cid[who], score)
+    await put_match(j1["id"], zed["candidate_id"], 0.95)
+    await bust_cache()
+    return {"co": co, "rec": rec, "rec2": co["rec2"], "hm": co["hm"], "j1": j1, "j2": j2, "j3": j3, "cands": cands, "apps": apps, "zed": zed, "interview": iv.json()}

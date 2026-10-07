@@ -313,8 +313,11 @@ async def test_feedback_rules(one, monkeypatch):
             f"{API}/interviews/{iv['id']}/cancel", headers=rec["h"], json={"reason": "Position put on hold"}
         )
     ).status_code == 200
-    r = await c.post(base, headers=rec["h"], json=FB)
-    assert r.status_code in (409, 422)
+    for call in (c.post, c.put):
+        r = await call(base, headers=rec["h"], json=FB)
+        assert r.status_code == 422 and r.json()["error"]["code"] == "FEEDBACK_NOT_ALLOWED"
+    # ... but the existing entries stay readable for the team
+    assert (await c.get(base, headers=rec["h"])).json()["count"] == 2
 
 
 async def test_concurrent_double_submit_of_feedback_creates_one_row(one, monkeypatch):

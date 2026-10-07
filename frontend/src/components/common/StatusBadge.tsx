@@ -50,7 +50,15 @@ export type StatusKind = keyof typeof TABLES
  *
  *   <StatusBadge kind="job" status={job.status} />
  */
-export function StatusBadge({ kind, status, className }: { kind: StatusKind; status: string; className?: string }) {
+export function StatusBadge({
+  kind,
+  status,
+  className,
+}: {
+  kind: StatusKind
+  status: string
+  className?: string
+}) {
   const def = TABLES[kind][status] ?? { label: fmt.label(status), variant: 'muted' as Variant }
   return (
     <Badge variant={def.variant} className={cn('gap-1.5', className)}>

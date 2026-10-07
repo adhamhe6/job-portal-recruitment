@@ -55,5 +55,11 @@ function RoleSwitch({ pages }: { pages: RolePages }) {
 export function NavigationProgress() {
   const { state } = useNavigation()
   if (state === 'idle') return null
-  return <div role="progressbar" aria-label="Loading page" className="fixed inset-x-0 top-0 z-[90] h-0.5 animate-pulse bg-primary" />
+  return (
+    <div
+      role="progressbar"
+      aria-label="Loading page"
+      className="fixed inset-x-0 top-0 z-[90] h-0.5 animate-pulse bg-primary"
+    />
+  )
 }

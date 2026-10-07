@@ -19,7 +19,11 @@ export interface LifecycleJob {
 type Pending = { job: LifecycleJob; action: LifecycleAction | 'delete' }
 
 /** Plain-language explanation for lifecycle failures. */
-export function describeLifecycleError(error: unknown): { title?: string; message: string; problems?: string[] } {
+export function describeLifecycleError(error: unknown): {
+  title?: string
+  message: string
+  problems?: string[]
+} {
   if (error instanceof ApiError) {
     if (error.code === 'INVALID_STATE_TRANSITION') {
       const d = (error.details ?? {}) as { from?: JobStatus; to?: JobStatus }
@@ -34,12 +38,17 @@ export function describeLifecycleError(error: unknown): { title?: string; messag
       }
     }
     if (error.code === 'PUBLISH_VALIDATION_FAILED') {
-      return { title: "This job can't be published yet", message: 'Fix the following, then try again:', problems: error.detailMessages }
+      return {
+        title: "This job can't be published yet",
+        message: 'Fix the following, then try again:',
+        problems: error.detailMessages,
+      }
     }
     if (error.code === 'JOB_NOT_DELETABLE') {
       return { message: 'Only drafts can be deleted. Close and archive a published job instead.' }
     }
-    if (error.status === 403 || error.status === 404) return { message: 'You no longer have access to this job, or it has been removed.' }
+    if (error.status === 403 || error.status === 404)
+      return { message: 'You no longer have access to this job, or it has been removed.' }
   }
   return { message: errorMessage(error) }
 }
@@ -52,7 +61,9 @@ export function describeLifecycleError(error: unknown): { title?: string; messag
  *
  * The dialog stays open on failure and explains why (INVALID_STATE_TRANSITION, PUBLISH_VALIDATION_FAILED, …).
  */
-export function useJobLifecycle({ onDone }: { onDone?: (job: LifecycleJob, action: LifecycleAction | 'delete') => void } = {}): {
+export function useJobLifecycle({
+  onDone,
+}: { onDone?: (job: LifecycleJob, action: LifecycleAction | 'delete') => void } = {}): {
   request: (job: LifecycleJob, action: LifecycleAction | 'delete') => void
   dialog: ReactNode
   pending: boolean
@@ -75,13 +86,14 @@ export function useJobLifecycle({ onDone }: { onDone?: (job: LifecycleJob, actio
   const confirm = async () => {
     if (!state) return
     setError(null)
+    const { job, action } = state
     try {
-      if (state.action === 'delete') {
-        await remove.mutateAsync(state.job.id)
+      if (action === 'delete') {
+        await remove.mutateAsync(job.id)
         toast.success('Draft deleted')
       } else {
-        await transition.mutateAsync({ id: state.job.id, action: state.action, reason })
-        toast.success(ACTIONS[state.action].success, { description: state.job.title })
+        await transition.mutateAsync({ id: job.id, action, reason })
+        toast.success(ACTIONS[action].success, { description: job.title })
       }
       const done = state
       close()
@@ -93,16 +105,18 @@ export function useJobLifecycle({ onDone }: { onDone?: (job: LifecycleJob, actio
 
   let dialog: ReactNode = null
   if (state) {
-    const isDelete = state.action === 'delete'
-    const def = isDelete ? null : ACTIONS[state.action]
+    const def = state.action === 'delete' ? null : ACTIONS[state.action]
+    const isDelete = def === null
     const problem = error ? describeLifecycleError(error) : null
     dialog = (
       <ConfirmDialog
         open
         onOpenChange={(o) => !o && close()}
-        title={isDelete ? `Delete draft “${state.job.title}”?` : def!.title(state.job.title)}
-        description={isDelete ? 'This draft will be permanently deleted. This cannot be undone.' : def!.description}
-        confirmLabel={isDelete ? 'Delete draft' : def!.confirmLabel}
+        title={isDelete ? `Delete draft “${state.job.title}”?` : def.title(state.job.title)}
+        description={
+          isDelete ? 'This draft will be permanently deleted. This cannot be undone.' : def.description
+        }
+        confirmLabel={isDelete ? 'Delete draft' : def.confirmLabel}
         destructive={isDelete || def?.destructive}
         loading={busy}
         onConfirm={confirm}
@@ -113,7 +127,12 @@ export function useJobLifecycle({ onDone }: { onDone?: (job: LifecycleJob, actio
           </Field>
         )}
         {problem && (
-          <Alert variant={error instanceof ApiError && error.code === 'PUBLISH_VALIDATION_FAILED' ? 'warning' : 'danger'} title={problem.title}>
+          <Alert
+            variant={
+              error instanceof ApiError && error.code === 'PUBLISH_VALIDATION_FAILED' ? 'warning' : 'danger'
+            }
+            title={problem.title}
+          >
             {problem.message}
             {problem.problems && problem.problems.length > 0 && (
               <ul>

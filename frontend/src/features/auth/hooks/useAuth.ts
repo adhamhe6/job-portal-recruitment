@@ -35,6 +35,7 @@ export function useAuth(): AuthContextValue {
 /** For components rendered under <RequireAuth>: the signed-in user, never null. */
 export function useCurrentUser(): Me {
   const { user } = useAuth()
-  if (!user) throw new Error('useCurrentUser requires an authenticated session (wrap the route in <RequireAuth>)')
+  if (!user)
+    throw new Error('useCurrentUser requires an authenticated session (wrap the route in <RequireAuth>)')
   return user
 }

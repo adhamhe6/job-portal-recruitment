@@ -52,7 +52,12 @@ export function AppShell() {
         <Sidebar collapsed={collapsed} onToggle={toggle} />
       </aside>
 
-      <div className={cn('flex min-h-dvh min-w-0 flex-col transition-[padding] duration-200', collapsed ? 'lg:pl-[68px]' : 'lg:pl-64')}>
+      <div
+        className={cn(
+          'flex min-h-dvh min-w-0 flex-col transition-[padding] duration-200',
+          collapsed ? 'lg:pl-[68px]' : 'lg:pl-64',
+        )}
+      >
         <header className="sticky top-0 z-20 flex h-16 shrink-0 items-center gap-2 border-b bg-background/85 px-3 backdrop-blur-md sm:gap-3 sm:px-6">
           <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
             <SheetTrigger asChild>
@@ -77,7 +82,11 @@ export function AppShell() {
           </div>
         </header>
 
-        <main id="main-content" tabIndex={-1} className="flex-1 px-4 py-6 outline-none sm:px-6 lg:px-8 lg:py-8">
+        <main
+          id="main-content"
+          tabIndex={-1}
+          className="flex-1 px-4 py-6 outline-none sm:px-6 lg:px-8 lg:py-8"
+        >
           <div className="mx-auto w-full max-w-7xl">
             <LayoutKindContext.Provider value="app">
               <Outlet />

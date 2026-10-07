@@ -23,7 +23,8 @@ export function createQueryClient(): QueryClient {
     mutationCache: new MutationCache({
       onError: (error, _vars, _ctx, mutation) => {
         const msg = mutation.meta?.errorToast
-        if (typeof msg === 'string') toast.error(msg, { description: error instanceof Error ? error.message : undefined })
+        if (typeof msg === 'string')
+          toast.error(msg, { description: error instanceof Error ? error.message : undefined })
       },
     }),
   })

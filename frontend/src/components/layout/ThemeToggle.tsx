@@ -1,6 +1,12 @@
 import { Check, Monitor, Moon, Sun } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { useTheme, type ThemePreference } from '@/lib/theme'
 
 const OPTIONS: { value: ThemePreference; label: string; icon: typeof Sun }[] = [

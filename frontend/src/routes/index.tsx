@@ -1,4 +1,10 @@
-import { createBrowserRouter, createMemoryRouter, Outlet, ScrollRestoration, type RouteObject } from 'react-router-dom'
+import {
+  createBrowserRouter,
+  createMemoryRouter,
+  Outlet,
+  ScrollRestoration,
+  type RouteObject,
+} from 'react-router-dom'
 import { AdaptiveLayout } from '@/components/layout/AdaptiveLayout'
 import { AppShell } from '@/components/layout/AppShell'
 import { AuthLayout } from '@/components/layout/AuthLayout'
@@ -49,7 +55,10 @@ export const routes: RouteObject[] = [
             children: [
               { path: paths.login, element: lazyPage(() => import('@/features/auth/pages/LoginPage')) },
               { path: paths.register, element: lazyPage(() => import('@/features/auth/pages/RegisterPage')) },
-              { path: paths.registerEmployer, element: lazyPage(() => import('@/features/auth/pages/RegisterEmployerPage')) },
+              {
+                path: paths.registerEmployer,
+                element: lazyPage(() => import('@/features/auth/pages/RegisterEmployerPage')),
+              },
             ],
           },
         ],
@@ -72,7 +81,9 @@ export const routes: RouteObject[] = [
               {
                 path: 'saved',
                 element: <RequireAuth roles={['CANDIDATE']} />,
-                children: [{ index: true, element: lazyPage(() => import('@/features/jobs/pages/SavedJobsPage')) }],
+                children: [
+                  { index: true, element: lazyPage(() => import('@/features/jobs/pages/SavedJobsPage')) },
+                ],
               },
               { path: ':id', element: lazyPage(() => import('@/features/jobs/pages/JobDetailPage')) },
             ],
@@ -106,7 +117,10 @@ export const routes: RouteObject[] = [
                   ADMIN: () => import('@/features/applications/pages/ApplicationsPage'),
                 }),
               },
-              { path: patterns.application, element: lazyPage(() => import('@/features/applications/pages/ApplicationDetailPage')) },
+              {
+                path: patterns.application,
+                element: lazyPage(() => import('@/features/applications/pages/ApplicationDetailPage')),
+              },
               {
                 path: paths.interviews,
                 element: roleSwitch({
@@ -116,18 +130,33 @@ export const routes: RouteObject[] = [
                   ADMIN: () => import('@/features/interviews/pages/InterviewsPage'),
                 }),
               },
-              { path: patterns.interview, element: lazyPage(() => import('@/features/interviews/pages/InterviewDetailPage')) },
+              {
+                path: patterns.interview,
+                element: lazyPage(() => import('@/features/interviews/pages/InterviewDetailPage')),
+              },
 
               // Notifications (all roles)
-              { path: paths.notifications, element: lazyPage(() => import('@/features/notifications/pages/NotificationsPage')) },
+              {
+                path: paths.notifications,
+                element: lazyPage(() => import('@/features/notifications/pages/NotificationsPage')),
+              },
 
               // Candidate-only
               {
                 element: <RequireAuth roles={['CANDIDATE']} />,
                 children: [
-                  { path: paths.recommended, element: lazyPage(() => import('@/features/recommendations/pages/RecommendedJobsPage')) },
-                  { path: paths.resume, element: lazyPage(() => import('@/features/resumes/pages/ResumePage')) },
-                  { path: paths.profile, element: lazyPage(() => import('@/features/profile/pages/ProfilePage')) },
+                  {
+                    path: paths.recommended,
+                    element: lazyPage(() => import('@/features/recommendations/pages/RecommendedJobsPage')),
+                  },
+                  {
+                    path: paths.resume,
+                    element: lazyPage(() => import('@/features/resumes/pages/ResumePage')),
+                  },
+                  {
+                    path: paths.profile,
+                    element: lazyPage(() => import('@/features/profile/pages/ProfilePage')),
+                  },
                 ],
               },
 
@@ -136,21 +165,47 @@ export const routes: RouteObject[] = [
                 element: <RequireAuth roles={STAFF} />,
                 children: [
                   // Jobs management (mine)
-                  { path: paths.manageJobs, element: lazyPage(() => import('@/features/jobs/pages/ManageJobsPage')) },
+                  {
+                    path: paths.manageJobs,
+                    element: lazyPage(() => import('@/features/jobs/pages/ManageJobsPage')),
+                  },
                   {
                     element: <RequireAuth permission="manage_jobs" />,
                     children: [
-                      { path: paths.manageJobNew, element: lazyPage(() => import('@/features/jobs/pages/JobFormPage')) },
-                      { path: patterns.manageJobEdit, element: lazyPage(() => import('@/features/jobs/pages/JobFormPage')) },
+                      {
+                        path: paths.manageJobNew,
+                        element: lazyPage(() => import('@/features/jobs/pages/JobFormPage')),
+                      },
+                      {
+                        path: patterns.manageJobEdit,
+                        element: lazyPage(() => import('@/features/jobs/pages/JobFormPage')),
+                      },
                     ],
                   },
-                  { path: paths.candidates, element: lazyPage(() => import('@/features/candidates/pages/CandidatesPage')) },
-                  { path: patterns.candidate, element: lazyPage(() => import('@/features/candidates/pages/CandidateDetailPage')) },
-                  { path: paths.matching, element: lazyPage(() => import('@/features/matching/pages/MatchingPage')) },
-                  { path: patterns.matchingJob, element: lazyPage(() => import('@/features/matching/pages/MatchingPage')) },
+                  {
+                    path: paths.candidates,
+                    element: lazyPage(() => import('@/features/candidates/pages/CandidatesPage')),
+                  },
+                  {
+                    path: patterns.candidate,
+                    element: lazyPage(() => import('@/features/candidates/pages/CandidateDetailPage')),
+                  },
+                  {
+                    path: paths.matching,
+                    element: lazyPage(() => import('@/features/matching/pages/MatchingPage')),
+                  },
+                  {
+                    path: patterns.matchingJob,
+                    element: lazyPage(() => import('@/features/matching/pages/MatchingPage')),
+                  },
                   {
                     element: <RequireAuth permission="view_reports" />,
-                    children: [{ path: paths.reports, element: lazyPage(() => import('@/features/reports/pages/ReportsPage')) }],
+                    children: [
+                      {
+                        path: paths.reports,
+                        element: lazyPage(() => import('@/features/reports/pages/ReportsPage')),
+                      },
+                    ],
                   },
                 ],
               },
@@ -159,9 +214,18 @@ export const routes: RouteObject[] = [
               {
                 element: <RequireAuth roles={['ADMIN']} />,
                 children: [
-                  { path: paths.adminUsers, element: lazyPage(() => import('@/features/admin/pages/UsersPage')) },
-                  { path: paths.adminCompanies, element: lazyPage(() => import('@/features/admin/pages/CompaniesPage')) },
-                  { path: paths.adminSystem, element: lazyPage(() => import('@/features/admin/pages/SystemMonitoringPage')) },
+                  {
+                    path: paths.adminUsers,
+                    element: lazyPage(() => import('@/features/admin/pages/UsersPage')),
+                  },
+                  {
+                    path: paths.adminCompanies,
+                    element: lazyPage(() => import('@/features/admin/pages/CompaniesPage')),
+                  },
+                  {
+                    path: paths.adminSystem,
+                    element: lazyPage(() => import('@/features/admin/pages/SystemMonitoringPage')),
+                  },
                 ],
               },
 
@@ -170,12 +234,21 @@ export const routes: RouteObject[] = [
                 path: paths.settings,
                 element: <SettingsLayout />,
                 children: [
-                  { index: true, element: lazyPage(() => import('@/features/settings/pages/AccountSettingsPage')) },
+                  {
+                    index: true,
+                    element: lazyPage(() => import('@/features/settings/pages/AccountSettingsPage')),
+                  },
                   {
                     element: <RequireAuth permission="manage_own_company" />,
                     children: [
-                      { path: 'company', element: lazyPage(() => import('@/features/company/pages/CompanySettingsPage')) },
-                      { path: 'team', element: lazyPage(() => import('@/features/company/pages/TeamSettingsPage')) },
+                      {
+                        path: 'company',
+                        element: lazyPage(() => import('@/features/company/pages/CompanySettingsPage')),
+                      },
+                      {
+                        path: 'team',
+                        element: lazyPage(() => import('@/features/company/pages/TeamSettingsPage')),
+                      },
                     ],
                   },
                 ],
@@ -184,7 +257,6 @@ export const routes: RouteObject[] = [
           },
         ],
       },
-
     ],
   },
 ]

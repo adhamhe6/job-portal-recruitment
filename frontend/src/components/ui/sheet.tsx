@@ -31,7 +31,8 @@ export function SheetContent({
   children,
   hideClose,
   ...props
-}: React.ComponentProps<typeof SheetPrimitive.Content> & VariantProps<typeof sheetVariants> & { hideClose?: boolean }) {
+}: React.ComponentProps<typeof SheetPrimitive.Content> &
+  VariantProps<typeof sheetVariants> & { hideClose?: boolean }) {
   return (
     <SheetPrimitive.Portal>
       <SheetPrimitive.Overlay className="fixed inset-0 z-50 bg-slate-950/50 backdrop-blur-[2px] data-[state=closed]:animate-fade-out data-[state=open]:animate-fade-in" />
@@ -57,8 +58,13 @@ export function SheetFooter({ className, ...props }: React.ComponentProps<'div'>
   return <div className={cn('flex gap-2 border-t px-5 py-3', className)} {...props} />
 }
 export function SheetTitle({ className, ...props }: React.ComponentProps<typeof SheetPrimitive.Title>) {
-  return <SheetPrimitive.Title className={cn('text-base font-semibold tracking-tight', className)} {...props} />
+  return (
+    <SheetPrimitive.Title className={cn('text-base font-semibold tracking-tight', className)} {...props} />
+  )
 }
-export function SheetDescription({ className, ...props }: React.ComponentProps<typeof SheetPrimitive.Description>) {
+export function SheetDescription({
+  className,
+  ...props
+}: React.ComponentProps<typeof SheetPrimitive.Description>) {
   return <SheetPrimitive.Description className={cn('text-sm text-muted-foreground', className)} {...props} />
 }

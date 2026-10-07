@@ -24,7 +24,10 @@ export function Progress({
       className={cn('h-2 w-full overflow-hidden rounded-full bg-muted', className)}
     >
       <div
-        className={cn('h-full rounded-full bg-primary transition-[width] duration-500 ease-out', indicatorClassName)}
+        className={cn(
+          'h-full rounded-full bg-primary transition-[width] duration-500 ease-out',
+          indicatorClassName,
+        )}
         style={{ width: `${v}%` }}
       />
     </div>

@@ -30,7 +30,12 @@ export function Alert({
   children,
   action,
   className,
-}: VariantProps<typeof alertVariants> & { title?: ReactNode; children?: ReactNode; action?: ReactNode; className?: string }) {
+}: VariantProps<typeof alertVariants> & {
+  title?: ReactNode
+  children?: ReactNode
+  action?: ReactNode
+  className?: string
+}) {
   const v = variant ?? 'info'
   const Icon = ICONS[v]
   return (
@@ -38,7 +43,11 @@ export function Alert({
       <Icon className={cn('mt-0.5 size-4.5 shrink-0', ICON_TONE[v])} aria-hidden />
       <div className="min-w-0 flex-1 space-y-1">
         {title && <p className="font-semibold">{title}</p>}
-        {children && <div className="leading-relaxed [&_a]:font-medium [&_a]:underline [&_ul]:list-disc [&_ul]:pl-5">{children}</div>}
+        {children && (
+          <div className="leading-relaxed [&_a]:font-medium [&_a]:underline [&_ul]:list-disc [&_ul]:pl-5">
+            {children}
+          </div>
+        )}
       </div>
       {action && <div className="shrink-0">{action}</div>}
     </div>

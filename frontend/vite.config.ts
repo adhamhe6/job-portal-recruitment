@@ -26,7 +26,11 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks(id) {
-          if (id.includes('node_modules/recharts') || id.includes('node_modules/d3-') || id.includes('node_modules/victory-vendor'))
+          if (
+            id.includes('node_modules/recharts') ||
+            id.includes('node_modules/d3-') ||
+            id.includes('node_modules/victory-vendor')
+          )
             return 'charts'
           if (id.includes('node_modules/@radix-ui') || id.includes('node_modules/cmdk')) return 'radix'
           if (

@@ -1,7 +1,13 @@
 import { LogOut, Settings, UserRound } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { Avatar } from '@/components/ui/avatar'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import { ROLE_LABELS } from '@/lib/enums'
 import { paths } from '@/routes/paths'
@@ -22,7 +28,9 @@ export function UserMenu() {
           <Avatar name={name} size="sm" />
           <span className="hidden text-left sm:block">
             <span className="block max-w-32 truncate text-[13px] leading-tight font-medium">{name}</span>
-            <span className="block text-[11px] leading-tight text-muted-foreground">{ROLE_LABELS[user.role]}</span>
+            <span className="block text-[11px] leading-tight text-muted-foreground">
+              {ROLE_LABELS[user.role]}
+            </span>
           </span>
         </button>
       </DropdownMenuTrigger>
@@ -30,7 +38,9 @@ export function UserMenu() {
         <div className="px-2.5 py-2">
           <p className="truncate text-sm font-semibold">{name}</p>
           <p className="truncate text-xs text-muted-foreground">{user.email}</p>
-          {user.company && <p className="mt-0.5 truncate text-xs text-muted-foreground">{user.company.name}</p>}
+          {user.company && (
+            <p className="mt-0.5 truncate text-xs text-muted-foreground">{user.company.name}</p>
+          )}
         </div>
         <DropdownMenuSeparator />
         {isCandidate && (

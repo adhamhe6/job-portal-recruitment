@@ -17,7 +17,15 @@ const EXPERIENCE_TONE: Record<string, string> = {
   UNKNOWN: 'text-muted-foreground',
 }
 
-function Group({ title, icon, children }: { title: string; icon: React.ReactNode; children: React.ReactNode }) {
+function Group({
+  title,
+  icon,
+  children,
+}: {
+  title: string
+  icon: React.ReactNode
+  children: React.ReactNode
+}) {
   return (
     <div className="space-y-1.5">
       <h4 className="flex items-center gap-1.5 text-xs font-semibold tracking-wide text-muted-foreground uppercase [&_svg]:size-3.5">
@@ -88,7 +96,9 @@ export function MatchExplanation({ match }: { match: CandidateFacingMatch }) {
       <dl className="grid grid-cols-2 gap-3 rounded-lg bg-surface p-3 text-sm">
         <div>
           <dt className="text-xs text-muted-foreground">Experience</dt>
-          <dd className={cn('font-medium', EXPERIENCE_TONE[match.experience_status] ?? '')}>{match.experience_text}</dd>
+          <dd className={cn('font-medium', EXPERIENCE_TONE[match.experience_status] ?? '')}>
+            {match.experience_text}
+          </dd>
         </div>
         <div>
           <dt className="text-xs text-muted-foreground">Profile relevance</dt>
@@ -96,7 +106,8 @@ export function MatchExplanation({ match }: { match: CandidateFacingMatch }) {
         </div>
       </dl>
       <p className="text-xs text-muted-foreground">
-        A ranking aid based on your profile and résumé, not a hiring decision. Updated {dates.relative(match.generated_at)}.
+        A ranking aid based on your profile and résumé, not a hiring decision. Updated{' '}
+        {dates.relative(match.generated_at)}.
       </p>
     </div>
   )

@@ -102,8 +102,8 @@ async def test_period_filters_and_granularity(world):
     assert stage_counts(old)["APPLIED"] == 2 and stage_counts(old)["SCREENING"] == 1 and stage_counts(old)["SHORTLISTED"] == 0
     assert len(old["applications_over_time"]) == 8
     wide = (await get(c, "/reports/recruiter-dashboard", world["rec"], from_date=(TODAY() - timedelta(days=60)).isoformat())).json()
-    assert wide["kpis"]["total_applications"] == 7 and wide["kpis"]["hires_in_period"] == 0  # c1's hire happened 40 days ago ... 
-    # ... but the history timestamps were shifted by 40 days too, so it is *inside* a 60-day window
+    # c1's hire event (history shifted by 40 days with the application) is inside a 60-day window
+    assert wide["kpis"]["total_applications"] == 7 and wide["kpis"]["hires_in_period"] == 1
     assert stage_counts(wide)["HIRED"] == 1
     weekly = (await get(c, "/reports/recruiter-dashboard", world["rec"], from_date=(TODAY() - timedelta(days=60)).isoformat(), granularity="week")).json()
     assert weekly["period"]["granularity"] == "week" and sum(p["count"] for p in weekly["applications_over_time"]) == 7

@@ -42,7 +42,11 @@ export function ConfirmDialog({
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>{title}</AlertDialogTitle>
-          {description && <AlertDialogDescription asChild><div>{description}</div></AlertDialogDescription>}
+          {description && (
+            <AlertDialogDescription asChild>
+              <div>{description}</div>
+            </AlertDialogDescription>
+          )}
         </AlertDialogHeader>
         {children}
         <AlertDialogFooter>

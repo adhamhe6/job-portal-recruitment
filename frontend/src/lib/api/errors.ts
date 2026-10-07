@@ -79,9 +79,10 @@ export function errorMessage(e: unknown, fallback = 'Something went wrong. Pleas
 
 /** Build an ApiError from a (non-ok) fetch Response. */
 export async function errorFromResponse(res: Response): Promise<ApiError> {
-  let body: { error?: { code?: string; message?: string; details?: unknown; request_id?: string | null } } | null = null
+  type Body = { error?: { code?: string; message?: string; details?: unknown; request_id?: string | null } }
+  let body: Body | null = null
   try {
-    body = (await res.json()) as typeof body
+    body = (await res.json()) as Body
   } catch {
     /* non-JSON error body (proxy / gateway page) */
   }

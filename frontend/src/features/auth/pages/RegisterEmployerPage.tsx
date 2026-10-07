@@ -100,7 +100,9 @@ export default function RegisterEmployerPage() {
     <div className="space-y-6">
       <div className="space-y-1.5">
         <h1 className="text-2xl font-semibold tracking-tight">Register your company</h1>
-        <p className="text-sm text-muted-foreground">Create your recruiter account and company workspace in one step.</p>
+        <p className="text-sm text-muted-foreground">
+          Create your recruiter account and company workspace in one step.
+        </p>
       </div>
       {formError && <Alert variant="danger">{formError}</Alert>}
       <form onSubmit={onSubmit} noValidate className="grid gap-6" aria-label="Register as employer">
@@ -115,11 +117,21 @@ export default function RegisterEmployerPage() {
             </Field>
           </div>
           <Field label="Work email" error={errors.email?.message} required>
-            <Input type="email" autoComplete="email" inputMode="email" placeholder="you@company.com" {...register('email')} />
+            <Input
+              type="email"
+              autoComplete="email"
+              inputMode="email"
+              placeholder="you@company.com"
+              {...register('email')}
+            />
           </Field>
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Job title" error={errors.job_title?.message} optional>
-              <Input autoComplete="organization-title" placeholder="Head of Talent" {...register('job_title')} />
+              <Input
+                autoComplete="organization-title"
+                placeholder="Head of Talent"
+                {...register('job_title')}
+              />
             </Field>
             <Field label="Phone" error={errors.phone?.message} optional>
               <Input type="tel" autoComplete="tel" {...register('phone')} />
@@ -155,7 +167,12 @@ export default function RegisterEmployerPage() {
             </Field>
           </div>
           <Field label="Website" error={errors.company_website?.message} optional>
-            <Input type="url" inputMode="url" placeholder="https://example.com" {...register('company_website')} />
+            <Input
+              type="url"
+              inputMode="url"
+              placeholder="https://example.com"
+              {...register('company_website')}
+            />
           </Field>
           <Field label="Headquarters" error={errors.company_location?.message} optional>
             <Input placeholder="Berlin, Germany" {...register('company_location')} />

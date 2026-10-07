@@ -27,7 +27,10 @@ function currencyFormatter(currency: string, compact: boolean): Intl.NumberForma
       })
     } catch {
       // Unknown currency code: fall back to a plain number with the code as prefix.
-      f = new Intl.NumberFormat('en-US', { maximumFractionDigits: compact ? 1 : 0, notation: compact ? 'compact' : 'standard' })
+      f = new Intl.NumberFormat('en-US', {
+        maximumFractionDigits: compact ? 1 : 0,
+        notation: compact ? 'compact' : 'standard',
+      })
     }
     currencyCache.set(key, f)
   }
@@ -54,11 +57,21 @@ export const fmt = {
   },
   /** "Berlin, Germany" style enum label: FULL_TIME -> "Full time". */
   label: (v: string | null | undefined) =>
-    v ? v.toLowerCase().replace(/_/g, ' ').replace(/^\w/, (c) => c.toUpperCase()) : '—',
+    v
+      ? v
+          .toLowerCase()
+          .replace(/_/g, ' ')
+          .replace(/^\w/, (c) => c.toUpperCase())
+      : '—',
 }
 
 /** Salary range with the job's own currency: "€80K – €105K", "From €50K", "Up to €90K" or null. */
-export function formatSalaryRange(min: Numeric, max: Numeric, currency = 'USD', compact = true): string | null {
+export function formatSalaryRange(
+  min: Numeric,
+  max: Numeric,
+  currency = 'USD',
+  compact = true,
+): string | null {
   const lo = toNumber(min)
   const hi = toNumber(max)
   if (lo === null && hi === null) return null
@@ -112,7 +125,9 @@ export const dates = {
 }
 
 /** Human deadline hint: { text: "Closes in 5 days", tone: 'urgent' | 'normal' | 'past' } or null. */
-export function deadlineHint(deadline: string | null | undefined): { text: string; tone: 'normal' | 'urgent' | 'past' } | null {
+export function deadlineHint(
+  deadline: string | null | undefined,
+): { text: string; tone: 'normal' | 'urgent' | 'past' } | null {
   const days = dates.daysUntil(deadline)
   if (days === null) return null
   if (days < 0) return { text: 'Deadline passed', tone: 'past' }

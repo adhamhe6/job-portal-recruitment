@@ -12,7 +12,10 @@ import { SkipLink, useFocusMainOnNavigate } from './RouteFocus'
 import { ThemeToggle } from './ThemeToggle'
 
 const linkClass = ({ isActive }: { isActive: boolean }) =>
-  cn('rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground', isActive && 'text-foreground')
+  cn(
+    'rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground',
+    isActive && 'text-foreground',
+  )
 
 /** Logged-out layout: marketing header + footer around public pages (landing, job search, job detail). */
 export function PublicLayout() {

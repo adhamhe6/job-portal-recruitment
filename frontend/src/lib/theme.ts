@@ -8,7 +8,8 @@ export type ThemePreference = 'system' | 'light' | 'dark'
 export type ResolvedTheme = 'light' | 'dark'
 
 const KEY = 'talentlens.theme'
-const query = () => (typeof window !== 'undefined' ? window.matchMedia?.('(prefers-color-scheme: dark)') : undefined)
+const query = () =>
+  typeof window !== 'undefined' ? window.matchMedia?.('(prefers-color-scheme: dark)') : undefined
 
 function readPreference(): ThemePreference {
   try {
@@ -59,8 +60,16 @@ const subscribe = (l: () => void) => {
 }
 
 export function useTheme() {
-  const pref = useSyncExternalStore(subscribe, () => preference, () => preference)
-  const theme = useSyncExternalStore(subscribe, () => resolved, () => resolved)
+  const pref = useSyncExternalStore(
+    subscribe,
+    () => preference,
+    () => preference,
+  )
+  const theme = useSyncExternalStore(
+    subscribe,
+    () => resolved,
+    () => resolved,
+  )
   const toggle = useCallback(() => setThemePreference(resolved === 'dark' ? 'light' : 'dark'), [])
   return { preference: pref, theme, setPreference: setThemePreference, toggle }
 }

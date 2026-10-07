@@ -36,7 +36,13 @@ export function PasswordRules({ value, id }: { value: string; id?: string }) {
       {PASSWORD_RULES.map((r) => {
         const ok = r.test(value)
         return (
-          <li key={r.id} className={cn('flex items-center gap-1.5', ok ? 'text-emerald-700 dark:text-emerald-400' : 'text-muted-foreground')}>
+          <li
+            key={r.id}
+            className={cn(
+              'flex items-center gap-1.5',
+              ok ? 'text-emerald-700 dark:text-emerald-400' : 'text-muted-foreground',
+            )}
+          >
             {ok ? <Check className="size-3.5" aria-hidden /> : <Circle className="size-3.5" aria-hidden />}
             {r.label}
             <span className="sr-only">{ok ? ' (met)' : ' (not met yet)'}</span>

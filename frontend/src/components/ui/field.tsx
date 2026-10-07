@@ -43,7 +43,8 @@ export function Field({
   const id = htmlFor ?? child?.props.id ?? autoId
   const hintId = hint ? `${id}-hint` : undefined
   const errorId = error ? `${id}-error` : undefined
-  const describedBy = [child?.props['aria-describedby'], hintId, errorId].filter(Boolean).join(' ') || undefined
+  const describedBy =
+    [child?.props['aria-describedby'], hintId, errorId].filter(Boolean).join(' ') || undefined
 
   const control = child
     ? cloneElement(child, {

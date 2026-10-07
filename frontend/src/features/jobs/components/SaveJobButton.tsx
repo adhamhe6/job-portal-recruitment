@@ -56,7 +56,10 @@ export function SaveJobButton({
       { jobId, save: !isSaved },
       {
         onSuccess: () => toast.success(isSaved ? 'Removed from saved jobs' : 'Job saved'),
-        onError: (e) => toast.error(isSaved ? 'Could not remove the job' : 'Could not save the job', { description: errorMessage(e) }),
+        onError: (e) =>
+          toast.error(isSaved ? 'Could not remove the job' : 'Could not save the job', {
+            description: errorMessage(e),
+          }),
       },
     )
   const label = isSaved ? `Remove ${jobTitle} from saved jobs` : `Save ${jobTitle}`
@@ -64,12 +67,27 @@ export function SaveJobButton({
 
   return variant === 'icon' ? (
     <Tooltip content={isSaved ? 'Saved' : 'Save job'}>
-      <Button variant="ghost" size="icon" className={className} aria-label={label} aria-pressed={isSaved} onClick={onClick} disabled={toggle.isPending}>
+      <Button
+        variant="ghost"
+        size="icon"
+        className={className}
+        aria-label={label}
+        aria-pressed={isSaved}
+        onClick={onClick}
+        disabled={toggle.isPending}
+      >
         {icon}
       </Button>
     </Tooltip>
   ) : (
-    <Button variant="outline" className={className} aria-label={label} aria-pressed={isSaved} onClick={onClick} disabled={toggle.isPending}>
+    <Button
+      variant="outline"
+      className={className}
+      aria-label={label}
+      aria-pressed={isSaved}
+      onClick={onClick}
+      disabled={toggle.isPending}
+    >
       {icon} {isSaved ? 'Saved' : 'Save'}
     </Button>
   )

@@ -31,7 +31,12 @@ export interface NavItem {
 }
 
 const dashboard: NavItem = { label: 'Dashboard', to: paths.dashboard, icon: LayoutDashboard }
-const notifications: NavItem = { label: 'Notifications', to: paths.notifications, icon: Bell, badge: 'notifications' }
+const notifications: NavItem = {
+  label: 'Notifications',
+  to: paths.notifications,
+  icon: Bell,
+  badge: 'notifications',
+}
 const settings: NavItem = { label: 'Settings', to: paths.settings, icon: Settings }
 
 /** Role-specific sidebar navigation (per the product spec). Add a page to the route table first, then list it here. */

@@ -1,5 +1,14 @@
 import { z } from 'zod'
-import type { EducationLevel, EmploymentType, ExperienceLevel, JobCreate, JobDetail, JobUpdate, SkillRequirement, WorkplaceType } from '@/lib/api'
+import type {
+  EducationLevel,
+  EmploymentType,
+  ExperienceLevel,
+  JobCreate,
+  JobDetail,
+  JobUpdate,
+  SkillRequirement,
+  WorkplaceType,
+} from '@/lib/api'
 import { dates } from '@/lib/format'
 
 /**
@@ -10,10 +19,22 @@ import { dates } from '@/lib/format'
  * least one REQUIRED skill (services/jobs.py::_publish_problems).
  */
 
-const EMPLOYMENT: [EmploymentType, ...EmploymentType[]] = ['FULL_TIME', 'PART_TIME', 'CONTRACT', 'INTERNSHIP', 'TEMPORARY']
+const EMPLOYMENT: [EmploymentType, ...EmploymentType[]] = [
+  'FULL_TIME',
+  'PART_TIME',
+  'CONTRACT',
+  'INTERNSHIP',
+  'TEMPORARY',
+]
 const WORKPLACE: [WorkplaceType, ...WorkplaceType[]] = ['ONSITE', 'HYBRID', 'REMOTE']
 const LEVELS: [ExperienceLevel, ...ExperienceLevel[]] = ['ENTRY', 'JUNIOR', 'MID', 'SENIOR', 'LEAD']
-const EDUCATION: [EducationLevel, ...EducationLevel[]] = ['HIGH_SCHOOL', 'ASSOCIATE', 'BACHELOR', 'MASTER', 'DOCTORATE']
+const EDUCATION: [EducationLevel, ...EducationLevel[]] = [
+  'HIGH_SCHOOL',
+  'ASSOCIATE',
+  'BACHELOR',
+  'MASTER',
+  'DOCTORATE',
+]
 const REQUIREMENT: [SkillRequirement, ...SkillRequirement[]] = ['REQUIRED', 'PREFERRED']
 
 /** Optional non-negative decimal typed as a string ('' allowed). */
@@ -22,7 +43,10 @@ const decimal = (label: string, { max, places }: { max: number; places: number }
     .string()
     .trim()
     .refine((v) => v === '' || /^\d+(\.\d+)?$/.test(v), `${label} must be a number`)
-    .refine((v) => v === '' || !/^\d+\.\d+$/.test(v) || (v.split('.')[1]?.length ?? 0) <= places, `${label} can have at most ${places} decimal place${places === 1 ? '' : 's'}`)
+    .refine(
+      (v) => v === '' || !/^\d+\.\d+$/.test(v) || (v.split('.')[1]?.length ?? 0) <= places,
+      `${label} can have at most ${places} decimal place${places === 1 ? '' : 's'}`,
+    )
     .refine((v) => v === '' || Number(v) <= max, `${label} must be at most ${max.toLocaleString('en-US')}`)
 
 export const skillRowSchema = z.object({
@@ -35,13 +59,21 @@ export const skillRowSchema = z.object({
 export function buildJobSchema({ originalDeadline }: { originalDeadline?: string | null } = {}) {
   return z
     .object({
-      title: z.string().trim().min(3, 'Title must be at least 3 characters').max(200, 'Title must be at most 200 characters'),
+      title: z
+        .string()
+        .trim()
+        .min(3, 'Title must be at least 3 characters')
+        .max(200, 'Title must be at most 200 characters'),
       department: z.string().trim().max(100, 'Department must be at most 100 characters'),
       location: z.string().trim().max(200, 'Location must be at most 200 characters'),
       employment_type: z.enum(EMPLOYMENT),
       workplace_type: z.enum(WORKPLACE),
       experience_level: z.enum(['', ...LEVELS]),
-      description: z.string().trim().min(10, 'Description must be at least 10 characters').max(20000, 'Description must be at most 20,000 characters'),
+      description: z
+        .string()
+        .trim()
+        .min(10, 'Description must be at least 10 characters')
+        .max(20000, 'Description must be at most 20,000 characters'),
       responsibilities: z.string().max(10000, 'Responsibilities must be at most 10,000 characters'),
       qualifications: z.string().max(10000, 'Qualifications must be at most 10,000 characters'),
       benefits: z.string().max(5000, 'Benefits must be at most 5,000 characters'),
@@ -54,21 +86,36 @@ export function buildJobSchema({ originalDeadline }: { originalDeadline?: string
       application_deadline: z
         .string()
         .refine((v) => v === '' || /^\d{4}-\d{2}-\d{2}$/.test(v), 'Enter a valid date')
-        .refine((v) => v === '' || v === (originalDeadline ?? '') || v >= dates.isoDate(), 'Deadline cannot be in the past'),
+        .refine(
+          (v) => v === '' || v === (originalDeadline ?? '') || v >= dates.isoDate(),
+          'Deadline cannot be in the past',
+        ),
       hiring_manager_id: z.string(),
       skills: z.array(skillRowSchema).max(40, 'A job can list at most 40 skills'),
     })
     .superRefine((v, ctx) => {
       if (v.salary_min !== '' && v.salary_max !== '' && Number(v.salary_max) < Number(v.salary_min)) {
-        ctx.addIssue({ code: 'custom', path: ['salary_max'], message: 'Maximum salary must be at least the minimum' })
+        ctx.addIssue({
+          code: 'custom',
+          path: ['salary_max'],
+          message: 'Maximum salary must be at least the minimum',
+        })
       }
-      if (v.max_experience_years !== '' && Number(v.max_experience_years) < Number(v.min_experience_years || 0)) {
-        ctx.addIssue({ code: 'custom', path: ['max_experience_years'], message: 'Maximum experience must be at least the minimum' })
+      if (
+        v.max_experience_years !== '' &&
+        Number(v.max_experience_years) < Number(v.min_experience_years || 0)
+      ) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['max_experience_years'],
+          message: 'Maximum experience must be at least the minimum',
+        })
       }
       const seen = new Set<string>()
       v.skills.forEach((s, i) => {
         const key = (s.skill_id ?? s.name).toLowerCase()
-        if (seen.has(key)) ctx.addIssue({ code: 'custom', path: ['skills', i, 'name'], message: `${s.name} is listed twice` })
+        if (seen.has(key))
+          ctx.addIssue({ code: 'custom', path: ['skills', i, 'name'], message: `${s.name} is listed twice` })
         seen.add(key)
       })
     })
@@ -124,7 +171,12 @@ export function jobToFormValues(job: JobDetail): JobFormValues {
     salary_currency: job.salary_currency,
     application_deadline: job.application_deadline ?? '',
     hiring_manager_id: job.hiring_manager_id ?? '',
-    skills: job.skills.map((s) => ({ skill_id: s.skill.id, name: s.skill.name, requirement: s.requirement, min_years: trimZeros(s.min_years) })),
+    skills: job.skills.map((s) => ({
+      skill_id: s.skill.id,
+      name: s.skill.name,
+      requirement: s.requirement,
+      min_years: trimZeros(s.min_years),
+    })),
   }
 }
 
@@ -168,9 +220,12 @@ export interface PublishProblem {
 /** Client-side mirror of the backend's publish gate, so the user sees what is missing before any round-trip. */
 export function publishProblems(v: JobFormValues): PublishProblem[] {
   const problems: PublishProblem[] = []
-  if (v.description.trim().length < 30) problems.push({ field: 'description', message: 'Description must be at least 30 characters to publish' })
-  if (!v.skills.some((s) => s.requirement === 'REQUIRED')) problems.push({ field: 'skills', message: 'Add at least one required skill to publish' })
-  if (v.application_deadline && v.application_deadline < dates.isoDate()) problems.push({ field: 'application_deadline', message: 'The application deadline is in the past' })
+  if (v.description.trim().length < 30)
+    problems.push({ field: 'description', message: 'Description must be at least 30 characters to publish' })
+  if (!v.skills.some((s) => s.requirement === 'REQUIRED'))
+    problems.push({ field: 'skills', message: 'Add at least one required skill to publish' })
+  if (v.application_deadline && v.application_deadline < dates.isoDate())
+    problems.push({ field: 'application_deadline', message: 'The application deadline is in the past' })
   return problems
 }
 

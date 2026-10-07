@@ -29,7 +29,11 @@ function ProfileCard() {
   const [formError, setFormError] = useState<string | null>(null)
   const form = useForm<ProfileValues>({
     resolver: zodResolver(profileSchema),
-    defaultValues: { first_name: user?.first_name ?? '', last_name: user?.last_name ?? '', phone: user?.phone ?? '' },
+    defaultValues: {
+      first_name: user?.first_name ?? '',
+      last_name: user?.last_name ?? '',
+      phone: user?.phone ?? '',
+    },
   })
   const {
     register,
@@ -42,7 +46,11 @@ function ProfileCard() {
   const onSubmit = handleSubmit(async (values) => {
     setFormError(null)
     try {
-      const me = await authApi.updateMe({ first_name: values.first_name, last_name: values.last_name, phone: values.phone || null })
+      const me = await authApi.updateMe({
+        first_name: values.first_name,
+        last_name: values.last_name,
+        phone: values.phone || null,
+      })
       setUser(me)
       reset({ first_name: me.first_name, last_name: me.last_name, phone: me.phone ?? '' })
       toast.success('Account details updated')
@@ -108,7 +116,10 @@ function PasswordCard() {
   const onSubmit = handleSubmit(async (values) => {
     setFormError(null)
     try {
-      await authApi.changePassword({ current_password: values.current_password, new_password: values.new_password })
+      await authApi.changePassword({
+        current_password: values.current_password,
+        new_password: values.new_password,
+      })
       // The backend revokes every session on a password change: sign out locally and ask for the new credentials.
       await logout()
       toast.success('Password updated. Please sign in with your new password.')
@@ -117,7 +128,11 @@ function PasswordCard() {
       const message = applyApiErrors(e, setError, {
         fields: ['current_password', 'new_password'],
         fieldMap: { current_password: 'current_password' },
-        codeFields: { INVALID_CREDENTIALS: 'current_password', INVALID_PASSWORD: 'current_password', WRONG_PASSWORD: 'current_password' },
+        codeFields: {
+          INVALID_CREDENTIALS: 'current_password',
+          INVALID_PASSWORD: 'current_password',
+          WRONG_PASSWORD: 'current_password',
+        },
       })
       setFormError(message)
     }
@@ -127,7 +142,9 @@ function PasswordCard() {
     <Card>
       <CardHeader>
         <CardTitle>Change password</CardTitle>
-        <CardDescription>For your security, changing your password signs you out of every device.</CardDescription>
+        <CardDescription>
+          For your security, changing your password signs you out of every device.
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={onSubmit} noValidate className="grid gap-4" aria-label="Change password">
@@ -168,7 +185,12 @@ function AppearanceCard() {
         <CardDescription>Choose how TalentLens looks on this device.</CardDescription>
       </CardHeader>
       <CardContent>
-        <RadioGroup value={preference} onValueChange={(v) => setPreference(v as ThemePreference)} aria-label="Theme" className="grid gap-3 sm:grid-cols-3">
+        <RadioGroup
+          value={preference}
+          onValueChange={(v) => setPreference(v as ThemePreference)}
+          aria-label="Theme"
+          className="grid gap-3 sm:grid-cols-3"
+        >
           {THEMES.map(({ value, label, hint, icon: Icon }) => (
             <label
               key={value}

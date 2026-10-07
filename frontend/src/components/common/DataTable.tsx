@@ -19,7 +19,12 @@ export interface Column<T> {
   hideBelow?: 'sm' | 'md' | 'lg' | 'xl'
 }
 
-const HIDE = { sm: 'hidden sm:table-cell', md: 'hidden md:table-cell', lg: 'hidden lg:table-cell', xl: 'hidden xl:table-cell' }
+const HIDE = {
+  sm: 'hidden sm:table-cell',
+  md: 'hidden md:table-cell',
+  lg: 'hidden lg:table-cell',
+  xl: 'hidden xl:table-cell',
+}
 const ALIGN = { left: 'text-left', right: 'text-right', center: 'text-center' }
 
 export interface DataTableProps<T> {
@@ -79,16 +84,27 @@ export function DataTable<T>({
 
   if (error) return <ErrorState error={error} onRetry={onRetry} />
   if (loading && !rows) return <TableSkeleton cols={Math.min(columns.length, 6)} />
-  if (rows && rows.length === 0) return <>{empty ?? <EmptyState title="Nothing here yet" description="There are no records to show." />}</>
+  if (rows && rows.length === 0)
+    return <>{empty ?? <EmptyState title="Nothing here yet" description="There are no records to show." />}</>
 
   const pager =
     page !== undefined && pages !== undefined && onPageChange ? (
-      <Pagination page={page} pages={pages} total={total} pageSize={pageSize} onPageChange={onPageChange} className="border-t px-4" />
+      <Pagination
+        page={page}
+        pages={pages}
+        total={total}
+        pageSize={pageSize}
+        onPageChange={onPageChange}
+        className="border-t px-4"
+      />
     ) : null
 
   if (!isDesktop && renderCard) {
     return (
-      <div className={cn(loading && 'opacity-60 transition-opacity', className)} aria-busy={loading || undefined}>
+      <div
+        className={cn(loading && 'opacity-60 transition-opacity', className)}
+        aria-busy={loading || undefined}
+      >
         <ul className="divide-y" aria-label={caption}>
           {rows?.map((row) => (
             <li key={rowKey(row)}>{renderCard(row)}</li>
@@ -100,7 +116,10 @@ export function DataTable<T>({
   }
 
   return (
-    <div className={cn(loading && 'opacity-60 transition-opacity', className)} aria-busy={loading || undefined}>
+    <div
+      className={cn(loading && 'opacity-60 transition-opacity', className)}
+      aria-busy={loading || undefined}
+    >
       <Table>
         <caption className="sr-only">{caption}</caption>
         <TableHeader>
@@ -111,7 +130,11 @@ export function DataTable<T>({
                 <TableHead
                   key={c.key}
                   scope="col"
-                  className={cn(c.hideBelow && HIDE[c.hideBelow], c.align && ALIGN[c.align], c.headerClassName)}
+                  className={cn(
+                    c.hideBelow && HIDE[c.hideBelow],
+                    c.align && ALIGN[c.align],
+                    c.headerClassName,
+                  )}
                   aria-sort={active ? (sortDirection === 'desc' ? 'descending' : 'ascending') : undefined}
                 >
                   {c.sortKey && onSortChange ? (
@@ -126,7 +149,11 @@ export function DataTable<T>({
                     >
                       {c.header}
                       {active ? (
-                        sortDirection === 'desc' ? <ArrowDown className="size-3" aria-hidden /> : <ArrowUp className="size-3" aria-hidden />
+                        sortDirection === 'desc' ? (
+                          <ArrowDown className="size-3" aria-hidden />
+                        ) : (
+                          <ArrowUp className="size-3" aria-hidden />
+                        )
                       ) : (
                         <ArrowUpDown className="size-3 opacity-40" aria-hidden />
                       )}
@@ -159,7 +186,10 @@ export function DataTable<T>({
               tabIndex={onRowClick ? 0 : undefined}
             >
               {columns.map((c) => (
-                <TableCell key={c.key} className={cn(c.hideBelow && HIDE[c.hideBelow], c.align && ALIGN[c.align], c.className)}>
+                <TableCell
+                  key={c.key}
+                  className={cn(c.hideBelow && HIDE[c.hideBelow], c.align && ALIGN[c.align], c.className)}
+                >
                   {c.cell(row)}
                 </TableCell>
               ))}

@@ -5,7 +5,17 @@ import {
   useQueryClient,
   type QueryClient,
 } from '@tanstack/react-query'
-import { api, type JobCreate, type JobDetail, type JobListItem, type JobPublic, type JobStats, type JobUpdate, type Paginated, type QueryParams } from '@/lib/api'
+import {
+  api,
+  type JobCreate,
+  type JobDetail,
+  type JobListItem,
+  type JobPublic,
+  type JobStats,
+  type JobUpdate,
+  type Paginated,
+  type QueryParams,
+} from '@/lib/api'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import { toSearchQuery, type JobSearchState } from '../lib/filters'
 import type { LifecycleAction } from '../lib/lifecycle'
@@ -33,7 +43,8 @@ export const isStaffView = (job: JobView): job is JobDetail => 'allowed_transiti
 export function useJobSearch(filters: JobSearchState) {
   return useQuery({
     queryKey: jobKeys.search(filters),
-    queryFn: ({ signal }) => api.get<Paginated<JobListItem>>('/search/jobs', toSearchQuery(filters), { signal }),
+    queryFn: ({ signal }) =>
+      api.get<Paginated<JobListItem>>('/search/jobs', toSearchQuery(filters), { signal }),
     placeholderData: keepPreviousData,
   })
 }
@@ -42,7 +53,8 @@ export function useJobSearch(filters: JobSearchState) {
 export function useFeaturedJobs(limit = 6) {
   return useQuery({
     queryKey: [...jobKeys.featured, limit],
-    queryFn: ({ signal }) => api.get<Paginated<JobListItem>>('/search/jobs', { sort: 'newest', page_size: limit }, { signal }),
+    queryFn: ({ signal }) =>
+      api.get<Paginated<JobListItem>>('/search/jobs', { sort: 'newest', page_size: limit }, { signal }),
     staleTime: 60_000,
   })
 }
@@ -50,7 +62,8 @@ export function useFeaturedJobs(limit = 6) {
 export function useSavedJobs(page: number, pageSize = 10) {
   return useQuery({
     queryKey: jobKeys.saved(page),
-    queryFn: ({ signal }) => api.get<Paginated<JobListItem>>('/candidates/me/saved-jobs', { page, page_size: pageSize }, { signal }),
+    queryFn: ({ signal }) =>
+      api.get<Paginated<JobListItem>>('/candidates/me/saved-jobs', { page, page_size: pageSize }, { signal }),
     placeholderData: keepPreviousData,
   })
 }
@@ -107,11 +120,19 @@ function patchSaved(qc: QueryClient, jobId: string, saved: boolean) {
   qc.setQueriesData<Paginated<JobListItem>>({ queryKey: ['jobs', 'search'] }, (old) =>
     old ? { ...old, items: old.items.map((j) => (j.id === jobId ? { ...j, is_saved: saved } : j)) } : old,
   )
-  qc.setQueriesData<JobView>({ queryKey: ['jobs', 'detail'], exact: false }, (old) => (old && old.id === jobId && !isStaffView(old) ? { ...old, is_saved: saved } : old))
+  qc.setQueriesData<JobView>({ queryKey: ['jobs', 'detail'], exact: false }, (old) =>
+    old && old.id === jobId && !isStaffView(old) ? { ...old, is_saved: saved } : old,
+  )
   if (!saved) {
     // Un-saving removes the row from the "Saved" list immediately.
     qc.setQueriesData<Paginated<JobListItem>>({ queryKey: ['jobs', 'saved'] }, (old) =>
-      old ? { ...old, items: old.items.filter((j) => j.id !== jobId), total: Math.max(0, old.total - (old.items.some((j) => j.id === jobId) ? 1 : 0)) } : old,
+      old
+        ? {
+            ...old,
+            items: old.items.filter((j) => j.id !== jobId),
+            total: Math.max(0, old.total - (old.items.some((j) => j.id === jobId) ? 1 : 0)),
+          }
+        : old,
     )
   }
 }
@@ -119,7 +140,8 @@ function patchSaved(qc: QueryClient, jobId: string, saved: boolean) {
 export function useToggleSaveJob() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: ({ jobId, save }: { jobId: string; save: boolean }) => (save ? api.put(`/jobs/${jobId}/save`) : api.delete(`/jobs/${jobId}/save`)),
+    mutationFn: ({ jobId, save }: { jobId: string; save: boolean }) =>
+      save ? api.put(`/jobs/${jobId}/save`) : api.delete(`/jobs/${jobId}/save`),
     onMutate: async ({ jobId, save }) => {
       await qc.cancelQueries({ queryKey: jobKeys.all })
       const snapshot = qc.getQueriesData({ queryKey: jobKeys.all })

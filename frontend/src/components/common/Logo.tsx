@@ -13,7 +13,14 @@ export function LogoMark({ className }: { className?: string }) {
       <rect width="32" height="32" rx="8" fill="url(#tl-logo-g)" />
       <circle cx="14.5" cy="14.5" r="6" fill="none" stroke="#fff" strokeWidth="2.6" />
       <path d="M19 19l5.5 5.5" stroke="#fff" strokeWidth="2.6" strokeLinecap="round" />
-      <path d="M12 14.5l2 2 3.5-3.5" fill="none" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+      <path
+        d="M12 14.5l2 2 3.5-3.5"
+        fill="none"
+        stroke="#fff"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   )
 }

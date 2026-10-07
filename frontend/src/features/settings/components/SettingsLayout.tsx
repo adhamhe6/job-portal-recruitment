@@ -15,8 +15,20 @@ export function SettingsLayout() {
   useDocumentTitle('Settings')
   const sections = [
     { to: paths.settings, label: 'Account', icon: UserRound, end: true, show: true },
-    { to: paths.settingsCompany, label: 'Company', icon: Building2, end: false, show: can('manage_own_company') },
-    { to: paths.settingsTeam, label: 'Team', icon: Users, end: false, show: can('manage_own_company') && Boolean(user?.is_company_admin) },
+    {
+      to: paths.settingsCompany,
+      label: 'Company',
+      icon: Building2,
+      end: false,
+      show: can('manage_own_company'),
+    },
+    {
+      to: paths.settingsTeam,
+      label: 'Team',
+      icon: Users,
+      end: false,
+      show: can('manage_own_company') && Boolean(user?.is_company_admin),
+    },
   ].filter((s) => s.show)
 
   return (

@@ -18,7 +18,15 @@ import { ApplyDialog } from './ApplyDialog'
  *  - candidate, blocked -> disabled button + the API's reason (closed / deadline passed)
  *  - staff / admin      -> nothing
  */
-export function ApplyCta({ job, className, compact }: { job: JobPublic | JobDetail; className?: string; compact?: boolean }) {
+export function ApplyCta({
+  job,
+  className,
+  compact,
+}: {
+  job: JobPublic | JobDetail
+  className?: string
+  compact?: boolean
+}) {
   const { status, isCandidate } = useAuth()
   const location = useLocation()
   const [open, setOpen] = useState(false)
@@ -35,7 +43,9 @@ export function ApplyCta({ job, className, compact }: { job: JobPublic | JobDeta
   if (!isCandidate) return null
 
   if (job.my_application_id) {
-    const label = APPLICATION_STATUS_LABELS[(job.my_application_status ?? 'APPLIED') as ApplicationStatus] ?? job.my_application_status
+    const label =
+      APPLICATION_STATUS_LABELS[(job.my_application_status ?? 'APPLIED') as ApplicationStatus] ??
+      job.my_application_status
     return compact ? (
       <Button asChild variant="soft" size="lg" className={className}>
         <Link to={paths.application(job.my_application_id)}>
@@ -55,7 +65,11 @@ export function ApplyCta({ job, className, compact }: { job: JobPublic | JobDeta
       <Button size="lg" className="w-full" disabled={blocked} onClick={() => setOpen(true)}>
         <Send /> Apply now
       </Button>
-      {blocked && !compact && <p className="mt-2 text-center text-sm text-muted-foreground">{job.apply_blocked_reason ?? 'This job is not accepting applications.'}</p>}
+      {blocked && !compact && (
+        <p className="mt-2 text-center text-sm text-muted-foreground">
+          {job.apply_blocked_reason ?? 'This job is not accepting applications.'}
+        </p>
+      )}
       <ApplyDialog job={job} open={open} onOpenChange={setOpen} />
     </div>
   )

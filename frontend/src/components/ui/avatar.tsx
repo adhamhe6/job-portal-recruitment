@@ -2,7 +2,13 @@ import * as AvatarPrimitive from '@radix-ui/react-avatar'
 import type * as React from 'react'
 import { cn, initials } from '@/lib/utils'
 
-const SIZES = { xs: 'size-6 text-[10px]', sm: 'size-8 text-xs', md: 'size-10 text-sm', lg: 'size-14 text-lg', xl: 'size-20 text-2xl' }
+const SIZES = {
+  xs: 'size-6 text-[10px]',
+  sm: 'size-8 text-xs',
+  md: 'size-10 text-sm',
+  lg: 'size-14 text-lg',
+  xl: 'size-20 text-2xl',
+}
 
 /** Image avatar with initials fallback (company logos, user avatars). */
 export function Avatar({

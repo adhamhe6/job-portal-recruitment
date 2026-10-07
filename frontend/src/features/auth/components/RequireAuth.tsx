@@ -15,7 +15,15 @@ import { useAuth } from '../hooks/useAuth'
  *
  *   { element: <RequireAuth roles={['RECRUITER','ADMIN']} />, children: [...] }
  */
-export function RequireAuth({ roles, permission, children }: { roles?: readonly Role[]; permission?: Permission; children?: ReactNode }) {
+export function RequireAuth({
+  roles,
+  permission,
+  children,
+}: {
+  roles?: readonly Role[]
+  permission?: Permission
+  children?: ReactNode
+}) {
   const { status, user, can, justLoggedOut } = useAuth()
   const location = useLocation()
   if (status !== 'authenticated' || !user) {
@@ -30,6 +38,7 @@ export function RequireAuth({ roles, permission, children }: { roles?: readonly 
 export function RequireGuest({ children }: { children?: ReactNode }) {
   const { status } = useAuth()
   const [params] = useSearchParams()
-  if (status === 'authenticated') return <Navigate to={safeRedirect(params.get('next'), paths.dashboard)} replace />
+  if (status === 'authenticated')
+    return <Navigate to={safeRedirect(params.get('next'), paths.dashboard)} replace />
   return <>{children ?? <Outlet />}</>
 }

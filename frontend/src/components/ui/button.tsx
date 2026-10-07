@@ -12,7 +12,8 @@ export const buttonVariants = cva(
         default: 'bg-primary text-primary-foreground shadow-xs hover:bg-primary/90 active:bg-primary/80',
         secondary: 'bg-secondary text-secondary-foreground hover:bg-secondary/70',
         soft: 'bg-primary-soft text-primary-soft-foreground hover:bg-primary-soft/70',
-        outline: 'border border-input bg-card text-foreground shadow-xs hover:bg-accent hover:text-accent-foreground',
+        outline:
+          'border border-input bg-card text-foreground shadow-xs hover:bg-accent hover:text-accent-foreground',
         ghost: 'text-foreground hover:bg-accent hover:text-accent-foreground',
         destructive: 'bg-destructive text-destructive-foreground shadow-xs hover:bg-destructive/90',
         link: 'h-auto rounded-sm p-0 text-primary underline-offset-4 hover:underline',
@@ -36,7 +37,16 @@ export interface ButtonProps extends React.ComponentProps<'button'>, VariantProp
   loading?: boolean
 }
 
-export function Button({ className, variant, size, asChild = false, loading = false, disabled, children, ...props }: ButtonProps) {
+export function Button({
+  className,
+  variant,
+  size,
+  asChild = false,
+  loading = false,
+  disabled,
+  children,
+  ...props
+}: ButtonProps) {
   if (asChild) {
     return (
       <Slot className={cn(buttonVariants({ variant, size }), className)} {...props}>

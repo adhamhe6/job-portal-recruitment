@@ -21,7 +21,8 @@ export function applyApiErrors<T extends FieldValues>(
     inferField?: (message: string) => string | undefined
   },
 ): string | null {
-  if (!(error instanceof ApiError)) return error instanceof Error ? error.message : 'Something went wrong. Please try again.'
+  if (!(error instanceof ApiError))
+    return error instanceof Error ? error.message : 'Something went wrong. Please try again.'
 
   const known = new Set(opts.fields)
   const attach = (field: string, message: string): boolean => {
@@ -41,7 +42,12 @@ export function applyApiErrors<T extends FieldValues>(
     const mapped = opts.fieldMap?.[issue.field] ?? issue.field
     const top = mapped.split('.')[0] ?? ''
     const inferred = !mapped ? opts.inferField?.(issue.message) : undefined
-    if (attach(mapped, issue.message) || attach(top, issue.message) || (inferred && attach(inferred, issue.message))) continue
+    if (
+      attach(mapped, issue.message) ||
+      attach(top, issue.message) ||
+      (inferred && attach(inferred, issue.message))
+    )
+      continue
     general.push(issue.field ? `${issue.field}: ${issue.message}` : issue.message)
   }
   return general.length ? general.join(' · ') : null

@@ -39,7 +39,10 @@ export function useUrlState<T extends UrlStateShape>(defaults: T) {
   }, [params])
 
   const update = useCallback(
-    (patch: Partial<T>, { resetPage = true, replace = true }: { resetPage?: boolean; replace?: boolean } = {}) => {
+    (
+      patch: Partial<T>,
+      { resetPage = true, replace = true }: { resetPage?: boolean; replace?: boolean } = {},
+    ) => {
       const d = defs.current
       const next = new URLSearchParams(latest.current)
       const merged: Record<string, unknown> = { ...patch }

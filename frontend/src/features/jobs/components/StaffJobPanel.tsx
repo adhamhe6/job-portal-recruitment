@@ -12,8 +12,14 @@ import { useJobLifecycle } from '../hooks/useJobLifecycle'
 import { ACTIONS, availableActions, EDITABLE_STATUSES } from '../lib/lifecycle'
 
 const STATUS_NOTES: Partial<Record<JobDetail['status'], { variant: 'info' | 'warning'; text: string }>> = {
-  DRAFT: { variant: 'info', text: 'This job is a draft and not visible to candidates. Publish it when it is ready.' },
-  PAUSED: { variant: 'warning', text: 'This job is paused: hidden from search and not accepting applications.' },
+  DRAFT: {
+    variant: 'info',
+    text: 'This job is a draft and not visible to candidates. Publish it when it is ready.',
+  },
+  PAUSED: {
+    variant: 'warning',
+    text: 'This job is paused: hidden from search and not accepting applications.',
+  },
   CLOSED: { variant: 'warning', text: 'This job is closed. It no longer accepts applications.' },
   ARCHIVED: { variant: 'info', text: 'This job is archived and read-only.' },
 }
@@ -23,7 +29,9 @@ export function StaffJobPanel({ job }: { job: JobDetail }) {
   const { can } = useAuth()
   const navigate = useNavigate()
   const canManage = can('manage_jobs')
-  const { request, dialog } = useJobLifecycle({ onDone: (_j, action) => action === 'delete' && navigate(paths.manageJobs) })
+  const { request, dialog } = useJobLifecycle({
+    onDone: (_j, action) => action === 'delete' && navigate(paths.manageJobs),
+  })
   const actions = canManage ? availableActions(job.status, job.allowed_transitions) : []
   const note = STATUS_NOTES[job.status]
   const editable = canManage && EDITABLE_STATUSES.includes(job.status)
@@ -67,13 +75,21 @@ export function StaffJobPanel({ job }: { job: JobDetail }) {
             const def = ACTIONS[a]
             const Icon = def.icon
             return (
-              <Button key={a} variant={a === 'publish' ? 'default' : def.destructive ? 'outline' : 'secondary'} onClick={() => request(job, a)}>
+              <Button
+                key={a}
+                variant={a === 'publish' ? 'default' : def.destructive ? 'outline' : 'secondary'}
+                onClick={() => request(job, a)}
+              >
                 <Icon /> {def.label}
               </Button>
             )
           })}
           {canManage && job.status === 'DRAFT' && (
-            <Button variant="ghost" className="text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={() => request(job, 'delete')}>
+            <Button
+              variant="ghost"
+              className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+              onClick={() => request(job, 'delete')}
+            >
               <Trash2 /> Delete draft
             </Button>
           )}
@@ -89,7 +105,11 @@ export function StaffJobPanel({ job }: { job: JobDetail }) {
             </Link>
           </Button>
         </div>
-        {job.status === 'PUBLISHED' && editable && <p className="text-xs text-muted-foreground">Edits to a published job go live immediately and refresh candidate matches in the background.</p>}
+        {job.status === 'PUBLISHED' && editable && (
+          <p className="text-xs text-muted-foreground">
+            Edits to a published job go live immediately and refresh candidate matches in the background.
+          </p>
+        )}
       </CardContent>
       {dialog}
     </Card>

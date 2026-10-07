@@ -5,7 +5,9 @@ import type { NotificationOut } from '@/lib/api'
  * Where a notification should take the user. The backend gives us entity ids (interview > application > job > résumé);
  * the notification type refines it (a new candidate match for a recruiter belongs on the matching page).
  */
-export function notificationHref(n: Pick<NotificationOut, 'type' | 'job_id' | 'application_id' | 'interview_id' | 'resume_id'>): string | null {
+export function notificationHref(
+  n: Pick<NotificationOut, 'type' | 'job_id' | 'application_id' | 'interview_id' | 'resume_id'>,
+): string | null {
   switch (n.type) {
     case 'INTERVIEW_SCHEDULED':
     case 'INTERVIEW_RESCHEDULED':

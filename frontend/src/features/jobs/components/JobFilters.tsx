@@ -7,7 +7,13 @@ import { Field } from '@/components/ui/field'
 import { NativeSelect } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { SkillTagInput } from '@/features/skills/components/SkillPicker'
-import { EMPLOYMENT_TYPE_OPTIONS, EXPERIENCE_LEVEL_OPTIONS, POSTED_WITHIN_OPTIONS, WORKPLACE_TYPE_OPTIONS, type Option } from '@/lib/enums'
+import {
+  EMPLOYMENT_TYPE_OPTIONS,
+  EXPERIENCE_LEVEL_OPTIONS,
+  POSTED_WITHIN_OPTIONS,
+  WORKPLACE_TYPE_OPTIONS,
+  type Option,
+} from '@/lib/enums'
 import { cn } from '@/lib/utils'
 import { countActiveFilters, type JobSearchState } from '../lib/filters'
 
@@ -34,7 +40,9 @@ function CheckboxGroup({
             <Checkbox
               id={id}
               checked={checked}
-              onCheckedChange={(c) => onChange(c === true ? [...values, o.value] : values.filter((v) => v !== o.value))}
+              onCheckedChange={(c) =>
+                onChange(c === true ? [...values, o.value] : values.filter((v) => v !== o.value))
+              }
             />
             <Label htmlFor={id} className="cursor-pointer font-normal">
               {o.label}
@@ -76,7 +84,9 @@ export function JobFilters({
       }}
     >
       <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold">Filters{active > 0 && <span className="ml-1.5 text-muted-foreground tabular">({active})</span>}</h2>
+        <h2 className="text-sm font-semibold">
+          Filters{active > 0 && <span className="ml-1.5 text-muted-foreground tabular">({active})</span>}
+        </h2>
         {active > 0 && (
           <Button type="button" variant="link" size="sm" onClick={onClear}>
             Clear all
@@ -112,7 +122,11 @@ export function JobFilters({
           chipsLabel="Skill filters"
         />
         {state.skill.length > 1 && (
-          <div role="radiogroup" aria-label="Skill matching" className="grid grid-cols-2 gap-1 rounded-lg bg-muted p-1 text-sm">
+          <div
+            role="radiogroup"
+            aria-label="Skill matching"
+            className="grid grid-cols-2 gap-1 rounded-lg bg-muted p-1 text-sm"
+          >
             {(
               [
                 ['any', 'Any of these'],
@@ -138,12 +152,32 @@ export function JobFilters({
       </div>
 
       <Field label="Location">
-        <DebouncedInput value={state.location} onValueChange={(v) => update({ location: v })} placeholder="City or country" autoComplete="off" />
+        <DebouncedInput
+          value={state.location}
+          onValueChange={(v) => update({ location: v })}
+          placeholder="City or country"
+          autoComplete="off"
+        />
       </Field>
 
-      <CheckboxGroup legend="Workplace" options={WORKPLACE_TYPE_OPTIONS} values={state.workplace_type} onChange={(v) => update({ workplace_type: v })} />
-      <CheckboxGroup legend="Employment type" options={EMPLOYMENT_TYPE_OPTIONS} values={state.employment_type} onChange={(v) => update({ employment_type: v })} />
-      <CheckboxGroup legend="Experience level" options={EXPERIENCE_LEVEL_OPTIONS} values={state.experience_level} onChange={(v) => update({ experience_level: v })} />
+      <CheckboxGroup
+        legend="Workplace"
+        options={WORKPLACE_TYPE_OPTIONS}
+        values={state.workplace_type}
+        onChange={(v) => update({ workplace_type: v })}
+      />
+      <CheckboxGroup
+        legend="Employment type"
+        options={EMPLOYMENT_TYPE_OPTIONS}
+        values={state.employment_type}
+        onChange={(v) => update({ employment_type: v })}
+      />
+      <CheckboxGroup
+        legend="Experience level"
+        options={EXPERIENCE_LEVEL_OPTIONS}
+        values={state.experience_level}
+        onChange={(v) => update({ experience_level: v })}
+      />
 
       <Field label="Max. experience required" hint="Jobs asking for at most this many years">
         <DebouncedInput
@@ -182,11 +216,16 @@ export function JobFilters({
             onValueChange={(v) => update({ salary_max: v })}
           />
         </div>
-        <p className="text-xs text-muted-foreground">Yearly amounts in each job's own currency; currencies aren't converted.</p>
+        <p className="text-xs text-muted-foreground">
+          Yearly amounts in each job's own currency; currencies aren't converted.
+        </p>
       </fieldset>
 
       <Field label="Posted">
-        <NativeSelect value={state.posted_within_days} onChange={(e) => update({ posted_within_days: e.target.value })}>
+        <NativeSelect
+          value={state.posted_within_days}
+          onChange={(e) => update({ posted_within_days: e.target.value })}
+        >
           <option value="">Any time</option>
           {POSTED_WITHIN_OPTIONS.map((o) => (
             <option key={o.value} value={o.value}>

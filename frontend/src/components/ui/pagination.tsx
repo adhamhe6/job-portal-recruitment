@@ -39,12 +39,18 @@ export function Pagination({
   const from = total !== undefined && pageSize ? (total === 0 ? 0 : (page - 1) * pageSize + 1) : null
   const to = total !== undefined && pageSize ? Math.min(total, page * pageSize) : null
   return (
-    <nav aria-label="Pagination" className={cn('flex flex-col items-center justify-between gap-3 py-3 sm:flex-row', className)}>
+    <nav
+      aria-label="Pagination"
+      className={cn('flex flex-col items-center justify-between gap-3 py-3 sm:flex-row', className)}
+    >
       <p className="text-sm text-muted-foreground" aria-live="polite">
         {from !== null && to !== null && total !== undefined ? (
           <>
-            Showing <span className="font-medium text-foreground tabular">{fmt.int(from)}–{fmt.int(to)}</span> of{' '}
-            <span className="font-medium text-foreground tabular">{fmt.int(total)}</span> {label}
+            Showing{' '}
+            <span className="font-medium text-foreground tabular">
+              {fmt.int(from)}–{fmt.int(to)}
+            </span>{' '}
+            of <span className="font-medium text-foreground tabular">{fmt.int(total)}</span> {label}
           </>
         ) : (
           <>
@@ -55,12 +61,23 @@ export function Pagination({
       {pages > 1 && (
         <ul className="flex items-center gap-1">
           <li>
-            <Button variant="outline" size="icon-sm" onClick={() => onPageChange(page - 1)} disabled={page <= 1} aria-label="Previous page">
+            <Button
+              variant="outline"
+              size="icon-sm"
+              onClick={() => onPageChange(page - 1)}
+              disabled={page <= 1}
+              aria-label="Previous page"
+            >
               <ChevronLeft />
             </Button>
           </li>
           {pageWindow(page, pages).map((p, i) => (
-            <li key={`${p}-${i}`} className={cn(typeof p === 'number' && p !== 1 && p !== pages && p !== page && 'hidden sm:block')}>
+            <li
+              key={`${p}-${i}`}
+              className={cn(
+                typeof p === 'number' && p !== 1 && p !== pages && p !== page && 'hidden sm:block',
+              )}
+            >
               {p === '…' ? (
                 <span className="px-1.5 text-muted-foreground" aria-hidden>
                   …
@@ -80,7 +97,13 @@ export function Pagination({
             </li>
           ))}
           <li>
-            <Button variant="outline" size="icon-sm" onClick={() => onPageChange(page + 1)} disabled={page >= pages} aria-label="Next page">
+            <Button
+              variant="outline"
+              size="icon-sm"
+              onClick={() => onPageChange(page + 1)}
+              disabled={page >= pages}
+              aria-label="Next page"
+            >
               <ChevronRight />
             </Button>
           </li>

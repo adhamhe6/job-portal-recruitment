@@ -8,7 +8,11 @@ export function DebouncedInput({
   onValueChange,
   delay = 400,
   ...props
-}: Omit<React.ComponentProps<typeof Input>, 'value' | 'onChange'> & { value: string; onValueChange: (v: string) => void; delay?: number }) {
+}: Omit<React.ComponentProps<typeof Input>, 'value' | 'onChange'> & {
+  value: string
+  onValueChange: (v: string) => void
+  delay?: number
+}) {
   const [local, setLocal] = useState(value)
   const [synced, setSynced] = useState(value)
   const cb = useRef(onValueChange)

@@ -21,9 +21,11 @@ import { loginSchema, type LoginValues } from '../lib/schemas'
 
 function loginErrorMessage(e: unknown): string {
   if (e instanceof ApiError) {
-    if (e.code === 'INVALID_CREDENTIALS') return 'Incorrect email or password. Please check them and try again.'
+    if (e.code === 'INVALID_CREDENTIALS')
+      return 'Incorrect email or password. Please check them and try again.'
     if (e.code === 'ACCOUNT_SUSPENDED') return 'This account has been suspended. Contact your administrator.'
-    if (e.status === 429 || e.code === 'RATE_LIMITED') return 'Too many sign-in attempts. Please wait a minute and try again.'
+    if (e.status === 429 || e.code === 'RATE_LIMITED')
+      return 'Too many sign-in attempts. Please wait a minute and try again.'
     return e.message
   }
   return 'Could not sign in. Please try again.'
@@ -52,7 +54,10 @@ export default function LoginPage() {
       await login(email, password)
       navigate(next, { replace: true })
     } catch (e) {
-      const mapped = e instanceof ApiError && e.code === 'VALIDATION_ERROR' ? applyApiErrors(e, setError, { fields: ['email', 'password'] }) : loginErrorMessage(e)
+      const mapped =
+        e instanceof ApiError && e.code === 'VALIDATION_ERROR'
+          ? applyApiErrors(e, setError, { fields: ['email', 'password'] })
+          : loginErrorMessage(e)
       setFormError(mapped)
     }
   }
@@ -69,9 +74,20 @@ export default function LoginPage() {
       )}
       {formError && <Alert variant="danger">{formError}</Alert>}
 
-      <form onSubmit={handleSubmit((v) => signIn(v.email, v.password))} noValidate className="grid gap-4" aria-label="Sign in">
+      <form
+        onSubmit={handleSubmit((v) => signIn(v.email, v.password))}
+        noValidate
+        className="grid gap-4"
+        aria-label="Sign in"
+      >
         <Field label="Email" error={errors.email?.message} required>
-          <Input type="email" autoComplete="username" inputMode="email" placeholder="you@company.com" {...register('email')} />
+          <Input
+            type="email"
+            autoComplete="username"
+            inputMode="email"
+            placeholder="you@company.com"
+            {...register('email')}
+          />
         </Field>
         <Field label="Password" error={errors.password?.message} required>
           <PasswordInput autoComplete="current-password" {...register('password')} />
@@ -82,7 +98,10 @@ export default function LoginPage() {
       </form>
 
       {demo && (
-        <section aria-labelledby="demo-heading" className="space-y-3 rounded-xl border border-dashed bg-surface p-4">
+        <section
+          aria-labelledby="demo-heading"
+          className="space-y-3 rounded-xl border border-dashed bg-surface p-4"
+        >
           <div className="flex items-center gap-2">
             <Sparkles className="size-4 text-primary" aria-hidden />
             <h2 id="demo-heading" className="text-sm font-semibold">
@@ -109,7 +128,11 @@ export default function LoginPage() {
                     <span className="block truncate font-medium">{a.label}</span>
                     <span className="block truncate text-xs text-muted-foreground">{a.email}</span>
                   </span>
-                  <Badge variant="default">{demoBusy === a.email ? 'Signing in…' : (ROLE_LABELS[a.role as keyof typeof ROLE_LABELS] ?? a.role)}</Badge>
+                  <Badge variant="default">
+                    {demoBusy === a.email
+                      ? 'Signing in…'
+                      : (ROLE_LABELS[a.role as keyof typeof ROLE_LABELS] ?? a.role)}
+                  </Badge>
                 </button>
               </li>
             ))}

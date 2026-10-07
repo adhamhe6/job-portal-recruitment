@@ -28,7 +28,10 @@ export function DialogContent({
   size = 'md',
   hideClose,
   ...props
-}: React.ComponentProps<typeof DialogPrimitive.Content> & { size?: keyof typeof SIZES; hideClose?: boolean }) {
+}: React.ComponentProps<typeof DialogPrimitive.Content> & {
+  size?: keyof typeof SIZES
+  hideClose?: boolean
+}) {
   return (
     <DialogPrimitive.Portal>
       <DialogOverlay />
@@ -56,11 +59,21 @@ export function DialogHeader({ className, ...props }: React.ComponentProps<'div'
   return <div className={cn('flex flex-col gap-1.5 pr-8', className)} {...props} />
 }
 export function DialogFooter({ className, ...props }: React.ComponentProps<'div'>) {
-  return <div className={cn('flex flex-col-reverse gap-2 sm:flex-row sm:justify-end', className)} {...props} />
+  return (
+    <div className={cn('flex flex-col-reverse gap-2 sm:flex-row sm:justify-end', className)} {...props} />
+  )
 }
 export function DialogTitle({ className, ...props }: React.ComponentProps<typeof DialogPrimitive.Title>) {
-  return <DialogPrimitive.Title className={cn('text-lg leading-snug font-semibold tracking-tight', className)} {...props} />
+  return (
+    <DialogPrimitive.Title
+      className={cn('text-lg leading-snug font-semibold tracking-tight', className)}
+      {...props}
+    />
+  )
 }
-export function DialogDescription({ className, ...props }: React.ComponentProps<typeof DialogPrimitive.Description>) {
+export function DialogDescription({
+  className,
+  ...props
+}: React.ComponentProps<typeof DialogPrimitive.Description>) {
   return <DialogPrimitive.Description className={cn('text-sm text-muted-foreground', className)} {...props} />
 }

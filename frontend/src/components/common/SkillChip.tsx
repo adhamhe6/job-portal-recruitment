@@ -30,7 +30,10 @@ export function SkillChip({
   prefix?: React.ReactNode
 }) {
   return (
-    <Badge variant="outline" className={cn('border-transparent font-medium', TONES[tone], onRemove && 'pr-1', className)}>
+    <Badge
+      variant="outline"
+      className={cn('border-transparent font-medium', TONES[tone], onRemove && 'pr-1', className)}
+    >
       {prefix}
       {name}
       {onRemove && (
@@ -48,7 +51,17 @@ export function SkillChip({
 }
 
 /** A wrapped row of chips with a "+N" overflow. */
-export function SkillChipList({ names, max = 5, tone = 'default', className }: { names: string[]; max?: number; tone?: SkillChipTone; className?: string }) {
+export function SkillChipList({
+  names,
+  max = 5,
+  tone = 'default',
+  className,
+}: {
+  names: string[]
+  max?: number
+  tone?: SkillChipTone
+  className?: string
+}) {
   const shown = names.slice(0, max)
   const rest = names.length - shown.length
   return (

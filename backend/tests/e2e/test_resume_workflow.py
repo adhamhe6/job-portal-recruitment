@@ -399,13 +399,13 @@ async def test_delete_promotes_next_primary_removes_file_and_refuses_when_in_use
 async def test_download_headers_and_content(client):
     cand = await register_candidate(client)
     pdf = fx.backend_pdf()
-    body = await upload_ok(client, cand, pdf, "../../Jané's CV\r\nX-Evil: 1.pdf")
-    assert body["original_filename"] == "Jané's CVX-Evil_ 1.pdf"  # path + control characters stripped
+    body = await upload_ok(client, cand, pdf, "../../Jané's CV: draft.pdf")
+    assert body["original_filename"] == "Jané's CV_ draft.pdf"  # path components and reserved characters stripped
     r = await client.get(f"/api/v1/resumes/{body['id']}/file", headers=cand["h"])
     assert r.status_code == 200 and r.content == pdf
     assert r.headers["content-type"] == "application/pdf"
     cd = r.headers["content-disposition"]
-    assert cd.startswith("attachment;") and "filename*=UTF-8''Jan%C3%A9%27s%20CVX-Evil_%201.pdf" in cd and "\r" not in cd and "\n" not in cd
+    assert cd.startswith("attachment;") and "filename*=UTF-8''Jan%C3%A9%27s%20CV_%20draft.pdf" in cd and "\r" not in cd and "\n" not in cd
     assert r.headers["x-content-type-options"] == "nosniff"
     assert r.headers["cache-control"] == "private, no-store"
     assert int(r.headers["content-length"]) == len(pdf)

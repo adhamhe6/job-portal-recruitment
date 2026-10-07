@@ -59,23 +59,37 @@ function resolve({ score, percent, band }: ScoreInput) {
 }
 
 /** "92% match" pill, coloured by band. Renders nothing when there is no score. */
-export function MatchScoreBadge({ className, showLabel = false, ...input }: ScoreInput & { className?: string; showLabel?: boolean }) {
+export function MatchScoreBadge({
+  className,
+  showLabel = false,
+  ...input
+}: ScoreInput & { className?: string; showLabel?: boolean }) {
   const { pct, band } = resolve(input)
   if (pct === null) return null
   return (
     <span
-      className={cn('inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold whitespace-nowrap', BAND_STYLES[band].badge, className)}
+      className={cn(
+        'inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold whitespace-nowrap',
+        BAND_STYLES[band].badge,
+        className,
+      )}
       title={`${BAND_LABELS[band]} (${pct}%)`}
     >
       <Sparkles className="size-3" aria-hidden />
       <span className="tabular">{pct}%</span>
-      <span className={showLabel ? '' : 'sr-only'}>{showLabel ? BAND_LABELS[band].replace(' match', '') : BAND_LABELS[band]}</span>
+      <span className={showLabel ? '' : 'sr-only'}>
+        {showLabel ? BAND_LABELS[band].replace(' match', '') : BAND_LABELS[band]}
+      </span>
     </span>
   )
 }
 
 /** Horizontal meter with percentage + band label. */
-export function MatchBar({ className, label = 'Match score', ...input }: ScoreInput & { className?: string; label?: string }) {
+export function MatchBar({
+  className,
+  label = 'Match score',
+  ...input
+}: ScoreInput & { className?: string; label?: string }) {
   const { pct, band } = resolve(input)
   if (pct === null) return null
   return (
@@ -93,7 +107,10 @@ export function MatchBar({ className, label = 'Match score', ...input }: ScoreIn
         aria-valuetext={`${pct}% — ${BAND_LABELS[band]}`}
         className="h-2 overflow-hidden rounded-full bg-muted"
       >
-        <div className={cn('h-full rounded-full transition-[width] duration-500', BAND_STYLES[band].bar)} style={{ width: `${Math.min(100, pct)}%` }} />
+        <div
+          className={cn('h-full rounded-full transition-[width] duration-500', BAND_STYLES[band].bar)}
+          style={{ width: `${Math.min(100, pct)}%` }}
+        />
       </div>
     </div>
   )

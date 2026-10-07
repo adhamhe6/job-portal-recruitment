@@ -46,7 +46,8 @@ export const ACTIONS: Record<LifecycleAction, ActionDef> = {
     askReason: true,
     confirmLabel: 'Pause job',
     title: (t) => `Pause “${t}”?`,
-    description: 'The job is hidden from search and stops accepting applications until you resume it. Existing applications are kept.',
+    description:
+      'The job is hidden from search and stops accepting applications until you resume it. Existing applications are kept.',
     success: 'Job paused',
   },
   resume: {
@@ -66,7 +67,8 @@ export const ACTIONS: Record<LifecycleAction, ActionDef> = {
     askReason: true,
     confirmLabel: 'Close job',
     title: (t) => `Close “${t}”?`,
-    description: 'Closing ends the hiring round: the job leaves search and no new applications are accepted. You can archive it afterwards. Closed jobs cannot be reopened.',
+    description:
+      'Closing ends the hiring round: the job leaves search and no new applications are accepted. You can archive it afterwards. Closed jobs cannot be reopened.',
     success: 'Job closed',
   },
   archive: {

@@ -8,10 +8,18 @@ export const Select = SelectPrimitive.Root
 export const SelectGroup = SelectPrimitive.Group
 export const SelectValue = SelectPrimitive.Value
 
-export function SelectTrigger({ className, children, ...props }: React.ComponentProps<typeof SelectPrimitive.Trigger>) {
+export function SelectTrigger({
+  className,
+  children,
+  ...props
+}: React.ComponentProps<typeof SelectPrimitive.Trigger>) {
   return (
     <SelectPrimitive.Trigger
-      className={cn(controlClass, 'cursor-pointer items-center justify-between gap-2 text-left data-[placeholder]:text-muted-foreground [&>span]:truncate', className)}
+      className={cn(
+        controlClass,
+        'cursor-pointer items-center justify-between gap-2 text-left data-[placeholder]:text-muted-foreground [&>span]:truncate',
+        className,
+      )}
       {...props}
     >
       {children}
@@ -22,7 +30,12 @@ export function SelectTrigger({ className, children, ...props }: React.Component
   )
 }
 
-export function SelectContent({ className, children, position = 'popper', ...props }: React.ComponentProps<typeof SelectPrimitive.Content>) {
+export function SelectContent({
+  className,
+  children,
+  position = 'popper',
+  ...props
+}: React.ComponentProps<typeof SelectPrimitive.Content>) {
   return (
     <SelectPrimitive.Portal>
       <SelectPrimitive.Content
@@ -41,7 +54,11 @@ export function SelectContent({ className, children, position = 'popper', ...pro
   )
 }
 
-export function SelectItem({ className, children, ...props }: React.ComponentProps<typeof SelectPrimitive.Item>) {
+export function SelectItem({
+  className,
+  children,
+  ...props
+}: React.ComponentProps<typeof SelectPrimitive.Item>) {
   return (
     <SelectPrimitive.Item
       className={cn(

@@ -13,7 +13,11 @@ export function Checkbox({ className, ...props }: React.ComponentProps<typeof Ch
       {...props}
     >
       <CheckboxPrimitive.Indicator>
-        {props.checked === 'indeterminate' ? <Minus className="size-3.5" strokeWidth={3} /> : <Check className="size-3.5" strokeWidth={3} />}
+        {props.checked === 'indeterminate' ? (
+          <Minus className="size-3.5" strokeWidth={3} />
+        ) : (
+          <Check className="size-3.5" strokeWidth={3} />
+        )}
       </CheckboxPrimitive.Indicator>
     </CheckboxPrimitive.Root>
   )

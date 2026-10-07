@@ -6,7 +6,10 @@ export function RadioGroup({ className, ...props }: React.ComponentProps<typeof 
   return <RadioGroupPrimitive.Root className={cn('grid gap-2', className)} {...props} />
 }
 
-export function RadioGroupItem({ className, ...props }: React.ComponentProps<typeof RadioGroupPrimitive.Item>) {
+export function RadioGroupItem({
+  className,
+  ...props
+}: React.ComponentProps<typeof RadioGroupPrimitive.Item>) {
   return (
     <RadioGroupPrimitive.Item
       className={cn(

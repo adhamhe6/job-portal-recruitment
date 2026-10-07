@@ -10,7 +10,12 @@ export function Input({ className, type = 'text', ...props }: React.ComponentPro
 }
 
 export function Textarea({ className, ...props }: React.ComponentProps<'textarea'>) {
-  return <textarea className={cn(controlClass, 'h-auto min-h-20 resize-y py-2 leading-relaxed', className)} {...props} />
+  return (
+    <textarea
+      className={cn(controlClass, 'h-auto min-h-20 resize-y py-2 leading-relaxed', className)}
+      {...props}
+    />
+  )
 }
 
 /** Native <select> with the same look as Input: best for long lists and mobile pickers; works with react-hook-form `register`. */
@@ -20,7 +25,10 @@ export function NativeSelect({ className, children, ...props }: React.ComponentP
       <select className={cn(controlClass, 'cursor-pointer appearance-none pr-9', className)} {...props}>
         {children}
       </select>
-      <ChevronDown className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
+      <ChevronDown
+        className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+        aria-hidden
+      />
     </div>
   )
 }

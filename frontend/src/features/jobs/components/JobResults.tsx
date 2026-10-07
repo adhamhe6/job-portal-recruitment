@@ -34,20 +34,39 @@ export function JobResults({
       </div>
     )
   }
-  if (query.isError && !query.data) return <ErrorState error={query.error} onRetry={() => query.refetch()} title="We couldn't load jobs" />
+  if (query.isError && !query.data)
+    return <ErrorState error={query.error} onRetry={() => query.refetch()} title="We couldn't load jobs" />
   const data = query.data
   if (!data || data.items.length === 0) return <>{empty}</>
   return (
     <div>
-      {query.isError && <ErrorState compact error={query.error} onRetry={() => query.refetch()} title="Showing earlier results" />}
-      <ul className={cn('space-y-3 transition-opacity', query.isPlaceholderData && 'opacity-60')} aria-busy={query.isPlaceholderData || undefined}>
+      {query.isError && (
+        <ErrorState
+          compact
+          error={query.error}
+          onRetry={() => query.refetch()}
+          title="Showing earlier results"
+        />
+      )}
+      <ul
+        className={cn('space-y-3 transition-opacity', query.isPlaceholderData && 'opacity-60')}
+        aria-busy={query.isPlaceholderData || undefined}
+      >
         {data.items.map((job) => (
           <li key={job.id}>
             <JobCard job={job} highlightSkills={highlightSkills} />
           </li>
         ))}
       </ul>
-      <Pagination page={data.page} pages={data.pages} total={data.total} pageSize={data.page_size} onPageChange={onPageChange} label={label} className="mt-4" />
+      <Pagination
+        page={data.page}
+        pages={data.pages}
+        total={data.total}
+        pageSize={data.page_size}
+        onPageChange={onPageChange}
+        label={label}
+        className="mt-4"
+      />
     </div>
   )
 }

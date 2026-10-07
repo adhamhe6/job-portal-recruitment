@@ -24,7 +24,9 @@ export function useMyResumes(enabled = true) {
     enabled: enabled && isCandidate,
     queryFn: async ({ signal }): Promise<ResumeSummary[]> => {
       try {
-        const data = await api.get<ResumeSummary[] | Paginated<ResumeSummary>>('/resumes', undefined, { signal })
+        const data = await api.get<ResumeSummary[] | Paginated<ResumeSummary>>('/resumes', undefined, {
+          signal,
+        })
         return Array.isArray(data) ? data : (data?.items ?? [])
       } catch (e) {
         if (e instanceof ApiError && (e.status === 404 || e.status === 405)) return []

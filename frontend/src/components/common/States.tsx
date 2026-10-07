@@ -28,7 +28,13 @@ export function EmptyState({
   compact?: boolean
 }) {
   return (
-    <div className={cn('flex flex-col items-center justify-center gap-2 px-6 text-center', compact ? 'py-8' : 'py-14', className)}>
+    <div
+      className={cn(
+        'flex flex-col items-center justify-center gap-2 px-6 text-center',
+        compact ? 'py-8' : 'py-14',
+        className,
+      )}
+    >
       <div className="mb-1 flex size-12 items-center justify-center rounded-full bg-primary-soft text-primary-soft-foreground [&_svg]:size-6">
         {icon ?? <Inbox aria-hidden />}
       </div>
@@ -40,20 +46,42 @@ export function EmptyState({
 }
 
 /** Empty state for search/filter results. */
-export function NoResults({ title = 'No results found', description, action }: { title?: string; description?: ReactNode; action?: ReactNode }) {
+export function NoResults({
+  title = 'No results found',
+  description,
+  action,
+}: {
+  title?: string
+  description?: ReactNode
+  action?: ReactNode
+}) {
   return <EmptyState title={title} description={description} action={action} icon={<SearchX aria-hidden />} />
 }
 
 function describeError(error: unknown): { title: string; message: string; icon: ReactNode } {
   if (error instanceof ApiError) {
     if (error.isNetworkError)
-      return { title: 'Cannot reach the server', message: 'Check your connection and try again.', icon: <WifiOff aria-hidden /> }
+      return {
+        title: 'Cannot reach the server',
+        message: 'Check your connection and try again.',
+        icon: <WifiOff aria-hidden />,
+      }
     if (error.status === 403)
-      return { title: 'Access denied', message: 'Your account does not have permission to view this.', icon: <ShieldAlert aria-hidden /> }
-    if (error.status === 404) return { title: 'Not found', message: error.message, icon: <SearchX aria-hidden /> }
-    if (error.status === 429) return { title: 'Slow down a little', message: error.message, icon: <AlertTriangle aria-hidden /> }
+      return {
+        title: 'Access denied',
+        message: 'Your account does not have permission to view this.',
+        icon: <ShieldAlert aria-hidden />,
+      }
+    if (error.status === 404)
+      return { title: 'Not found', message: error.message, icon: <SearchX aria-hidden /> }
+    if (error.status === 429)
+      return { title: 'Slow down a little', message: error.message, icon: <AlertTriangle aria-hidden /> }
     if (error.status >= 500)
-      return { title: 'Service unavailable', message: 'The server hit a problem. Please try again shortly.', icon: <AlertTriangle aria-hidden /> }
+      return {
+        title: 'Service unavailable',
+        message: 'The server hit a problem. Please try again shortly.',
+        icon: <AlertTriangle aria-hidden />,
+      }
   }
   return { title: 'Something went wrong', message: errorMessage(error), icon: <AlertTriangle aria-hidden /> }
 }
@@ -84,8 +112,17 @@ export function ErrorState({
   const requestId = error instanceof ApiError ? error.requestId : null
   const retry = useRetryFailed(onRetry)
   return (
-    <div role="alert" className={cn('flex flex-col items-center justify-center gap-2 px-6 text-center', compact ? 'py-8' : 'py-14', className)}>
-      <div className="mb-1 flex size-12 items-center justify-center rounded-full bg-destructive/10 text-destructive [&_svg]:size-6">{d.icon}</div>
+    <div
+      role="alert"
+      className={cn(
+        'flex flex-col items-center justify-center gap-2 px-6 text-center',
+        compact ? 'py-8' : 'py-14',
+        className,
+      )}
+    >
+      <div className="mb-1 flex size-12 items-center justify-center rounded-full bg-destructive/10 text-destructive [&_svg]:size-6">
+        {d.icon}
+      </div>
       <h3 className="text-base font-semibold">{title ?? d.title}</h3>
       <p className="max-w-md text-sm text-muted-foreground">{d.message}</p>
       {requestId && <p className="text-xs text-muted-foreground">Reference: {requestId}</p>}
@@ -104,7 +141,10 @@ export function InlineError({ error, className }: { error: unknown; className?: 
   return (
     <div
       role="alert"
-      className={cn('flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive', className)}
+      className={cn(
+        'flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive',
+        className,
+      )}
     >
       <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden />
       <span>{errorMessage(error)}</span>
@@ -115,7 +155,10 @@ export function InlineError({ error, className }: { error: unknown; className?: 
 /** Centered spinner for full-page / section loading where a skeleton is not practical. */
 export function Spinner({ label = 'Loading', className }: { label?: string; className?: string }) {
   return (
-    <div role="status" className={cn('flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground', className)}>
+    <div
+      role="status"
+      className={cn('flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground', className)}
+    >
       <Loader2 className="size-4 animate-spin" aria-hidden />
       <span>{label}…</span>
     </div>
@@ -138,7 +181,12 @@ export function TableSkeleton({ rows = 6, cols = 5 }: { rows?: number; cols?: nu
 
 export function CardGridSkeleton({ count = 4, className }: { count?: number; className?: string }) {
   return (
-    <div className={cn('grid gap-4 sm:grid-cols-2 xl:grid-cols-4', className)} role="status" aria-busy="true" aria-label="Loading">
+    <div
+      className={cn('grid gap-4 sm:grid-cols-2 xl:grid-cols-4', className)}
+      role="status"
+      aria-busy="true"
+      aria-label="Loading"
+    >
       {Array.from({ length: count }).map((_, i) => (
         <Skeleton key={i} className="h-28 rounded-xl" />
       ))}

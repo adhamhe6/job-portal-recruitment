@@ -31,7 +31,14 @@ export default function RegisterPage() {
     formState: { errors, isSubmitting },
   } = useForm<RegisterValues>({
     resolver: zodResolver(registerSchema),
-    defaultValues: { first_name: '', last_name: '', email: '', phone: '', password: '', confirm_password: '' },
+    defaultValues: {
+      first_name: '',
+      last_name: '',
+      email: '',
+      phone: '',
+      password: '',
+      confirm_password: '',
+    },
   })
   const password = watch('password')
 
@@ -49,7 +56,9 @@ export default function RegisterPage() {
         toast.success(`Welcome to TalentLens, ${me.first_name}!`)
         navigate(safeRedirect(params.get('next'), paths.dashboard), { replace: true })
       } catch (e) {
-        setFormError(applyApiErrors(e, setError, { fields: FIELDS, codeFields: { EMAIL_ALREADY_REGISTERED: 'email' } }))
+        setFormError(
+          applyApiErrors(e, setError, { fields: FIELDS, codeFields: { EMAIL_ALREADY_REGISTERED: 'email' } }),
+        )
         focusFirstError()
       }
     },
@@ -60,7 +69,9 @@ export default function RegisterPage() {
     <div className="space-y-6">
       <div className="space-y-1.5">
         <h1 className="text-2xl font-semibold tracking-tight">Create your candidate account</h1>
-        <p className="text-sm text-muted-foreground">Upload your résumé once and get matched to jobs with clear explanations.</p>
+        <p className="text-sm text-muted-foreground">
+          Upload your résumé once and get matched to jobs with clear explanations.
+        </p>
       </div>
       {formError && <Alert variant="danger">{formError}</Alert>}
       <form onSubmit={onSubmit} noValidate className="grid gap-4" aria-label="Create candidate account">
@@ -73,7 +84,13 @@ export default function RegisterPage() {
           </Field>
         </div>
         <Field label="Email" error={errors.email?.message} required>
-          <Input type="email" autoComplete="email" inputMode="email" placeholder="you@example.com" {...register('email')} />
+          <Input
+            type="email"
+            autoComplete="email"
+            inputMode="email"
+            placeholder="you@example.com"
+            {...register('email')}
+          />
         </Field>
         <Field label="Phone" error={errors.phone?.message} optional>
           <Input type="tel" autoComplete="tel" placeholder="+49 30 1234567" {...register('phone')} />

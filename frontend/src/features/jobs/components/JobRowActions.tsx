@@ -1,14 +1,26 @@
 import { Eye, MoreHorizontal, Pencil, Target, Trash2, Users } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import type { JobListItem } from '@/lib/api'
 import { paths } from '@/routes/paths'
 import { ACTIONS, availableActions, EDITABLE_STATUSES, type LifecycleAction } from '../lib/lifecycle'
 
 /** Per-row "⋯" menu on the jobs list: navigation shortcuts + lifecycle actions (permission- and status-aware). */
-export function JobRowActions({ job, onAction }: { job: Pick<JobListItem, 'id' | 'title' | 'status'>; onAction: (job: { id: string; title: string }, action: LifecycleAction | 'delete') => void }) {
+export function JobRowActions({
+  job,
+  onAction,
+}: {
+  job: Pick<JobListItem, 'id' | 'title' | 'status'>
+  onAction: (job: { id: string; title: string }, action: LifecycleAction | 'delete') => void
+}) {
   const { can } = useAuth()
   const navigate = useNavigate()
   const canManage = can('manage_jobs')
@@ -42,7 +54,11 @@ export function JobRowActions({ job, onAction }: { job: Pick<JobListItem, 'id' |
           const def = ACTIONS[a]
           const Icon = def.icon
           return (
-            <DropdownMenuItem key={a} destructive={def.destructive && a !== 'close'} onSelect={() => onAction(job, a)}>
+            <DropdownMenuItem
+              key={a}
+              destructive={def.destructive && a !== 'close'}
+              onSelect={() => onAction(job, a)}
+            >
               <Icon /> {def.label}
             </DropdownMenuItem>
           )

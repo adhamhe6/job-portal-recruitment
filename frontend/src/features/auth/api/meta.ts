@@ -24,7 +24,11 @@ const FALLBACK: { accounts: DemoAccount[]; password: string } | null =
         accounts: [
           { role: 'CANDIDATE', label: 'Candidate — Alex Rivera', email: 'candidate@demo.example' },
           { role: 'RECRUITER', label: 'Recruiter — Northwind Labs', email: 'recruiter@demo.example' },
-          { role: 'HIRING_MANAGER', label: 'Hiring manager — Northwind Labs', email: 'hiring.manager@demo.example' },
+          {
+            role: 'HIRING_MANAGER',
+            label: 'Hiring manager — Northwind Labs',
+            email: 'hiring.manager@demo.example',
+          },
           { role: 'ADMIN', label: 'Platform admin', email: 'admin@demo.example' },
         ],
       }

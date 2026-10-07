@@ -7,7 +7,8 @@ export const skillKeys = { search: (q: string) => ['skills', 'search', q] as con
 export function useSkillSearch(q: string, enabled = true, limit = 12) {
   return useQuery({
     queryKey: skillKeys.search(q.trim().toLowerCase()),
-    queryFn: ({ signal }) => api.get<Paginated<SkillOut>>('/skills', { q: q.trim() || undefined, page_size: limit }, { signal }),
+    queryFn: ({ signal }) =>
+      api.get<Paginated<SkillOut>>('/skills', { q: q.trim() || undefined, page_size: limit }, { signal }),
     enabled,
     placeholderData: keepPreviousData,
     staleTime: 5 * 60_000,

@@ -5,7 +5,14 @@ import { toast } from 'sonner'
 import { Alert } from '@/components/ui/alert'
 import { InlineError } from '@/components/common/States'
 import { Button } from '@/components/ui/button'
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { Field } from '@/components/ui/field'
 import { Textarea } from '@/components/ui/input'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
@@ -22,7 +29,9 @@ function applyErrorMessage(e: unknown): { message: string; field?: boolean } {
   if (e instanceof ApiError) {
     switch (e.code) {
       case 'APPLICATION_ALREADY_EXISTS':
-        return { message: 'You have already applied to this job. You can follow its progress under Applications.' }
+        return {
+          message: 'You have already applied to this job. You can follow its progress under Applications.',
+        }
       case 'JOB_NOT_ACCEPTING_APPLICATIONS':
         return { message: `${e.message}. This job can no longer be applied to.` }
       case 'JOB_NOT_FOUND':
@@ -31,7 +40,10 @@ function applyErrorMessage(e: unknown): { message: string; field?: boolean } {
         return { message: 'That résumé could not be found. Please choose another one.' }
       case 'VALIDATION_ERROR': {
         const first = e.fieldIssues[0]
-        return { message: first ? `${first.field ? `${first.field}: ` : ''}${first.message}` : e.message, field: true }
+        return {
+          message: first ? `${first.field ? `${first.field}: ` : ''}${first.message}` : e.message,
+          field: true,
+        }
       }
       default:
         return { message: e.message }
@@ -45,7 +57,15 @@ function applyErrorMessage(e: unknown): { message: string; field?: boolean } {
  * Handles: no résumé / endpoint unavailable (friendly prompt to upload one), already applied (409),
  * job closed (422) and generic failures, all with plain-language messages.
  */
-export function ApplyDialog({ job, open, onOpenChange }: { job: JobPublic | JobDetail; open: boolean; onOpenChange: (open: boolean) => void }) {
+export function ApplyDialog({
+  job,
+  open,
+  onOpenChange,
+}: {
+  job: JobPublic | JobDetail
+  open: boolean
+  onOpenChange: (open: boolean) => void
+}) {
   const navigate = useNavigate()
   const resumes = useMyResumes(open)
   const apply = useApplyToJob()
@@ -119,7 +139,9 @@ export function ApplyDialog({ job, open, onOpenChange }: { job: JobPublic | JobD
                     <RadioGroupItem id={`resume-${r.id}`} value={r.id} />
                     <FileText className="size-5 shrink-0 text-muted-foreground" aria-hidden />
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-medium">{r.original_filename ?? 'Résumé'}</span>
+                      <span className="block truncate text-sm font-medium">
+                        {r.original_filename ?? 'Résumé'}
+                      </span>
                       <span className="block text-xs text-muted-foreground">
                         {r.is_primary ? 'Primary' : 'Uploaded'}
                         {r.created_at ? ` · ${dates.date(r.created_at)}` : ''}
@@ -137,7 +159,12 @@ export function ApplyDialog({ job, open, onOpenChange }: { job: JobPublic | JobD
             hint="Tell the team why you're a good fit. Plain text."
             error={tooLong ? `Keep it under ${MAX_COVER_LETTER.toLocaleString()} characters` : undefined}
           >
-            <Textarea rows={6} value={coverLetter} onChange={(e) => setCoverLetter(e.target.value)} placeholder="Hi team — I'm excited about this role because…" />
+            <Textarea
+              rows={6}
+              value={coverLetter}
+              onChange={(e) => setCoverLetter(e.target.value)}
+              placeholder="Hi team — I'm excited about this role because…"
+            />
           </Field>
           <p className="-mt-3 text-right text-xs text-muted-foreground tabular" aria-live="off">
             {coverLetter.length.toLocaleString()} / {MAX_COVER_LETTER.toLocaleString()}
@@ -159,7 +186,8 @@ export function ApplyDialog({ job, open, onOpenChange }: { job: JobPublic | JobD
 
           <p className="flex items-start gap-2 text-xs text-muted-foreground">
             <Info className="mt-0.5 size-3.5 shrink-0" aria-hidden />
-            Your application, résumé and profile are shared with {job.company.name}. You can withdraw before you're shortlisted.
+            Your application, résumé and profile are shared with {job.company.name}. You can withdraw before
+            you're shortlisted.
           </p>
         </div>
 

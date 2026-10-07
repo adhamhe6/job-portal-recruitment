@@ -50,10 +50,15 @@ export function FileDropzone({
   const validate = (f: File): string | null => {
     if (accept?.length) {
       const name = f.name.toLowerCase()
-      const ok = accept.some((a) => (a.startsWith('.') ? name.endsWith(a.toLowerCase()) : f.type === a || (a.endsWith('/*') && f.type.startsWith(a.slice(0, -1)))))
+      const ok = accept.some((a) =>
+        a.startsWith('.')
+          ? name.endsWith(a.toLowerCase())
+          : f.type === a || (a.endsWith('/*') && f.type.startsWith(a.slice(0, -1))),
+      )
       if (!ok) return `Unsupported file type. Allowed: ${accept.join(', ')}`
     }
-    if (f.size > maxSizeMB * 1024 * 1024) return `File is too large (${formatBytes(f.size)}). Maximum is ${maxSizeMB} MB.`
+    if (f.size > maxSizeMB * 1024 * 1024)
+      return `File is too large (${formatBytes(f.size)}). Maximum is ${maxSizeMB} MB.`
     if (f.size === 0) return 'The file is empty.'
     return null
   }
@@ -120,7 +125,9 @@ export function FileDropzone({
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-medium">{file.name}</p>
             <p className="text-xs text-muted-foreground">{formatBytes(file.size)}</p>
-            {uploading && <Progress className="mt-2" value={(progress ?? 0) * 100} label={`Uploading ${file.name}`} />}
+            {uploading && (
+              <Progress className="mt-2" value={(progress ?? 0) * 100} label={`Uploading ${file.name}`} />
+            )}
           </div>
           {onClear && !uploading && (
             <Button variant="ghost" size="icon-sm" onClick={onClear} aria-label={`Remove ${file.name}`}>

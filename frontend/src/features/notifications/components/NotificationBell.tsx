@@ -38,7 +38,12 @@ export function NotificationBell() {
       <PopoverContent className="w-[26rem]" align="end">
         <div className="flex items-center justify-between border-b px-4 py-3">
           <h2 className="text-sm font-semibold">Notifications</h2>
-          <Button variant="ghost" size="sm" disabled={count === 0 || markAll.isPending} onClick={() => markAll.mutate()}>
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={count === 0 || markAll.isPending}
+            onClick={() => markAll.mutate()}
+          >
             <CheckCheck /> Mark all read
           </Button>
         </div>
@@ -58,7 +63,11 @@ export function NotificationBell() {
           ) : list.isError ? (
             <ErrorState error={list.error} onRetry={() => list.refetch()} compact />
           ) : list.data.items.length === 0 ? (
-            <EmptyState compact title="You're all caught up" description="New updates about applications, interviews and matches will show up here." />
+            <EmptyState
+              compact
+              title="You're all caught up"
+              description="New updates about applications, interviews and matches will show up here."
+            />
           ) : (
             <ul className="divide-y">
               {list.data.items.map((n) => (

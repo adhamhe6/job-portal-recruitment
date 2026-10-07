@@ -35,7 +35,13 @@ function DeadlineCell({ deadline }: { deadline: string | null }) {
   if (!deadline) return <span className="text-muted-foreground">—</span>
   const hint = deadlineHint(deadline)
   return (
-    <span className={cn('whitespace-nowrap', hint?.tone === 'past' && 'text-destructive', hint?.tone === 'urgent' && 'font-medium text-amber-700 dark:text-amber-400')}>
+    <span
+      className={cn(
+        'whitespace-nowrap',
+        hint?.tone === 'past' && 'text-destructive',
+        hint?.tone === 'urgent' && 'font-medium text-amber-700 dark:text-amber-400',
+      )}
+    >
       {dates.date(deadline)}
     </span>
   )
@@ -46,7 +52,13 @@ export default function ManageJobsPage() {
   const { can, user, isAdmin } = useAuth()
   const [state, update, reset] = useUrlState({ q: '', status: 'ALL', sort: 'newest', page: 1 })
   const status = (STATUS_TABS as readonly string[]).includes(state.status) ? state.status : 'ALL'
-  const query = useManagedJobs({ q: state.q, status, sort: state.sort, page: state.page, pageSize: PAGE_SIZE })
+  const query = useManagedJobs({
+    q: state.q,
+    status,
+    sort: state.sort,
+    page: state.page,
+    pageSize: PAGE_SIZE,
+  })
   const { request, dialog } = useJobLifecycle()
   const canCreate = can('manage_jobs') && !isAdmin
   const hasFilters = Boolean(state.q.trim()) || status !== 'ALL'
@@ -57,10 +69,15 @@ export default function ManageJobsPage() {
       header: 'Job',
       cell: (j) => (
         <div className="min-w-0 max-w-sm">
-          <Link to={paths.job(j.id)} className="block truncate rounded-sm font-medium hover:text-primary hover:underline">
+          <Link
+            to={paths.job(j.id)}
+            className="block truncate rounded-sm font-medium hover:text-primary hover:underline"
+          >
             {j.title}
           </Link>
-          <p className="truncate text-xs text-muted-foreground">{[j.department, j.location].filter(Boolean).join(' · ') || '—'}</p>
+          <p className="truncate text-xs text-muted-foreground">
+            {[j.department, j.location].filter(Boolean).join(' · ') || '—'}
+          </p>
         </div>
       ),
     },
@@ -70,7 +87,11 @@ export default function ManageJobsPage() {
       header: 'Applications',
       align: 'right',
       cell: (j) => (
-        <Link to={`${paths.applications}?job_id=${j.id}`} className="rounded-sm font-medium tabular hover:text-primary hover:underline" aria-label={`${j.application_count ?? 0} applications for ${j.title}`}>
+        <Link
+          to={`${paths.applications}?job_id=${j.id}`}
+          className="rounded-sm font-medium tabular hover:text-primary hover:underline"
+          aria-label={`${j.application_count ?? 0} applications for ${j.title}`}
+        >
           {fmt.int(j.application_count ?? 0)}
         </Link>
       ),
@@ -79,17 +100,36 @@ export default function ManageJobsPage() {
       key: 'posted',
       header: 'Published',
       hideBelow: 'lg',
-      cell: (j) => (j.published_at ? <span className="whitespace-nowrap text-muted-foreground">{dates.relative(j.published_at)}</span> : <span className="text-muted-foreground">Not published</span>),
+      cell: (j) =>
+        j.published_at ? (
+          <span className="whitespace-nowrap text-muted-foreground">{dates.relative(j.published_at)}</span>
+        ) : (
+          <span className="text-muted-foreground">Not published</span>
+        ),
     },
-    { key: 'deadline', header: 'Deadline', hideBelow: 'md', cell: (j) => <DeadlineCell deadline={j.application_deadline} /> },
-    { key: 'actions', header: <span className="sr-only">Actions</span>, align: 'right', cell: (j) => <JobRowActions job={j} onAction={request} /> },
+    {
+      key: 'deadline',
+      header: 'Deadline',
+      hideBelow: 'md',
+      cell: (j) => <DeadlineCell deadline={j.application_deadline} />,
+    },
+    {
+      key: 'actions',
+      header: <span className="sr-only">Actions</span>,
+      align: 'right',
+      cell: (j) => <JobRowActions job={j} onAction={request} />,
+    },
   ]
 
   const emptyNoJobs = (
     <EmptyState
       icon={<Briefcase aria-hidden />}
       title={user?.role === 'HIRING_MANAGER' ? 'No jobs assigned to you yet' : 'No jobs yet'}
-      description={user?.role === 'HIRING_MANAGER' ? 'Jobs a recruiter assigns to you will appear here.' : 'Create your first job posting to start receiving matched applications.'}
+      description={
+        user?.role === 'HIRING_MANAGER'
+          ? 'Jobs a recruiter assigns to you will appear here.'
+          : 'Create your first job posting to start receiving matched applications.'
+      }
       action={
         canCreate && (
           <Button asChild>
@@ -106,7 +146,13 @@ export default function ManageJobsPage() {
     <>
       <PageHeader
         title="Jobs"
-        description={user?.role === 'HIRING_MANAGER' ? 'Jobs assigned to you.' : isAdmin ? 'All jobs across companies.' : `Manage ${user?.company?.name ?? 'your company'}'s job postings.`}
+        description={
+          user?.role === 'HIRING_MANAGER'
+            ? 'Jobs assigned to you.'
+            : isAdmin
+              ? 'All jobs across companies.'
+              : `Manage ${user?.company?.name ?? 'your company'}'s job postings.`
+        }
         actions={
           canCreate && (
             <Button asChild>
@@ -127,12 +173,23 @@ export default function ManageJobsPage() {
               </TabsTrigger>
             ))}
           </TabsList>
-          <SearchInput className="min-w-52 flex-1 basis-60 sm:max-w-sm" value={state.q} onChange={(q) => update({ q })} placeholder="Search jobs by title or skill" label="Search jobs" />
+          <SearchInput
+            className="min-w-52 flex-1 basis-60 sm:max-w-sm"
+            value={state.q}
+            onChange={(q) => update({ q })}
+            placeholder="Search jobs by title or skill"
+            label="Search jobs"
+          />
           <div className="ml-auto flex items-center gap-2">
             <label htmlFor="manage-sort" className="sr-only">
               Sort by
             </label>
-            <NativeSelect id="manage-sort" className="w-48" value={state.sort} onChange={(e) => update({ sort: e.target.value })}>
+            <NativeSelect
+              id="manage-sort"
+              className="w-48"
+              value={state.sort}
+              onChange={(e) => update({ sort: e.target.value })}
+            >
               {SORTS.map((s) => (
                 <option key={s.value} value={s.value}>
                   {s.label}
@@ -175,13 +232,21 @@ export default function ManageJobsPage() {
               renderCard={(j) => (
                 <div className="flex items-start gap-3 p-4">
                   <div className="min-w-0 flex-1 space-y-2">
-                    <Link to={paths.job(j.id)} className="block font-medium hover:text-primary hover:underline">
+                    <Link
+                      to={paths.job(j.id)}
+                      className="block font-medium hover:text-primary hover:underline"
+                    >
                       {j.title}
                     </Link>
-                    <p className="text-xs text-muted-foreground">{[j.department, j.location].filter(Boolean).join(' · ')}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {[j.department, j.location].filter(Boolean).join(' · ')}
+                    </p>
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
                       <StatusBadge kind="job" status={j.status} />
-                      <Link to={`${paths.applications}?job_id=${j.id}`} className="font-medium text-foreground hover:underline">
+                      <Link
+                        to={`${paths.applications}?job_id=${j.id}`}
+                        className="font-medium text-foreground hover:underline"
+                      >
                         {fmt.int(j.application_count ?? 0)} applications
                       </Link>
                       {j.application_deadline && <span>Deadline {dates.date(j.application_deadline)}</span>}

@@ -19,7 +19,12 @@ export function GlobalSearch() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const el = e.target as HTMLElement | null
-      const typing = el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable)
+      const typing =
+        el &&
+        (el.tagName === 'INPUT' ||
+          el.tagName === 'TEXTAREA' ||
+          el.tagName === 'SELECT' ||
+          el.isContentEditable)
       if (((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') || (e.key === '/' && !typing)) {
         e.preventDefault()
         ref.current?.focus()
@@ -40,7 +45,10 @@ export function GlobalSearch() {
   return (
     <>
       <form role="search" onSubmit={submit} className="relative hidden max-w-md flex-1 md:block">
-        <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
+        <Search
+          className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
+          aria-hidden
+        />
         <input
           ref={ref}
           type="search"
@@ -50,7 +58,10 @@ export function GlobalSearch() {
           placeholder={isStaff || isAdmin ? 'Search your jobs…' : 'Search jobs, skills, companies…'}
           className="h-9 w-full rounded-lg border border-input bg-surface pr-12 pl-9 text-sm shadow-xs transition-colors placeholder:text-muted-foreground hover:border-ring/40 focus-visible:border-ring focus-visible:bg-card focus-visible:outline-2 focus-visible:outline-ring [&::-webkit-search-cancel-button]:hidden"
         />
-        <kbd className="pointer-events-none absolute top-1/2 right-2.5 hidden -translate-y-1/2 rounded border bg-card px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground lg:block" aria-hidden>
+        <kbd
+          className="pointer-events-none absolute top-1/2 right-2.5 hidden -translate-y-1/2 rounded border bg-card px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground lg:block"
+          aria-hidden
+        >
           Ctrl K
         </kbd>
       </form>

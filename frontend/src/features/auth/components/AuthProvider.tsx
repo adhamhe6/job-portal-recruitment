@@ -2,7 +2,16 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { toast } from 'sonner'
 import { ErrorState, Spinner } from '@/components/common/States'
-import { ApiError, onSessionExpired, onSessionRefreshed, refreshSession, tokenStore, type Me, type Role, type TokenResponse } from '@/lib/api'
+import {
+  ApiError,
+  onSessionExpired,
+  onSessionRefreshed,
+  refreshSession,
+  tokenStore,
+  type Me,
+  type Role,
+  type TokenResponse,
+} from '@/lib/api'
 import type { Permission } from '@/lib/permissions'
 import { authApi } from '../api/auth'
 import { AuthContext, type AuthContextValue, type AuthStatus } from '../hooks/useAuth'
@@ -44,7 +53,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (data) applySession(data)
           else setState({ status: 'anonymous', user: null })
         })
-        .catch((e: unknown) => setBootError(e instanceof ApiError ? e : new ApiError(0, 'NETWORK_ERROR', 'Cannot reach the server.'))),
+        .catch((e: unknown) =>
+          setBootError(
+            e instanceof ApiError ? e : new ApiError(0, 'NETWORK_ERROR', 'Cannot reach the server.'),
+          ),
+        ),
     [applySession],
   )
 
@@ -70,7 +83,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   )
 
   // Silent refreshes performed by the API client carry a fresh user + permissions.
-  useEffect(() => onSessionRefreshed((data) => setState((s) => (s.status === 'authenticated' ? { status: 'authenticated', user: data.user } : s))), [])
+  useEffect(
+    () =>
+      onSessionRefreshed((data) =>
+        setState((s) => (s.status === 'authenticated' ? { status: 'authenticated', user: data.user } : s)),
+      ),
+    [],
+  )
 
   const login = useCallback(
     async (email: string, password: string) => {
@@ -108,7 +127,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     clearSession()
   }, [clearSession])
-  const setUser = useCallback((user: Me) => setState((s) => (s.status === 'authenticated' ? { ...s, user } : s)), [])
+  const setUser = useCallback(
+    (user: Me) => setState((s) => (s.status === 'authenticated' ? { ...s, user } : s)),
+    [],
+  )
 
   const value = useMemo<AuthContextValue>(() => {
     const user = state.user

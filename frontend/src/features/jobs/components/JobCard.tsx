@@ -37,7 +37,9 @@ export function JobCard({
   const salary = formatSalaryRange(job.salary_min, job.salary_max, job.salary_currency)
   const deadline = deadlineHint(job.application_deadline)
   const wanted = new Set(highlightSkills.map((s) => s.toLowerCase()))
-  const skills = [...job.skills].sort((a, b) => Number(wanted.has(b.toLowerCase())) - Number(wanted.has(a.toLowerCase())))
+  const skills = [...job.skills].sort(
+    (a, b) => Number(wanted.has(b.toLowerCase())) - Number(wanted.has(a.toLowerCase())),
+  )
   const score = matchPercent != null ? null : job.match_score
 
   return (
@@ -48,7 +50,12 @@ export function JobCard({
       )}
     >
       <div className="flex gap-3.5 sm:gap-4">
-        <CompanyLogo name={job.company_name} logoUrl={job.company_logo_url} size="lg" className="hidden sm:inline-flex" />
+        <CompanyLogo
+          name={job.company_name}
+          logoUrl={job.company_logo_url}
+          size="lg"
+          className="hidden sm:inline-flex"
+        />
         <CompanyLogo name={job.company_name} logoUrl={job.company_logo_url} size="md" className="sm:hidden" />
         <div className="min-w-0 flex-1 space-y-3">
           <div className="flex items-start justify-between gap-3">
@@ -88,7 +95,11 @@ export function JobCard({
           </div>
 
           <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-            <JobBadges workplace={job.workplace_type} employment={job.employment_type} level={job.experience_level} />
+            <JobBadges
+              workplace={job.workplace_type}
+              employment={job.employment_type}
+              level={job.experience_level}
+            />
             {job.location && (
               <span className="inline-flex items-center gap-1 text-sm text-muted-foreground">
                 <MapPin className="size-3.5" aria-hidden />
@@ -101,7 +112,15 @@ export function JobCard({
             <ul className="flex flex-wrap gap-1.5" aria-label="Required skills">
               {skills.slice(0, 6).map((s) => (
                 <li key={s}>
-                  <SkillChip name={s} tone={wanted.has(s.toLowerCase()) ? 'matched' : 'default'} prefix={wanted.has(s.toLowerCase()) ? <CheckCircle2 aria-label="Matches your filter" /> : undefined} />
+                  <SkillChip
+                    name={s}
+                    tone={wanted.has(s.toLowerCase()) ? 'matched' : 'default'}
+                    prefix={
+                      wanted.has(s.toLowerCase()) ? (
+                        <CheckCircle2 aria-label="Matches your filter" />
+                      ) : undefined
+                    }
+                  />
                 </li>
               ))}
             </ul>

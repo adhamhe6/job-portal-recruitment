@@ -48,7 +48,12 @@ export function ChartCard({
         ) : loading ? (
           <Skeleton style={{ height }} className="w-full" />
         ) : (
-          <figure role="img" aria-label={`${title}. ${srSummary ?? description ?? ''}`.trim()} style={{ height }} className="m-0">
+          <figure
+            role="img"
+            aria-label={`${title}. ${srSummary ?? description ?? ''}`.trim()}
+            style={{ height }}
+            className="m-0"
+          >
             {children}
           </figure>
         )}

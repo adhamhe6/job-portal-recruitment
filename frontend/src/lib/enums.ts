@@ -85,7 +85,23 @@ export const EDUCATION_LEVEL_OPTIONS = toOptions(EDUCATION_LEVEL_LABELS)
 export const JOB_STATUS_OPTIONS = toOptions(JOB_STATUS_LABELS)
 
 /** ISO-4217 codes offered in the job form (an existing job's own currency is always added). */
-export const CURRENCIES = ['USD', 'EUR', 'GBP', 'CAD', 'AUD', 'CHF', 'SEK', 'NOK', 'DKK', 'PLN', 'INR', 'AED', 'SAR', 'SGD', 'JPY'] as const
+export const CURRENCIES = [
+  'USD',
+  'EUR',
+  'GBP',
+  'CAD',
+  'AUD',
+  'CHF',
+  'SEK',
+  'NOK',
+  'DKK',
+  'PLN',
+  'INR',
+  'AED',
+  'SAR',
+  'SGD',
+  'JPY',
+] as const
 
 export const POSTED_WITHIN_OPTIONS: Option[] = [
   { value: '1', label: 'Last 24 hours' },

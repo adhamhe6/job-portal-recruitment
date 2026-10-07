@@ -11,7 +11,15 @@ import { useTheme } from '@/lib/theme'
 function ThemedToaster() {
   const { theme } = useTheme()
   // sonner renders an aria-live region, so toasts are announced to screen readers.
-  return <Toaster theme={theme} position="top-right" closeButton richColors toastOptions={{ classNames: { toast: 'font-sans' } }} />
+  return (
+    <Toaster
+      theme={theme}
+      position="top-right"
+      closeButton
+      richColors
+      toastOptions={{ classNames: { toast: 'font-sans' } }}
+    />
+  )
 }
 
 export function App() {

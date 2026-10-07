@@ -72,14 +72,21 @@ function ComboboxShell({
           aria-controls={listId}
           aria-haspopup="listbox"
           disabled={disabled}
-          className={cn(controlClass, 'cursor-pointer items-center justify-between gap-2 text-left', className)}
+          className={cn(
+            controlClass,
+            'cursor-pointer items-center justify-between gap-2 text-left',
+            className,
+          )}
           {...aria}
         >
           {trigger}
           <ChevronsUpDown className="size-4 shrink-0 text-muted-foreground" aria-hidden />
         </button>
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-[var(--radix-popover-trigger-width)] min-w-64 overflow-hidden">
+      <PopoverContent
+        align="start"
+        className="w-[var(--radix-popover-trigger-width)] min-w-64 overflow-hidden"
+      >
         <Command shouldFilter={!onSearchChange} loop>
           <CommandInput
             value={query}
@@ -104,10 +111,15 @@ function ComboboxShell({
                     if (closeOnPick) setOpen(false)
                   }}
                 >
-                  <Check className={cn('text-primary', isSelected(o.value) ? 'opacity-100' : 'opacity-0')} aria-hidden />
+                  <Check
+                    className={cn('text-primary', isSelected(o.value) ? 'opacity-100' : 'opacity-0')}
+                    aria-hidden
+                  />
                   <span className="min-w-0 flex-1">
                     <span className="block truncate">{o.label}</span>
-                    {o.description && <span className="block truncate text-xs text-muted-foreground">{o.description}</span>}
+                    {o.description && (
+                      <span className="block truncate text-xs text-muted-foreground">{o.description}</span>
+                    )}
                   </span>
                 </CommandItem>
               ))}
@@ -126,7 +138,11 @@ export function Combobox({
   placeholder = 'Select…',
   clearable,
   ...rest
-}: CommonProps & { value: string | null | undefined; onChange: (value: string) => void; clearable?: boolean }) {
+}: CommonProps & {
+  value: string | null | undefined
+  onChange: (value: string) => void
+  clearable?: boolean
+}) {
   const selected = rest.options.find((o) => o.value === value)
   return (
     <ComboboxShell
@@ -134,7 +150,11 @@ export function Combobox({
       isSelected={(v) => v === value}
       onPick={(v) => onChange(clearable && v === value ? '' : v)}
       closeOnPick
-      trigger={<span className={cn('truncate', !selected && 'text-muted-foreground')}>{selected?.label ?? placeholder}</span>}
+      trigger={
+        <span className={cn('truncate', !selected && 'text-muted-foreground')}>
+          {selected?.label ?? placeholder}
+        </span>
+      }
     />
   )
 }

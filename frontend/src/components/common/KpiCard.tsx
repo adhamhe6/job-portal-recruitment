@@ -46,15 +46,37 @@ export function KpiCard({
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-sm font-medium text-muted-foreground">{label}</p>
-          {loading ? <Skeleton className="mt-2 h-8 w-20" /> : <p className="mt-1.5 text-3xl font-semibold tracking-tight">{value}</p>}
+          {loading ? (
+            <Skeleton className="mt-2 h-8 w-20" />
+          ) : (
+            <p className="mt-1.5 text-3xl font-semibold tracking-tight">{value}</p>
+          )}
         </div>
-        {icon && <div className={cn('flex size-10 shrink-0 items-center justify-center rounded-xl [&_svg]:size-5', TONES[tone])}>{icon}</div>}
+        {icon && (
+          <div
+            className={cn(
+              'flex size-10 shrink-0 items-center justify-center rounded-xl [&_svg]:size-5',
+              TONES[tone],
+            )}
+          >
+            {icon}
+          </div>
+        )}
       </div>
       {(hint || (change !== undefined && change !== null)) && !loading && (
         <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
           {change !== undefined && change !== null && (
-            <span className={cn('inline-flex items-center gap-0.5 font-semibold', change >= 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-red-700 dark:text-red-400')}>
-              {change >= 0 ? <TrendingUp className="size-3.5" aria-hidden /> : <TrendingDown className="size-3.5" aria-hidden />}
+            <span
+              className={cn(
+                'inline-flex items-center gap-0.5 font-semibold',
+                change >= 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-red-700 dark:text-red-400',
+              )}
+            >
+              {change >= 0 ? (
+                <TrendingUp className="size-3.5" aria-hidden />
+              ) : (
+                <TrendingDown className="size-3.5" aria-hidden />
+              )}
               {change > 0 ? '+' : ''}
               {change.toFixed(1)}%
             </span>

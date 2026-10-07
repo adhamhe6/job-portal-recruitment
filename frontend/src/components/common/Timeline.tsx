@@ -25,8 +25,15 @@ export function Timeline({ items, className }: { items: TimelineItem[]; classNam
     <ol className={cn('relative space-y-5', className)}>
       {items.map((item, i) => (
         <li key={item.id} className="relative flex gap-3">
-          {i < items.length - 1 && <span className="absolute top-8 bottom-[-1.25rem] left-[15px] w-px bg-border" aria-hidden />}
-          <span className={cn('z-10 flex size-8 shrink-0 items-center justify-center rounded-full ring-4 ring-card [&_svg]:size-4', DOT[item.tone ?? 'default'])}>
+          {i < items.length - 1 && (
+            <span className="absolute top-8 bottom-[-1.25rem] left-[15px] w-px bg-border" aria-hidden />
+          )}
+          <span
+            className={cn(
+              'z-10 flex size-8 shrink-0 items-center justify-center rounded-full ring-4 ring-card [&_svg]:size-4',
+              DOT[item.tone ?? 'default'],
+            )}
+          >
             {item.icon ?? <span className="size-2 rounded-full bg-current" />}
           </span>
           <div className="min-w-0 flex-1 pt-1">

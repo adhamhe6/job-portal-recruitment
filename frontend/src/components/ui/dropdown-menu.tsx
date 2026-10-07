@@ -39,13 +39,22 @@ export function DropdownMenuItem({
 }: React.ComponentProps<typeof DropdownMenuPrimitive.Item> & { destructive?: boolean }) {
   return (
     <DropdownMenuPrimitive.Item
-      className={cn(itemClass, destructive && 'text-destructive data-[highlighted]:bg-destructive/10 data-[highlighted]:text-destructive [&_svg]:text-destructive', className)}
+      className={cn(
+        itemClass,
+        destructive &&
+          'text-destructive data-[highlighted]:bg-destructive/10 data-[highlighted]:text-destructive [&_svg]:text-destructive',
+        className,
+      )}
       {...props}
     />
   )
 }
 
-export function DropdownMenuRadioItem({ className, children, ...props }: React.ComponentProps<typeof DropdownMenuPrimitive.RadioItem>) {
+export function DropdownMenuRadioItem({
+  className,
+  children,
+  ...props
+}: React.ComponentProps<typeof DropdownMenuPrimitive.RadioItem>) {
   return (
     <DropdownMenuPrimitive.RadioItem className={cn(itemClass, 'pr-8', className)} {...props}>
       {children}
@@ -56,9 +65,20 @@ export function DropdownMenuRadioItem({ className, children, ...props }: React.C
   )
 }
 
-export function DropdownMenuLabel({ className, ...props }: React.ComponentProps<typeof DropdownMenuPrimitive.Label>) {
-  return <DropdownMenuPrimitive.Label className={cn('px-2.5 py-1.5 text-xs font-medium text-muted-foreground', className)} {...props} />
+export function DropdownMenuLabel({
+  className,
+  ...props
+}: React.ComponentProps<typeof DropdownMenuPrimitive.Label>) {
+  return (
+    <DropdownMenuPrimitive.Label
+      className={cn('px-2.5 py-1.5 text-xs font-medium text-muted-foreground', className)}
+      {...props}
+    />
+  )
 }
-export function DropdownMenuSeparator({ className, ...props }: React.ComponentProps<typeof DropdownMenuPrimitive.Separator>) {
+export function DropdownMenuSeparator({
+  className,
+  ...props
+}: React.ComponentProps<typeof DropdownMenuPrimitive.Separator>) {
   return <DropdownMenuPrimitive.Separator className={cn('-mx-1 my-1 h-px bg-border', className)} {...props} />
 }

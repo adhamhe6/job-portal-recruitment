@@ -29,18 +29,29 @@ export default function NotificationsPage() {
         title="Notifications"
         description="Updates about your applications, interviews, résumés and matches."
         actions={
-          <Button variant="outline" onClick={() => markAll.mutate()} disabled={(unread.data ?? 0) === 0} loading={markAll.isPending}>
+          <Button
+            variant="outline"
+            onClick={() => markAll.mutate()}
+            disabled={(unread.data ?? 0) === 0}
+            loading={markAll.isPending}
+          >
             <CheckCheck /> Mark all as read
           </Button>
         }
       />
-      <Tabs value={unreadOnly ? 'unread' : 'all'} onValueChange={(v) => update({ filter: v })} className="mb-4">
+      <Tabs
+        value={unreadOnly ? 'unread' : 'all'}
+        onValueChange={(v) => update({ filter: v })}
+        className="mb-4"
+      >
         <TabsList aria-label="Filter notifications">
           <TabsTrigger value="all">All</TabsTrigger>
           <TabsTrigger value="unread">
             Unread
             {(unread.data ?? 0) > 0 && (
-              <span className="rounded-full bg-primary px-1.5 text-[11px] leading-5 font-semibold text-primary-foreground tabular">{unread.data}</span>
+              <span className="rounded-full bg-primary px-1.5 text-[11px] leading-5 font-semibold text-primary-foreground tabular">
+                {unread.data}
+              </span>
             )}
           </TabsTrigger>
         </TabsList>
@@ -56,7 +67,9 @@ export default function NotificationsPage() {
             icon={<BellOff aria-hidden />}
             title={unreadOnly ? "You're all caught up" : 'No notifications yet'}
             description={
-              unreadOnly ? 'There is nothing unread.' : 'When something happens with your applications, interviews or matches, you will see it here.'
+              unreadOnly
+                ? 'There is nothing unread.'
+                : 'When something happens with your applications, interviews or matches, you will see it here.'
             }
             action={
               unreadOnly ? (
@@ -81,7 +94,14 @@ export default function NotificationsPage() {
         )}
       </Card>
       {list.data && list.data.pages > 1 && (
-        <Pagination page={list.data.page} pages={list.data.pages} total={list.data.total} pageSize={list.data.page_size} onPageChange={(p) => update({ page: p }, { resetPage: false })} label="notifications" />
+        <Pagination
+          page={list.data.page}
+          pages={list.data.pages}
+          total={list.data.total}
+          pageSize={list.data.page_size}
+          onPageChange={(p) => update({ page: p }, { resetPage: false })}
+          label="notifications"
+        />
       )}
     </>
   )

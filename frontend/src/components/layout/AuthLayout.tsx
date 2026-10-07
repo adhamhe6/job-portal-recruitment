@@ -19,12 +19,17 @@ export function AuthLayout({ children }: { children?: ReactNode }) {
       <SkipLink />
       <aside className="relative hidden overflow-hidden bg-gradient-to-br from-indigo-600 via-indigo-700 to-violet-800 p-10 text-white lg:flex lg:flex-col lg:justify-between">
         <div aria-hidden className="absolute -top-24 -right-24 size-96 rounded-full bg-white/10 blur-3xl" />
-        <div aria-hidden className="absolute -bottom-32 -left-16 size-96 rounded-full bg-violet-400/20 blur-3xl" />
+        <div
+          aria-hidden
+          className="absolute -bottom-32 -left-16 size-96 rounded-full bg-violet-400/20 blur-3xl"
+        />
         <Link to={paths.home} className="relative w-fit rounded-md text-white" aria-label="TalentLens home">
           <Logo />
         </Link>
         <div className="relative max-w-md space-y-6">
-          <h2 className="text-4xl leading-tight font-semibold tracking-tight">Hiring, matched with clarity.</h2>
+          <h2 className="text-4xl leading-tight font-semibold tracking-tight">
+            Hiring, matched with clarity.
+          </h2>
           <ul className="space-y-3 text-indigo-100">
             {POINTS.map((p) => (
               <li key={p} className="flex gap-3 text-[15px]">
@@ -43,7 +48,11 @@ export function AuthLayout({ children }: { children?: ReactNode }) {
           </Link>
           <ThemeToggle />
         </div>
-        <main id="main-content" tabIndex={-1} className="flex flex-1 items-start justify-center px-5 pt-4 pb-12 outline-none sm:px-8 lg:items-center">
+        <main
+          id="main-content"
+          tabIndex={-1}
+          className="flex flex-1 items-start justify-center px-5 pt-4 pb-12 outline-none sm:px-8 lg:items-center"
+        >
           <div className="w-full max-w-md">{children ?? <Outlet />}</div>
         </main>
       </div>

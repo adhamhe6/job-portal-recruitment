@@ -1,5 +1,12 @@
 import { Trash2 } from 'lucide-react'
-import { Controller, useFieldArray, useWatch, type Control, type FieldErrors, type UseFormRegister } from 'react-hook-form'
+import {
+  Controller,
+  useFieldArray,
+  useWatch,
+  type Control,
+  type FieldErrors,
+  type UseFormRegister,
+} from 'react-hook-form'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -7,9 +14,21 @@ import { SkillPicker } from '@/features/skills/components/SkillPicker'
 import { cn } from '@/lib/utils'
 import type { JobFormValues } from '../lib/jobForm'
 
-function RequirementToggle({ value, onChange, name }: { value: 'REQUIRED' | 'PREFERRED'; onChange: (v: 'REQUIRED' | 'PREFERRED') => void; name: string }) {
+function RequirementToggle({
+  value,
+  onChange,
+  name,
+}: {
+  value: 'REQUIRED' | 'PREFERRED'
+  onChange: (v: 'REQUIRED' | 'PREFERRED') => void
+  name: string
+}) {
   return (
-    <div role="radiogroup" aria-label={`Requirement level for ${name}`} className="inline-grid grid-cols-2 gap-0.5 rounded-lg bg-muted p-0.5 text-xs">
+    <div
+      role="radiogroup"
+      aria-label={`Requirement level for ${name}`}
+      className="inline-grid grid-cols-2 gap-0.5 rounded-lg bg-muted p-0.5 text-xs"
+    >
       {(
         [
           ['REQUIRED', 'Required'],
@@ -22,7 +41,10 @@ function RequirementToggle({ value, onChange, name }: { value: 'REQUIRED' | 'PRE
           role="radio"
           aria-checked={value === v}
           onClick={() => onChange(v)}
-          className={cn('h-7 cursor-pointer rounded-md px-2.5 font-medium text-muted-foreground transition-colors', value === v && 'bg-card text-foreground shadow-sm')}
+          className={cn(
+            'h-7 cursor-pointer rounded-md px-2.5 font-medium text-muted-foreground transition-colors',
+            value === v && 'bg-card text-foreground shadow-sm',
+          )}
         >
           {label}
         </button>
@@ -52,7 +74,9 @@ export function SkillsEditor({
   const watched = useWatch({ control, name: 'skills' })
   const required = (watched ?? []).filter((s) => s.requirement === 'REQUIRED').length
   const preferred = fields.length - required
-  const rootError = errors.skills?.root?.message ?? (typeof errors.skills?.message === 'string' ? errors.skills.message : undefined)
+  const rootError =
+    errors.skills?.root?.message ??
+    (typeof errors.skills?.message === 'string' ? errors.skills.message : undefined)
 
   return (
     <div className="grid gap-3">
@@ -65,7 +89,9 @@ export function SkillsEditor({
         selected={fields.map((f) => ({ id: f.skill_id, name: f.name }))}
         onAdd={(s) => append({ skill_id: s.id, name: s.name, requirement: 'REQUIRED', min_years: '' })}
         onRemove={(s) => {
-          const idx = fields.findIndex((f) => (s.id && f.skill_id ? f.skill_id === s.id : f.name.toLowerCase() === s.name.toLowerCase()))
+          const idx = fields.findIndex((f) =>
+            s.id && f.skill_id ? f.skill_id === s.id : f.name.toLowerCase() === s.name.toLowerCase(),
+          )
           if (idx >= 0) remove(idx)
         }}
       />
@@ -77,7 +103,10 @@ export function SkillsEditor({
         <>
           <ul className="grid gap-2" aria-label="Job skills">
             {fields.map((f, i) => (
-              <li key={f.id} className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border bg-card p-2.5 pl-3.5">
+              <li
+                key={f.id}
+                className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border bg-card p-2.5 pl-3.5"
+              >
                 <span className="flex min-w-0 flex-1 basis-40 items-center gap-2">
                   <span className="truncate text-sm font-medium">{f.name}</span>
                   {!f.skill_id && <Badge variant="warning">New skill</Badge>}
@@ -85,7 +114,9 @@ export function SkillsEditor({
                 <Controller
                   control={control}
                   name={`skills.${i}.requirement`}
-                  render={({ field }) => <RequirementToggle name={f.name} value={field.value} onChange={field.onChange} />}
+                  render={({ field }) => (
+                    <RequirementToggle name={f.name} value={field.value} onChange={field.onChange} />
+                  )}
                 />
                 <div className="flex items-center gap-1.5">
                   <Input
@@ -102,7 +133,13 @@ export function SkillsEditor({
                   />
                   <span className="text-xs text-muted-foreground">yrs min.</span>
                 </div>
-                <Button type="button" variant="ghost" size="icon-sm" aria-label={`Remove ${f.name}`} onClick={() => remove(i)}>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label={`Remove ${f.name}`}
+                  onClick={() => remove(i)}
+                >
                   <Trash2 />
                 </Button>
                 {(errors.skills?.[i]?.min_years?.message || errors.skills?.[i]?.name?.message) && (

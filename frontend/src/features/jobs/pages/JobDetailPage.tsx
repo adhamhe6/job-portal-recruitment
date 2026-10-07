@@ -60,7 +60,13 @@ function JobSkills({ job, matched }: { job: JobView; matched: Set<string> }) {
   const chip = (s: JobView['skills'][number], tone: 'required' | 'preferred') => {
     const have = matched.has(s.skill.name.toLowerCase())
     const years = s.min_years && Number(s.min_years) > 0 ? ` · ${Number(s.min_years)}+ yrs` : ''
-    return <SkillChip name={`${s.skill.name}${years}`} tone={have ? 'matched' : tone} prefix={have ? <span aria-label="You have this skill">✓</span> : undefined} />
+    return (
+      <SkillChip
+        name={`${s.skill.name}${years}`}
+        tone={have ? 'matched' : tone}
+        prefix={have ? <span aria-label="You have this skill">✓</span> : undefined}
+      />
+    )
   }
   return (
     <Section title="Skills">
@@ -95,11 +101,15 @@ function CompanyCard({ company }: { company: JobPublic['company'] }) {
         <CompanyLogo name={company.name} logoUrl={company.logo_url} size="md" />
         <div className="min-w-0">
           <CardTitle className="truncate">{company.name}</CardTitle>
-          <p className="truncate text-sm text-muted-foreground">{[company.industry, company.size && `${company.size} employees`].filter(Boolean).join(' · ')}</p>
+          <p className="truncate text-sm text-muted-foreground">
+            {[company.industry, company.size && `${company.size} employees`].filter(Boolean).join(' · ')}
+          </p>
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
-        {company.description && <p className="line-clamp-5 text-sm text-muted-foreground">{company.description}</p>}
+        {company.description && (
+          <p className="line-clamp-5 text-sm text-muted-foreground">{company.description}</p>
+        )}
         {company.location && (
           <p className="flex items-center gap-2 text-sm">
             <MapPin className="size-4 text-muted-foreground" aria-hidden /> {company.location}
@@ -165,7 +175,9 @@ export default function JobDetailPage() {
         />
         {notFound && (
           <div className="-mt-6 text-center">
-            <p className="mx-auto mb-4 max-w-md text-sm text-muted-foreground">It may have been closed, paused or removed by the employer — or you may not have access to it.</p>
+            <p className="mx-auto mb-4 max-w-md text-sm text-muted-foreground">
+              It may have been closed, paused or removed by the employer — or you may not have access to it.
+            </p>
             <Button asChild>
               <Link to={paths.jobs}>Browse open jobs</Link>
             </Button>
@@ -189,11 +201,19 @@ export default function JobDetailPage() {
         breadcrumbs={[{ label: 'Jobs', to: staff ? paths.manageJobs : paths.jobs }, { label: j.title }]}
         title={
           <span className="flex items-start gap-4">
-            <CompanyLogo name={j.company.name} logoUrl={j.company.logo_url} size="xl" className="hidden sm:inline-flex" />
+            <CompanyLogo
+              name={j.company.name}
+              logoUrl={j.company.logo_url}
+              size="xl"
+              className="hidden sm:inline-flex"
+            />
             <span className="min-w-0">
               <span className="block">{j.title}</span>
               <span className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-base font-normal text-muted-foreground">
-                <Link to={`${paths.jobs}?company_id=${j.company.id}`} className="font-medium text-foreground/80 hover:text-primary hover:underline">
+                <Link
+                  to={`${paths.jobs}?company_id=${j.company.id}`}
+                  className="font-medium text-foreground/80 hover:text-primary hover:underline"
+                >
                   {j.company.name}
                 </Link>
                 {j.location && (
@@ -208,7 +228,11 @@ export default function JobDetailPage() {
         }
         meta={
           <>
-            <JobBadges workplace={j.workplace_type} employment={j.employment_type} level={j.experience_level} />
+            <JobBadges
+              workplace={j.workplace_type}
+              employment={j.employment_type}
+              level={j.experience_level}
+            />
             {staff && <StatusBadge kind="job" status={j.status} />}
             {j.is_saved && <Badge variant="muted">Saved</Badge>}
           </>
@@ -261,7 +285,16 @@ export default function JobDetailPage() {
               <CardContent className="space-y-3 p-5">
                 <ApplyCta job={j} />
                 {deadline && j.can_apply !== false && (
-                  <p className={cn('text-center text-sm', deadline.tone === 'urgent' ? 'font-medium text-amber-700 dark:text-amber-400' : 'text-muted-foreground')}>{deadline.text}</p>
+                  <p
+                    className={cn(
+                      'text-center text-sm',
+                      deadline.tone === 'urgent'
+                        ? 'font-medium text-amber-700 dark:text-amber-400'
+                        : 'text-muted-foreground',
+                    )}
+                  >
+                    {deadline.text}
+                  </p>
                 )}
               </CardContent>
             </Card>
@@ -280,7 +313,12 @@ export default function JobDetailPage() {
                 )}
                 <Fact icon={<Timer />} label="Experience">
                   {formatExperienceRange(j.min_experience_years, j.max_experience_years)}
-                  {j.experience_level && <span className="font-normal text-muted-foreground"> · {EXPERIENCE_LEVEL_LABELS[j.experience_level]}</span>}
+                  {j.experience_level && (
+                    <span className="font-normal text-muted-foreground">
+                      {' '}
+                      · {EXPERIENCE_LEVEL_LABELS[j.experience_level]}
+                    </span>
+                  )}
                 </Fact>
                 {j.min_education_level && (
                   <Fact icon={<GraduationCap />} label="Education">
@@ -296,7 +334,18 @@ export default function JobDetailPage() {
                   {j.application_deadline ? (
                     <>
                       {dates.date(j.application_deadline)}
-                      {deadline && deadline.tone !== 'normal' && <span className={cn('block text-xs font-normal', deadline.tone === 'past' ? 'text-destructive' : 'text-amber-700 dark:text-amber-400')}>{deadline.text}</span>}
+                      {deadline && deadline.tone !== 'normal' && (
+                        <span
+                          className={cn(
+                            'block text-xs font-normal',
+                            deadline.tone === 'past'
+                              ? 'text-destructive'
+                              : 'text-amber-700 dark:text-amber-400',
+                          )}
+                        >
+                          {deadline.text}
+                        </span>
+                      )}
                     </>
                   ) : (
                     'Open until filled'

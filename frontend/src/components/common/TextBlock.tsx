@@ -14,7 +14,10 @@ export function TextBlock({ text, className }: { text: string | null | undefined
   return (
     <div className={cn('space-y-3 text-[15px] leading-relaxed text-foreground/90', className)}>
       {blocks.map((block, i) => {
-        const lines = block.split('\n').map((l) => l.trim()).filter(Boolean)
+        const lines = block
+          .split('\n')
+          .map((l) => l.trim())
+          .filter(Boolean)
         const isList = lines.length > 0 && lines.every((l) => /^([-*•]|\d+[.)])\s+/.test(l))
         if (isList) {
           const ordered = /^\d+[.)]/.test(lines[0] ?? '')

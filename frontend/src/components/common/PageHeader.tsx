@@ -23,7 +23,10 @@ export function Breadcrumbs({ items, className }: { items: Crumb[]; className?: 
                   {c.label}
                 </Link>
               ) : (
-                <span aria-current={last ? 'page' : undefined} className={cn('truncate', last && 'font-medium text-foreground')}>
+                <span
+                  aria-current={last ? 'page' : undefined}
+                  className={cn('truncate', last && 'font-medium text-foreground')}
+                >
                   {c.label}
                 </span>
               )}
@@ -63,7 +66,9 @@ export function PageHeader({
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0 space-y-1">
           <h1 className="text-2xl font-semibold tracking-tight break-words sm:text-[1.7rem]">{title}</h1>
-          {description && <p className="max-w-2xl text-sm text-muted-foreground sm:text-[15px]">{description}</p>}
+          {description && (
+            <p className="max-w-2xl text-sm text-muted-foreground sm:text-[15px]">{description}</p>
+          )}
           {meta && <div className="flex flex-wrap items-center gap-2 pt-1">{meta}</div>}
         </div>
         {actions && <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>}

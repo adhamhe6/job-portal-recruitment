@@ -5,7 +5,15 @@ import { cn } from '@/lib/utils'
 
 /** Thin styling layer over cmdk (keyboard-navigable listbox with a search field). */
 export function Command({ className, ...props }: React.ComponentProps<typeof CommandPrimitive>) {
-  return <CommandPrimitive className={cn('flex w-full flex-col overflow-hidden rounded-xl bg-popover text-popover-foreground', className)} {...props} />
+  return (
+    <CommandPrimitive
+      className={cn(
+        'flex w-full flex-col overflow-hidden rounded-xl bg-popover text-popover-foreground',
+        className,
+      )}
+      {...props}
+    />
+  )
 }
 
 export function CommandInput({
@@ -23,17 +31,29 @@ export function CommandInput({
         )}
         {...props}
       />
-      {loading && <Loader2 className="size-4 shrink-0 animate-spin text-muted-foreground" aria-label="Loading" />}
+      {loading && (
+        <Loader2 className="size-4 shrink-0 animate-spin text-muted-foreground" aria-label="Loading" />
+      )}
     </div>
   )
 }
 
 export function CommandList({ className, ...props }: React.ComponentProps<typeof CommandPrimitive.List>) {
-  return <CommandPrimitive.List className={cn('max-h-64 overflow-y-auto overflow-x-hidden p-1', className)} {...props} />
+  return (
+    <CommandPrimitive.List
+      className={cn('max-h-64 overflow-y-auto overflow-x-hidden p-1', className)}
+      {...props}
+    />
+  )
 }
 
 export function CommandEmpty({ className, ...props }: React.ComponentProps<typeof CommandPrimitive.Empty>) {
-  return <CommandPrimitive.Empty className={cn('px-3 py-6 text-center text-sm text-muted-foreground', className)} {...props} />
+  return (
+    <CommandPrimitive.Empty
+      className={cn('px-3 py-6 text-center text-sm text-muted-foreground', className)}
+      {...props}
+    />
+  )
 }
 
 export function CommandGroup({ className, ...props }: React.ComponentProps<typeof CommandPrimitive.Group>) {

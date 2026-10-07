@@ -1,7 +1,14 @@
 import { Check, ChevronsUpDown, Plus } from 'lucide-react'
 import { useId, useState } from 'react'
 import { SkillChip } from '@/components/common/SkillChip'
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command'
 import { controlClass } from '@/components/ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
@@ -14,7 +21,8 @@ export interface PickedSkill {
   name: string
 }
 
-const same = (a: PickedSkill, b: PickedSkill) => (a.id && b.id ? a.id === b.id : a.name.trim().toLowerCase() === b.name.trim().toLowerCase())
+const same = (a: PickedSkill, b: PickedSkill) =>
+  a.id && b.id ? a.id === b.id : a.name.trim().toLowerCase() === b.name.trim().toLowerCase()
 
 interface SkillPickerProps {
   selected: readonly PickedSkill[]
@@ -36,7 +44,17 @@ interface SkillPickerProps {
  * Async skill autocomplete (GET /skills?q=). A combobox: type to search, Arrow keys + Enter to pick, Esc to close.
  * The popover stays open after a pick so several skills can be added quickly.
  */
-export function SkillPicker({ selected, onAdd, onRemove, allowCreate, placeholder = 'Search skills (e.g. Python)…', disabled, id, className, ...aria }: SkillPickerProps) {
+export function SkillPicker({
+  selected,
+  onAdd,
+  onRemove,
+  allowCreate,
+  placeholder = 'Search skills (e.g. Python)…',
+  disabled,
+  id,
+  className,
+  ...aria
+}: SkillPickerProps) {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
   const debounced = useDebouncedValue(query, 200)
@@ -74,27 +92,46 @@ export function SkillPicker({ selected, onAdd, onRemove, allowCreate, placeholde
           aria-controls={listId}
           aria-haspopup="listbox"
           disabled={disabled}
-          className={cn(controlClass, 'cursor-pointer items-center justify-between gap-2 text-left text-muted-foreground', className)}
+          className={cn(
+            controlClass,
+            'cursor-pointer items-center justify-between gap-2 text-left text-muted-foreground',
+            className,
+          )}
           {...aria}
         >
           <span className="truncate">{placeholder}</span>
           <ChevronsUpDown className="size-4 shrink-0" aria-hidden />
         </button>
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-[var(--radix-popover-trigger-width)] min-w-72 overflow-hidden">
+      <PopoverContent
+        align="start"
+        className="w-[var(--radix-popover-trigger-width)] min-w-72 overflow-hidden"
+      >
         <Command shouldFilter={false} loop label="Skills">
-          <CommandInput value={query} onValueChange={setQuery} placeholder="Type a skill name…" loading={loading} />
+          <CommandInput
+            value={query}
+            onValueChange={setQuery}
+            placeholder="Type a skill name…"
+            loading={loading}
+          />
           <CommandList id={listId}>
-            {!loading && results.length === 0 && !canCreate && <CommandEmpty>No skills found{typed ? ` for “${typed}”` : ''}.</CommandEmpty>}
+            {!loading && results.length === 0 && !canCreate && (
+              <CommandEmpty>No skills found{typed ? ` for “${typed}”` : ''}.</CommandEmpty>
+            )}
             {results.length > 0 && (
               <CommandGroup heading={typed ? 'Matching skills' : 'Popular skills'}>
                 {results.map((s) => {
                   const isSelected = selected.some((x) => same(x, { id: s.id, name: s.name }))
                   return (
                     <CommandItem key={s.id} value={s.id} onSelect={() => pick({ id: s.id, name: s.name })}>
-                      <Check className={cn('text-primary', isSelected ? 'opacity-100' : 'opacity-0')} aria-hidden />
+                      <Check
+                        className={cn('text-primary', isSelected ? 'opacity-100' : 'opacity-0')}
+                        aria-hidden
+                      />
                       <span className="min-w-0 flex-1 truncate">{s.name}</span>
-                      {s.category && <span className="shrink-0 text-xs text-muted-foreground">{s.category}</span>}
+                      {s.category && (
+                        <span className="shrink-0 text-xs text-muted-foreground">{s.category}</span>
+                      )}
                     </CommandItem>
                   )
                 })}
@@ -104,9 +141,7 @@ export function SkillPicker({ selected, onAdd, onRemove, allowCreate, placeholde
               <CommandGroup heading="Not in the list?">
                 <CommandItem value={`__create__${typed}`} onSelect={() => pick({ name: typed })}>
                   <Plus aria-hidden />
-                  <span className="truncate">
-                    Add “{typed}” as a new skill
-                  </span>
+                  <span className="truncate">Add “{typed}” as a new skill</span>
                 </CommandItem>
               </CommandGroup>
             )}
@@ -148,7 +183,11 @@ export function SkillTagInput({
         <ul className="flex flex-wrap gap-1.5" aria-label={chipsLabel}>
           {value.map((s) => (
             <li key={s.id ?? s.name}>
-              <SkillChip name={s.name} tone="required" onRemove={() => onChange(value.filter((x) => !same(x, s)))} />
+              <SkillChip
+                name={s.name}
+                tone="required"
+                onRemove={() => onChange(value.filter((x) => !same(x, s)))}
+              />
             </li>
           ))}
         </ul>

@@ -60,7 +60,10 @@ async function doRefresh(): Promise<TokenResponse | null> {
   try {
     // Web Locks serialise refreshes across tabs: the refresh token is single-use and rotating, so two tabs
     // refreshing at the same instant would trip reuse detection and revoke the session.
-    res = typeof navigator !== 'undefined' && navigator.locks ? await navigator.locks.request('talentlens-refresh', run) : await run()
+    res =
+      typeof navigator !== 'undefined' && navigator.locks
+        ? await navigator.locks.request('talentlens-refresh', run)
+        : await run()
   } catch {
     throw networkError()
   }
@@ -157,11 +160,14 @@ export function request<T>(path: string, opts: RequestOptions = {}): Promise<T> 
 type CallOpts = Pick<RequestOptions, 'signal' | 'headers' | 'skipRefresh' | 'credentials'>
 
 export const api = {
-  get: <T>(path: string, query?: QueryParams, opts?: CallOpts) => request<T>(path, { ...opts, method: 'GET', query }),
+  get: <T>(path: string, query?: QueryParams, opts?: CallOpts) =>
+    request<T>(path, { ...opts, method: 'GET', query }),
   post: <T>(path: string, body?: unknown, opts?: CallOpts & { query?: QueryParams }) =>
     request<T>(path, { ...opts, method: 'POST', body }),
-  put: <T>(path: string, body?: unknown, opts?: CallOpts) => request<T>(path, { ...opts, method: 'PUT', body }),
-  patch: <T>(path: string, body?: unknown, opts?: CallOpts) => request<T>(path, { ...opts, method: 'PATCH', body }),
+  put: <T>(path: string, body?: unknown, opts?: CallOpts) =>
+    request<T>(path, { ...opts, method: 'PUT', body }),
+  patch: <T>(path: string, body?: unknown, opts?: CallOpts) =>
+    request<T>(path, { ...opts, method: 'PATCH', body }),
   delete: <T = void>(path: string, opts?: CallOpts) => request<T>(path, { ...opts, method: 'DELETE' }),
 }
 
@@ -207,7 +213,10 @@ function xhrUpload<T>(path: string, form: FormData, opts: UploadOptions, isRetry
       }
       reject(
         await errorFromResponse(
-          new Response(xhr.responseText, { status: xhr.status, headers: { 'Content-Type': 'application/json' } }),
+          new Response(xhr.responseText, {
+            status: xhr.status,
+            headers: { 'Content-Type': 'application/json' },
+          }),
         ),
       )
     }
@@ -225,7 +234,11 @@ export function upload<T>(path: string, form: FormData, opts: UploadOptions = {}
 }
 
 /** Fetch a binary/text file with auth and trigger a browser download. */
-export async function downloadFile(path: string, query?: QueryParams, fallbackName = 'download'): Promise<void> {
+export async function downloadFile(
+  path: string,
+  query?: QueryParams,
+  fallbackName = 'download',
+): Promise<void> {
   const doFetch = () =>
     fetch(`${API_BASE}${path}${buildQuery(query)}`, {
       headers: tokenStore.get() ? { Authorization: `Bearer ${tokenStore.get()}` } : {},
@@ -233,10 +246,13 @@ export async function downloadFile(path: string, query?: QueryParams, fallbackNa
   let res = await doFetch().catch(() => {
     throw networkError()
   })
-  if (res.status === 401 && tokenStore.get() && (await refreshSession().catch(() => null))) res = await doFetch()
+  if (res.status === 401 && tokenStore.get() && (await refreshSession().catch(() => null)))
+    res = await doFetch()
   if (!res.ok) throw await errorFromResponse(res)
   const blob = await res.blob()
-  const name = /filename\*?=(?:UTF-8'')?"?([^";]+)"?/i.exec(res.headers.get('Content-Disposition') ?? '')?.[1] ?? fallbackName
+  const name =
+    /filename\*?=(?:UTF-8'')?"?([^";]+)"?/i.exec(res.headers.get('Content-Disposition') ?? '')?.[1] ??
+    fallbackName
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url

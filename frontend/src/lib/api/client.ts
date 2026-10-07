@@ -55,6 +55,10 @@ async function doRefresh(): Promise<TokenResponse | null> {
       method: 'POST',
       credentials: 'include',
       headers: { Accept: 'application/json' },
+      // The refresh token is single-use and rotates. If the user reloads while this request is in flight, the server has
+      // already rotated it; keepalive lets the browser still receive the response and store the new cookie, instead of
+      // the reload re-sending the old (now revoked) token and being signed out by reuse detection.
+      keepalive: true,
     })
   let res: Response
   try {

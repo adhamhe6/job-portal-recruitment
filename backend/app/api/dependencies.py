@@ -96,6 +96,21 @@ def client_ip(request: Request) -> str:
     return request.client.host if request.client else "unknown"
 
 
+def _token_subject(request: Request) -> str | None:
+    """The verified ``sub`` claim of the request's bearer token, without touching the database (``None`` if absent or invalid).
+
+    Rate limits are declared as route/router dependencies, which FastAPI resolves *before* the authentication dependency, so
+    ``user_id_ctx`` is still empty when they run; the signed token is the only trustworthy source of "who is this" at that point.
+    """
+    scheme, _, token = request.headers.get("authorization", "").partition(" ")
+    if scheme.lower() != "bearer" or not token.strip():
+        return None
+    try:
+        return str(decode_access_token(token.strip())["sub"])
+    except AuthenticationError:
+        return None
+
+
 def rate_limit(
     bucket: str, attempts_attr: str, window_attr: str, *, per_user: bool = False
 ) -> Callable[[Request], Awaitable[None]]:
@@ -108,7 +123,7 @@ def rate_limit(
         window = int(getattr(settings, window_attr))
         subject = client_ip(request)
         if per_user:
-            uid = user_id_ctx.get()
+            uid = user_id_ctx.get() or _token_subject(request)
             if uid:
                 subject = f"user:{uid}"
         allowed, retry_after = await RateLimiter(get_redis()).hit(f"{bucket}:{subject}", limit, window)

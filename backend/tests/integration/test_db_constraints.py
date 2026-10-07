@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import re
 import uuid
+from datetime import UTC, date, datetime
 from typing import Any
 
 import pytest
 from sqlalchemy import text
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import DBAPIError, IntegrityError
 
 from app.db.database import get_sessionmaker
 from tests.helpers_spine import scalar, sql
@@ -17,16 +19,29 @@ pytestmark = pytest.mark.integration
 UNIQUE, CHECK, EXCLUDE, FK, NOT_NULL = "23505", "23514", "23P01", "23503", "23502"
 
 
+_CAST = re.compile(r"CAST\(:(\w+) AS (date|timestamptz)\)")
+
+
+def coerce(statement: str, params: dict[str, Any]) -> dict[str, Any]:
+    """asyncpg wants date/datetime objects for date/timestamptz parameters; the tests write them as ISO strings."""
+    out = dict(params)
+    for name, kind in _CAST.findall(statement):
+        value = out.get(name)
+        if isinstance(value, str):
+            out[name] = date.fromisoformat(value) if kind == "date" else datetime.fromisoformat(value.replace("Z", "+00:00"))
+    return out
+
+
 async def run(statement: str, **params: Any) -> Any:
-    rows = await sql(statement, **params)
+    rows = await sql(statement, **coerce(statement, params))
     return rows[0][0] if rows else None
 
 
 async def violates(statement: str, sqlstate: str, constraint: str | None = None, **params: Any) -> None:
     """The statement must fail with the given SQLSTATE (and constraint / index name) and leave nothing behind."""
     async with get_sessionmaker()() as s:
-        with pytest.raises(IntegrityError) as exc:
-            await s.execute(text(statement), params)
+        with pytest.raises(IntegrityError if sqlstate.startswith("23") else DBAPIError) as exc:
+            await s.execute(text(statement), coerce(statement, params))
             await s.commit()
         await s.rollback()
     cause = exc.value.orig.__cause__  # type: ignore[union-attr]
@@ -56,8 +71,8 @@ async def candidate(user_id: uuid.UUID | None = None) -> uuid.UUID:
 
 
 async def job(company_id: uuid.UUID, title: str = "Backend Engineer", status: str = "DRAFT", location: str | None = "Berlin", workplace: str = "ONSITE", **extra: Any) -> uuid.UUID:
-    cols = {"company_id": company_id, "title": title, "description": "d" * 40, "status": status, "location": location, "workplace_type": workplace,
-            "published_at": None if status == "DRAFT" else "2026-01-01T00:00:00Z", **extra}
+    cols = {"company_id": company_id, "title": title, "description": "d" * 40, "employment_type": "FULL_TIME", "status": status, "location": location, "workplace_type": workplace,
+            "published_at": None if status == "DRAFT" else datetime(2026, 1, 1, tzinfo=UTC), **extra}
     names = ", ".join(cols)
     values = ", ".join(f":{k}" for k in cols)
     return await run(f"INSERT INTO jobs ({names}) VALUES ({values}) RETURNING id", **cols)  # type: ignore[no-any-return]
@@ -91,7 +106,6 @@ async def test_staff_must_have_a_company_and_candidates_must_not(db: None) -> No
         "INSERT INTO users (email, password_hash, first_name, last_name, role, company_id) VALUES ('c@x.example', 'x', 'A', 'B', 'CANDIDATE', :c)", CHECK, "ck_users_candidate_no_company", c=c,
     )
     await user("ADMIN")
-    await run("UPDATE users SET company_id = NULL WHERE false RETURNING 1")
     victim = await user("RECRUITER", c, email="victim@x.example")
     await violates("UPDATE users SET company_id = NULL WHERE id = :i", CHECK, "ck_users_staff_company", i=victim)
     await violates("UPDATE users SET role = 'CANDIDATE' WHERE id = :i", CHECK, "ck_users_candidate_no_company", i=victim)
@@ -134,7 +148,6 @@ async def test_candidate_profile_ranges_and_ownership_rules(db: None) -> None:
     await violates(ins, CHECK, "ck_candidate_profiles_owner_consistent", u=None, s="SELF", c=None)  # a registered profile needs its user
     await violates(ins, CHECK, "ck_candidate_profiles_owner_consistent", u=other, s="IMPORTED", c=c)  # an imported one must not have one
     await violates(ins, CHECK, "ck_candidate_profiles_owner_consistent", u=None, s="IMPORTED", c=None)  # ... and needs a sourcing company
-    await violates(ins, CHECK, "ck_candidate_profiles_owner_consistent", u=other, s="SELF", c=c) if False else None
     await run(ins + " RETURNING id", u=None, s="IMPORTED", c=c)
     await violates(ins, UNIQUE, "uq_candidate_profiles_user_id", u=uid, s="SELF", c=None)  # one profile per user
 
@@ -156,7 +169,7 @@ async def test_candidate_children_constraints(db: None) -> None:
     s2 = await skill()
     await violates("INSERT INTO candidate_skills (candidate_id, skill_id, years_experience) VALUES (:c, :s, 71)", CHECK, "ck_candidate_skills_years_range", c=cid, s=s2)
     # experiences
-    exp = "INSERT INTO experiences (candidate_id, title, company_name, start_date, end_date, is_current) VALUES (:c, 'T', 'C', :s, :e, :cur)"
+    exp = "INSERT INTO experiences (candidate_id, title, company_name, start_date, end_date, is_current) VALUES (:c, 'T', 'C', CAST(:s AS date), CAST(:e AS date), :cur)"
     await violates(exp, CHECK, "ck_experiences_dates_ordered", c=cid, s="2020-02-01", e="2020-01-01", cur=False)
     await violates(exp, CHECK, "ck_experiences_current_has_no_end", c=cid, s="2020-01-01", e="2021-01-01", cur=True)
     await run(exp + " RETURNING id", c=cid, s="2020-01-01", e="2020-01-01", cur=False)
@@ -169,7 +182,7 @@ async def test_candidate_children_constraints(db: None) -> None:
     await violates("INSERT INTO educations (candidate_id, institution, degree_level) VALUES (:c, 'U', 'PHD')", CHECK, c=cid)
     await run(edu + " RETURNING id", c=cid, s=2012, e=2012)
     # certifications
-    await violates("INSERT INTO certifications (candidate_id, name, issued_on, expires_on) VALUES (:c, 'X', '2024-01-01', '2023-01-01')", CHECK, "ck_certifications_dates_ordered", c=cid)
+    await violates("INSERT INTO certifications (candidate_id, name, issued_on, expires_on) VALUES (:c, 'X', DATE '2024-01-01', DATE '2023-01-01')", CHECK, "ck_certifications_dates_ordered", c=cid)
     # languages: unique ignoring case
     lang = "INSERT INTO candidate_languages (candidate_id, language, proficiency) VALUES (:c, :l, 'FLUENT')"
     await run(lang + " RETURNING id", c=cid, l="German")
@@ -189,26 +202,24 @@ async def test_job_numeric_and_state_checks(db: None) -> None:
         ({"min_experience_years": 5, "max_experience_years": 4}, "ck_jobs_experience_range_ordered"),
     ]
     for i, (extra, name) in enumerate(cases):
-        with pytest.raises(AssertionError):
-            pass
         async with get_sessionmaker()() as s:
             with pytest.raises(IntegrityError) as exc:
-                cols = {"company_id": c, "title": f"T{i}", "description": "d" * 40, **extra}
+                cols = {"company_id": c, "title": f"T{i}", "description": "d" * 40, "employment_type": "FULL_TIME", "workplace_type": "ONSITE", **extra}
                 await s.execute(text(f"INSERT INTO jobs ({', '.join(cols)}) VALUES ({', '.join(':' + k for k in cols)})"), cols)
                 await s.commit()
             await s.rollback()
         assert exc.value.orig.__cause__.constraint_name == name, (extra, name)  # type: ignore[union-attr]
     await job(c, title="Equal bounds", salary_min=100, salary_max=100, min_experience_years=5, max_experience_years=5)
     await job(c, title="Open ended", salary_min=100)
-    await violates("INSERT INTO jobs (company_id, title, description, status) VALUES (:c, 'No pub date', 'd', 'PUBLISHED')", CHECK, "ck_jobs_published_at_set", c=c)
-    await violates("INSERT INTO jobs (company_id, title, description, status) VALUES (:c, 'Closed no date', 'd', 'CLOSED')", CHECK, "ck_jobs_published_at_set", c=c)
-    await run("INSERT INTO jobs (company_id, title, description, status) VALUES (:c, 'Archived draft', 'd', 'ARCHIVED') RETURNING id", c=c)
+    await violates("INSERT INTO jobs (company_id, title, description, employment_type, workplace_type, status) VALUES (:c, 'No pub date', 'd', 'FULL_TIME', 'ONSITE', 'PUBLISHED')", CHECK, "ck_jobs_published_at_set", c=c)
+    await violates("INSERT INTO jobs (company_id, title, description, employment_type, workplace_type, status) VALUES (:c, 'Closed no date', 'd', 'FULL_TIME', 'ONSITE', 'CLOSED')", CHECK, "ck_jobs_published_at_set", c=c)
+    await run("INSERT INTO jobs (company_id, title, description, employment_type, workplace_type, status) VALUES (:c, 'Archived draft', 'd', 'FULL_TIME', 'ONSITE', 'ARCHIVED') RETURNING id", c=c)
 
 
 async def test_only_one_live_posting_per_company_title_location_and_workplace(db: None) -> None:
     c1, c2 = await company(), await company()
     await job(c1, "Data Engineer", "DRAFT", "Berlin", "HYBRID")
-    dup = "INSERT INTO jobs (company_id, title, description, status, location, workplace_type, published_at) VALUES (:c, :t, 'd', :s, :l, :w, now())"
+    dup = "INSERT INTO jobs (company_id, title, description, employment_type, status, location, workplace_type, published_at) VALUES (:c, :t, 'd', 'FULL_TIME', :s, :l, :w, now())"
     for s in ("DRAFT", "PUBLISHED", "PAUSED"):
         await violates(dup, UNIQUE, "uq_jobs_active_duplicate", c=c1, t="  data engineer"[2:].upper(), s=s, l="BERLIN", w="HYBRID")
     assert await scalar("SELECT count(*) FROM jobs") == 1
@@ -222,16 +233,16 @@ async def test_only_one_live_posting_per_company_title_location_and_workplace(db
 async def test_a_missing_location_counts_as_one_location_for_duplicates(db: None) -> None:
     c = await company()
     await job(c, "Remote Role", "DRAFT", None, "REMOTE")
-    await violates("INSERT INTO jobs (company_id, title, description, location, workplace_type) VALUES (:c, 'remote role', 'd', NULL, 'REMOTE')", UNIQUE, "uq_jobs_active_duplicate", c=c)
-    await violates("INSERT INTO jobs (company_id, title, description, location, workplace_type) VALUES (:c, 'REMOTE ROLE', 'd', '', 'REMOTE')", UNIQUE, "uq_jobs_active_duplicate", c=c)
+    await violates("INSERT INTO jobs (company_id, title, description, employment_type, location, workplace_type) VALUES (:c, 'remote role', 'd', 'FULL_TIME', NULL, 'REMOTE')", UNIQUE, "uq_jobs_active_duplicate", c=c)
+    await violates("INSERT INTO jobs (company_id, title, description, employment_type, location, workplace_type) VALUES (:c, 'REMOTE ROLE', 'd', 'FULL_TIME', '', 'REMOTE')", UNIQUE, "uq_jobs_active_duplicate", c=c)
 
 
 async def test_job_skills_constraints_and_cascade(db: None) -> None:
     c, sid = await company(), await skill()
     j = await job(c)
-    await run("INSERT INTO job_skills (job_id, skill_id) VALUES (:j, :s) RETURNING id", j=j, s=sid)
-    await violates("INSERT INTO job_skills (job_id, skill_id) VALUES (:j, :s)", UNIQUE, "uq_job_skills_job_skill", j=j, s=sid)
-    await violates("INSERT INTO job_skills (job_id, skill_id, min_years) VALUES (:j, :s, -1)", CHECK, "ck_job_skills_min_years_positive", j=j, s=await skill())
+    await run("INSERT INTO job_skills (job_id, skill_id, requirement) VALUES (:j, :s, 'REQUIRED') RETURNING id", j=j, s=sid)
+    await violates("INSERT INTO job_skills (job_id, skill_id, requirement) VALUES (:j, :s, 'REQUIRED')", UNIQUE, "uq_job_skills_job_skill", j=j, s=sid)
+    await violates("INSERT INTO job_skills (job_id, skill_id, requirement, min_years) VALUES (:j, :s, 'REQUIRED', -1)", CHECK, "ck_job_skills_min_years_positive", j=j, s=await skill())
     await violates("DELETE FROM skills WHERE id = :s", FK, s=sid)  # a skill in use cannot be removed
     await run("DELETE FROM jobs WHERE id = :j RETURNING 1", j=j)
     assert await scalar("SELECT count(*) FROM job_skills") == 0
@@ -253,7 +264,6 @@ async def test_one_live_application_per_candidate_and_job(db: None) -> None:
     assert await scalar("SELECT count(*) FROM applications WHERE job_id = :j", j=j) == 3
     await run("UPDATE applications SET status = 'WITHDRAWN' WHERE id = :a RETURNING 1", a=first)
     await application(j, cid, "APPLIED")  # allowed again once the previous one is withdrawn
-    await violates("UPDATE applications SET status = 'WITHDRAWN' WHERE status = 'WITHDRAWN' AND false OR id IN (SELECT id FROM applications WHERE status = 'WITHDRAWN' LIMIT 1) AND (SELECT 1) = 0", UNIQUE) if False else None
     other_candidate = await candidate()
     await application(j, other_candidate)
 
@@ -331,7 +341,8 @@ async def test_interview_time_checks(db: None) -> None:
     bad = INTERVIEW.replace(" RETURNING id", "")
     args = {"a": w["apps"][0], "c": w["cands"][0], "co": w["company"], "st": "SCHEDULED"}
     await violates(bad, CHECK, "ck_interviews_end_after_start", s="2026-06-01T10:00:00Z", e="2026-06-01T10:00:00Z", **args)
-    await violates(bad, CHECK, "ck_interviews_end_after_start", s="2026-06-01T10:00:00Z", e="2026-06-01T09:00:00Z", **args)
+    # an inverted range is rejected even earlier, while the generated ``during`` column is computed (SQLSTATE 22000)
+    await violates(bad, "22000", s="2026-06-01T10:00:00Z", e="2026-06-01T09:00:00Z", **args)
     await violates(bad, CHECK, "ck_interviews_max_duration", s="2026-06-01T10:00:00Z", e="2026-06-01T22:00:01Z", **args)
     await make_interview(w, 0, "2026-06-01T10:00:00Z", "2026-06-01T22:00:00Z")  # exactly twelve hours is allowed
     await violates(bad, CHECK, s="2026-06-02T10:00:00Z", e="2026-06-02T11:00:00Z", **{**args, "st": "PAUSED"})
@@ -363,7 +374,6 @@ async def test_cancelling_frees_the_slot_and_reactivating_is_checked(db: None) -
     await run("UPDATE interviews SET status = 'CANCELLED' WHERE id = :i RETURNING 1", i=first)
     second = await make_interview(w, 0, "2026-07-01T10:30:00Z", "2026-07-01T11:30:00Z")
     await violates("UPDATE interviews SET status = 'SCHEDULED' WHERE id = :i", EXCLUDE, "ex_interviews_candidate_no_overlap", i=first)
-    await violates("UPDATE interviews SET start_at = '2026-07-01T09:30:00Z', end_at = '2026-07-01T10:45:00Z' WHERE id = :i AND false OR id = :i", CHECK if False else EXCLUDE, i=second) if False else None
 
 
 async def test_an_interviewer_cannot_be_double_booked(db: None) -> None:
@@ -377,7 +387,7 @@ async def test_an_interviewer_cannot_be_double_booked(db: None) -> None:
     await run(part, i=i2, u=w["rec"], r="OBSERVER", a=True, s="2026-06-02T10:30:00Z", e="2026-06-02T11:30:00Z")  # observers may overlap
     await violates(bad, UNIQUE, "uq_interview_participants_interview_user", i=i2, u=w["rec"], r="INTERVIEWER", a=True, s="2026-06-02T12:00:00Z", e="2026-06-02T13:00:00Z")
     await run(part, i=i2, u=w["rec2"], r="INTERVIEWER", a=True, s="2026-06-02T10:30:00Z", e="2026-06-02T11:30:00Z")  # another interviewer is free
-    i3 = await make_interview(w, 1, "2026-06-02T11:00:00Z", "2026-06-02T12:00:00Z")
+    i3 = await make_interview(w, 0, "2026-06-02T11:00:00Z", "2026-06-02T12:00:00Z")  # right after the first one (same candidate, half-open ranges)
     await run(part, i=i3, u=w["rec"], r="INTERVIEWER", a=True, s="2026-06-02T11:00:00Z", e="2026-06-02T12:00:00Z")  # adjacent is fine
     i4 = await make_interview(w, 1, "2026-06-02T10:15:00Z", "2026-06-02T10:20:00Z", "CANCELLED")
     await run(part, i=i4, u=w["rec"], r="INTERVIEWER", a=False, s="2026-06-02T10:15:00Z", e="2026-06-02T10:20:00Z")  # inactive rows do not block
@@ -513,4 +523,3 @@ async def test_the_vector_index_is_usable_for_cosine_ordering(db: None) -> None:
         plan = "\n".join(r[0] for r in (await s.execute(text(f"EXPLAIN SELECT id FROM jobs ORDER BY embedding <=> CAST('{probe}' AS vector) LIMIT 1"))).all())
         nearest = (await s.execute(text("SELECT title FROM jobs ORDER BY embedding <=> CAST(:p AS vector) LIMIT 1"), {"p": probe})).scalar_one()
     assert "ix_jobs_embedding_hnsw" in plan and nearest == "Vector Job 1"
-    await violates("INSERT INTO jobs (company_id, title, description, embedding) VALUES (:c, 'Wrong dim', 'd', CAST('[1,2,3]' AS vector))", "22000", c=c) if False else None

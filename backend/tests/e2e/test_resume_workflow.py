@@ -151,7 +151,7 @@ async def test_review_apply_and_match_scores_change(client, session):
     ex = await extracted(client, cand, body["id"])
     assert ex["parser_version"] == "v1" and ex["contact"]["email"] == "jane.doe@example.com"
     assert (
-        ex["years_of_experience"]["basis"] == "employment_history" and ex["years_of_experience"]["value"] > 10
+        ex["years_basis"] == "employment_history" and ex["years_of_experience"] > 10
     )
     assert [e["title"] for e in ex["experiences"]] == [
         "Senior Backend Engineer",

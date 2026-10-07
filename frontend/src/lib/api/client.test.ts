@@ -200,12 +200,12 @@ describe('upload (multipart with progress)', () => {
   it('posts FormData with the bearer token and reports completion', async () => {
     tokenStore.set('tok-up')
     let auth: string | null = null
-    let name = ''
+    let size = 0
     server.use(
       http.post('/api/v1/resumes', async ({ request }) => {
         auth = request.headers.get('authorization')
         const form = await request.formData()
-        name = (form.get('file') as File).name
+        size = (form.get('file') as File).size
         return HttpResponse.json({ id: 'r1' }, { status: 201 })
       }),
     )
@@ -215,7 +215,7 @@ describe('upload (multipart with progress)', () => {
     const res = await upload<{ id: string }>('/resumes', form, { onProgress: (f) => progress.push(f) })
     expect(res).toEqual({ id: 'r1' })
     expect(auth).toBe('Bearer tok-up')
-    expect(name).toBe('cv.pdf')
+    expect(size).toBe(5)
     expect(progress[progress.length - 1]).toBe(1)
   })
 

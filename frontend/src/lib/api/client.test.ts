@@ -226,13 +226,21 @@ describe('upload (multipart with progress)', () => {
       http.post('/api/v1/resumes', ({ request }) => {
         attempts++
         return request.headers.get('authorization') === 'Bearer fresh'
-          ? HttpResponse.json(errorBody('UNSUPPORTED_MEDIA_TYPE', 'Only PDF and DOCX files are accepted'), { status: 415 })
+          ? HttpResponse.json(errorBody('UNSUPPORTED_MEDIA_TYPE', 'Only PDF and DOCX files are accepted'), {
+              status: 415,
+            })
           : HttpResponse.json(errorBody('TOKEN_EXPIRED', 'expired'), { status: 401 })
       }),
-      http.post('/api/v1/auth/refresh', () => HttpResponse.json({ access_token: 'fresh', token_type: 'bearer', expires_in: 900, user: {} })),
+      http.post('/api/v1/auth/refresh', () =>
+        HttpResponse.json({ access_token: 'fresh', token_type: 'bearer', expires_in: 900, user: {} }),
+      ),
     )
     const err = (await upload('/resumes', new FormData()).catch((e: unknown) => e)) as ApiError
     expect(attempts).toBe(2)
-    expect(err).toMatchObject({ status: 415, code: 'UNSUPPORTED_MEDIA_TYPE', message: 'Only PDF and DOCX files are accepted' })
+    expect(err).toMatchObject({
+      status: 415,
+      code: 'UNSUPPORTED_MEDIA_TYPE',
+      message: 'Only PDF and DOCX files are accepted',
+    })
   })
 })

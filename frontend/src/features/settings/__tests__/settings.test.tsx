@@ -22,7 +22,9 @@ describe('account settings', () => {
     await user.type(first, 'Alexandra')
     await user.type(screen.getByLabelText(/^phone/i), '+49 30 123456')
     await user.click(screen.getByRole('button', { name: 'Save changes' }))
-    await waitFor(() => expect(body).toEqual({ first_name: 'Alexandra', last_name: 'Rivera', phone: '+49 30 123456' }))
+    await waitFor(() =>
+      expect(body).toEqual({ first_name: 'Alexandra', last_name: 'Rivera', phone: '+49 30 123456' }),
+    )
     expect(await screen.findByText('Account details updated')).toBeInTheDocument()
   })
 
@@ -30,7 +32,12 @@ describe('account settings', () => {
     signInAs('CANDIDATE')
     server.use(
       http.patch('/api/v1/auth/me', () =>
-        HttpResponse.json(errorBody('VALIDATION_ERROR', 'Request validation failed', [{ field: 'phone', message: 'Value error, Enter a valid phone number', type: 'value_error' }]), { status: 422 }),
+        HttpResponse.json(
+          errorBody('VALIDATION_ERROR', 'Request validation failed', [
+            { field: 'phone', message: 'Value error, Enter a valid phone number', type: 'value_error' },
+          ]),
+          { status: 422 },
+        ),
       ),
     )
     const { user } = renderApp('/settings')
@@ -76,7 +83,11 @@ describe('account settings', () => {
 
   it('shows the server message when the current password is wrong', async () => {
     signInAs('CANDIDATE')
-    server.use(http.post('/api/v1/auth/change-password', () => HttpResponse.json(errorBody('INVALID_CREDENTIALS', 'Current password is incorrect'), { status: 401 })))
+    server.use(
+      http.post('/api/v1/auth/change-password', () =>
+        HttpResponse.json(errorBody('INVALID_CREDENTIALS', 'Current password is incorrect'), { status: 401 }),
+      ),
+    )
     const { user } = renderApp('/settings')
     await user.type(await screen.findByLabelText(/^current password/i, { selector: 'input' }), 'wrongpass1')
     await user.type(screen.getByLabelText(/^new password/i, { selector: 'input' }), 'EvenBetter456')

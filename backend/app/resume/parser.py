@@ -646,8 +646,17 @@ def _split_company_location(text: str) -> tuple[str, str | None]:
     return text, None
 
 
+_PAREN_GROUP = re.compile(r"\(([^()]{2,60})\)")
+
+
 def _split_header_text(text: str) -> list[str]:
+    located: list[str] = []
+    for m in _PAREN_GROUP.finditer(text):  # "Alibaba Cloud (Hangzhou, China)": the parenthesis is the location
+        if _looks_like_location_piece(m.group(1)):
+            located.append(m.group(1).strip())
+            text = text.replace(m.group(0), " ")
     parts = [p for p in (_clean_piece(x) for x in _SEPARATORS.split(text)) if p]
+    parts.extend(located)
     out: list[str] = []
     for part in parts:
         if "," in part:  # "Senior Engineer, Acme Corp" → two pieces; "Acme Corp, Berlin" stays together
@@ -765,12 +774,16 @@ def parse_experiences(lines: Sequence[str], today: date | None = None) -> list[P
         for j in a.after:
             pieces.extend(_split_header_text(lines[j]))
         title, company, location, bonus = _assign_roles(pieces)
+        inherited = False
+        if title and not company and entries and len([p for p in pieces if p]) == 1 and entries[-1].company:
+            # Several roles under one employer: "Senior PM  2018 – Present" / "PM  2015 – 2018" under one company heading.
+            company, inherited = entries[-1].company, True
         desc_lines = [strip_bullet(x) for x in lines[first_desc:end] if x.strip()]
         description = "\n".join(desc_lines)[:MAX_DESCRIPTION_CHARS] or None
         if not (title or company):
             continue
         has_dates = a.rng.start is not None
-        confidence = 0.4 + (0.2 if has_dates else 0.0) + bonus + (0.15 if company else 0.0)
+        confidence = 0.4 + (0.2 if has_dates else 0.0) + bonus + (0.15 if company else 0.0) - (0.1 if inherited else 0.0)
         entries.append(
             ParsedExperience(
                 title=(title or None) and title[:200],
@@ -884,7 +897,7 @@ _AMBIGUOUS_DEGREES: tuple[tuple[re.Pattern[str], str], ...] = (
     (re.compile(r"(?:^|[-–—(|]\s*)(A\.?S\.?|A\.?A\.?)(?=\s*(?:\(|,|in\b|of\b|-|–|—|[A-Z]))"), "ASSOCIATE"),
 )
 _FIELD_AFTER = re.compile(
-    r"^\s*(?:\((?:hons|honours|honors)\.?\)\s*)?(?:(?:in|of|:|,|-|–|—)\s*)?(?P<f>[A-Z][A-Za-z&/'’\- ]{2,70}?)(?=\s*(?:,|\(|\||—|–|\s-\s|\d{4}|·|•|$))"
+    r"^\s*(?:\((?:hons|honours|honors)\.?\)\s*)?(?:\([A-Za-z.\s]{2,12}\)\s*)?(?:(?:in|of|:|,|-|–|—)\s*)?(?P<f>[A-Z][A-Za-z&/'’\- ]{2,70}?)(?=\s*(?:,|\(|\||—|–|\s-\s|\d{4}|·|•|$))"
 )
 _GPA = re.compile(r"\b(?:gpa|cgpa|grade)\b.*$", re.IGNORECASE)
 _INSTITUTION = re.compile(r"\b(" + "|".join(INSTITUTION_WORDS) + r")\b", re.IGNORECASE)

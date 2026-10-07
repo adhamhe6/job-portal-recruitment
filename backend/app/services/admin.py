@@ -65,7 +65,9 @@ logger = logging.getLogger(__name__)
 STALE_PENDING_MINUTES = 10
 STALE_RUNNING_MINUTES = 30
 REDIS_TIMEOUT_SECONDS = 2.0
-HEALTH_KEY = f"{default_queue_name}{health_check_key_suffix}"  # "arq:queue:health-check" - written by the ARQ worker
+HEALTH_KEY = (
+    f"{default_queue_name}{health_check_key_suffix}"  # "arq:queue:health-check" - written by the ARQ worker
+)
 REFRESH_DEDUPE_KEY = "refresh-embeddings"
 _KV = re.compile(r"(\w+)=(\d+)")
 
@@ -145,10 +147,14 @@ class AdminService:
             latency = _ms(t0)
         except Exception as exc:
             return DatabaseStatus(ok=False, error=type(exc).__name__)
-        version = await self.session.scalar(text("SELECT extversion FROM pg_extension WHERE extname = 'vector'"))
+        version = await self.session.scalar(
+            text("SELECT extversion FROM pg_extension WHERE extname = 'vector'")
+        )
         revision: str | None = None
         try:
-            async with self.session.begin_nested():  # a missing alembic_version table must not poison the transaction
+            async with (
+                self.session.begin_nested()
+            ):  # a missing alembic_version table must not poison the transaction
                 revision = await self.session.scalar(text("SELECT version_num FROM alembic_version LIMIT 1"))
         except Exception:
             revision = None
@@ -189,26 +195,46 @@ class AdminService:
                 worker.last_check = line[:200]
                 worker.health_ttl_seconds = round(ttl_ms / 1000, 1) if ttl_ms and ttl_ms > 0 else None
                 worker.jobs_complete, worker.jobs_failed = kv.get("j_complete"), kv.get("j_failed")
-                worker.jobs_retried, worker.jobs_ongoing, worker.queued = kv.get("j_retried"), kv.get("j_ongoing"), kv.get("queued")
+                worker.jobs_retried, worker.jobs_ongoing, worker.queued = (
+                    kv.get("j_retried"),
+                    kv.get("j_ongoing"),
+                    kv.get("queued"),
+                )
         return status, worker
 
     async def _embedding(self) -> EmbeddingModelStatus:
         s = get_settings()
-        base = {"backend": s.embedding_backend, "model_name": s.embedding_model_name, "model_version": s.embedding_version, "dimension": s.embedding_dim}
+        base = {
+            "backend": s.embedding_backend,
+            "model_name": s.embedding_model_name,
+            "model_version": s.embedding_version,
+            "dimension": s.embedding_dim,
+        }
         try:
             from app.matching.embedder import get_embedder
 
             embedder = await asyncio.to_thread(get_embedder)
             vec = await asyncio.to_thread(embedder.embed, ["health check"])
             ok = tuple(vec.shape) == (1, s.embedding_dim)
-            return EmbeddingModelStatus(**base, loaded=ok, error=None if ok else "unexpected embedding dimension")
+            return EmbeddingModelStatus(
+                **base, loaded=ok, error=None if ok else "unexpected embedding dimension"
+            )
         except Exception as exc:
             return EmbeddingModelStatus(**base, loaded=False, error=type(exc).__name__)
 
     async def _task_health(self) -> TaskHealth:
         s = self.session
         now = utcnow()
-        by_status = _fill_status([(k, n) for k, n in (await s.execute(select(BackgroundTask.status, func.count()).group_by(BackgroundTask.status))).all()])
+        by_status = _fill_status(
+            [
+                (k, n)
+                for k, n in (
+                    await s.execute(
+                        select(BackgroundTask.status, func.count()).group_by(BackgroundTask.status)
+                    )
+                ).all()
+            ]
+        )
         recent = _fill_status(
             [
                 (k, n)
@@ -222,18 +248,33 @@ class AdminService:
             ]
         )
         stale_cond = or_(
-            (BackgroundTask.status == TaskStatus.PENDING) & (BackgroundTask.created_at < now - timedelta(minutes=STALE_PENDING_MINUTES)),
-            (BackgroundTask.status == TaskStatus.RUNNING) & (BackgroundTask.updated_at < now - timedelta(minutes=STALE_RUNNING_MINUTES)),
+            (BackgroundTask.status == TaskStatus.PENDING)
+            & (BackgroundTask.created_at < now - timedelta(minutes=STALE_PENDING_MINUTES)),
+            (BackgroundTask.status == TaskStatus.RUNNING)
+            & (BackgroundTask.updated_at < now - timedelta(minutes=STALE_RUNNING_MINUTES)),
         )
-        stale_count = int(await s.scalar(select(func.count()).select_from(BackgroundTask).where(stale_cond)) or 0)
+        stale_count = int(
+            await s.scalar(select(func.count()).select_from(BackgroundTask).where(stale_cond)) or 0
+        )
         rows = (
-            await s.execute(select(BackgroundTask).where(stale_cond).order_by(BackgroundTask.created_at, BackgroundTask.id).limit(10))
-        ).scalars().all()
+            (
+                await s.execute(
+                    select(BackgroundTask)
+                    .where(stale_cond)
+                    .order_by(BackgroundTask.created_at, BackgroundTask.id)
+                    .limit(10)
+                )
+            )
+            .scalars()
+            .all()
+        )
         beats: dict[uuid.UUID, bool] = {}
         running = [t.id for t in rows if t.status == TaskStatus.RUNNING]
         if running:
             with contextlib.suppress(RedisError, OSError, TimeoutError):
-                vals = await asyncio.wait_for(get_redis().mget([_heartbeat_key(i) for i in running]), REDIS_TIMEOUT_SECONDS)
+                vals = await asyncio.wait_for(
+                    get_redis().mget([_heartbeat_key(i) for i in running]), REDIS_TIMEOUT_SECONDS
+                )
                 beats = {i: v is not None for i, v in zip(running, vals, strict=True)}
         stale = [
             StaleTask(
@@ -243,7 +284,15 @@ class AdminService:
                 stage=t.stage,
                 created_at=t.created_at,
                 updated_at=t.updated_at,
-                age_minutes=round(((now - (t.created_at if t.status == TaskStatus.PENDING else t.updated_at)).total_seconds()) / 60, 1),
+                age_minutes=round(
+                    (
+                        (
+                            now - (t.created_at if t.status == TaskStatus.PENDING else t.updated_at)
+                        ).total_seconds()
+                    )
+                    / 60,
+                    1,
+                ),
                 worker_heartbeat=beats.get(t.id) if t.status == TaskStatus.RUNNING else None,
             )
             for t in rows
@@ -263,9 +312,17 @@ class AdminService:
         db = await self._database()
         redis_status, worker = await self._redis_and_worker()
         embedding = await self._embedding()
-        tasks = await self._task_health() if db.ok else TaskHealth(
-            by_status={}, last_24h_by_status={}, stale_pending_after_minutes=STALE_PENDING_MINUTES,
-            stale_running_after_minutes=STALE_RUNNING_MINUTES, stale_count=0, stale=[],
+        tasks = (
+            await self._task_health()
+            if db.ok
+            else TaskHealth(
+                by_status={},
+                last_24h_by_status={},
+                stale_pending_after_minutes=STALE_PENDING_MINUTES,
+                stale_running_after_minutes=STALE_RUNNING_MINUTES,
+                stale_count=0,
+                stale=[],
+            )
         )
         degraded = (
             not redis_status.ok
@@ -315,9 +372,15 @@ class AdminService:
             raise NotFoundError("Task not found", code="TASK_NOT_FOUND")
         if task.status != TaskStatus.FAILED:
             raise ConflictError(
-                f"Only FAILED tasks can be retried (this one is {task.status.value})", code="TASK_NOT_RETRYABLE", details={"status": task.status.value}
+                f"Only FAILED tasks can be retried (this one is {task.status.value})",
+                code="TASK_NOT_RETRYABLE",
+                details={"status": task.status.value},
             )
-        dedupe_key, task_type, previous_error = task.dedupe_key, task.type, task.error_code  # plain values: ORM state expires on rollback
+        dedupe_key, task_type, previous_error = (
+            task.dedupe_key,
+            task.type,
+            task.error_code,
+        )  # plain values: ORM state expires on rollback
         try:
             # Atomic FAILED -> PENDING: of two admins clicking at once, exactly one proceeds.
             moved = (
@@ -325,8 +388,15 @@ class AdminService:
                     update(BackgroundTask)
                     .where(BackgroundTask.id == task_id, BackgroundTask.status == TaskStatus.FAILED)
                     .values(
-                        status=TaskStatus.PENDING, progress=0, stage="retrying", attempts=0, error_code=None, error_message=None,
-                        result=null(), started_at=None, finished_at=None,
+                        status=TaskStatus.PENDING,
+                        progress=0,
+                        stage="retrying",
+                        attempts=0,
+                        error_code=None,
+                        error_message=None,
+                        result=null(),
+                        started_at=None,
+                        finished_at=None,
                     )
                     .returning(BackgroundTask.id)
                     .execution_options(synchronize_session=False)
@@ -336,14 +406,20 @@ class AdminService:
                 await self.session.rollback()
                 raise ConflictError("This task is no longer FAILED", code="TASK_NOT_RETRYABLE")
             record_audit(
-                self.session, actor_id=user.id, action="task.retried", entity_type="task", entity_id=task_id,
+                self.session,
+                actor_id=user.id,
+                action="task.retried",
+                entity_type="task",
+                entity_id=task_id,
                 meta={"type": task_type.value, "previous_error": previous_error},
             )
             await self.session.commit()
         except IntegrityError as exc:  # another task with the same dedupe key is active now
             await self.session.rollback()
             raise ConflictError(
-                "An equivalent task is already pending or running", code="TASK_ALREADY_ACTIVE", details={"dedupe_key": dedupe_key}
+                "An equivalent task is already pending or running",
+                code="TASK_ALREADY_ACTIVE",
+                details={"dedupe_key": dedupe_key},
             ) from exc
         await self.session.refresh(task)
         await TaskService(self.session).enqueue(task, dispatcher)
@@ -392,12 +468,21 @@ class AdminService:
         if from_date:
             stmt = stmt.where(AuditEvent.created_at >= datetime.combine(from_date, dtime.min, UTC))
         if to_date:
-            stmt = stmt.where(AuditEvent.created_at < datetime.combine(to_date + timedelta(days=1), dtime.min, UTC))
+            stmt = stmt.where(
+                AuditEvent.created_at < datetime.combine(to_date + timedelta(days=1), dtime.min, UTC)
+            )
         rows, total = await paginate(self.session, stmt, page=page, page_size=page_size, scalars=False)
         return [
             AuditEventOut(
-                id=ev.id, action=ev.action, entity_type=ev.entity_type, entity_id=ev.entity_id, actor_id=ev.actor_id,
-                actor_name=f"{fn} {ln}".strip() if fn else None, actor_email=email, company_id=ev.company_id, metadata=ev.meta,
+                id=ev.id,
+                action=ev.action,
+                entity_type=ev.entity_type,
+                entity_id=ev.entity_id,
+                actor_id=ev.actor_id,
+                actor_name=f"{fn} {ln}".strip() if fn else None,
+                actor_email=email,
+                company_id=ev.company_id,
+                metadata=ev.meta,
                 created_at=ev.created_at,
             )
             for ev, fn, ln, email in rows
@@ -412,11 +497,19 @@ class AdminService:
             TaskType.REFRESH_EMBEDDINGS, {}, dispatcher, created_by_id=user.id, dedupe_key=REFRESH_DEDUPE_KEY
         )
         if created:
-            record_audit(self.session, actor_id=user.id, action="embeddings.refresh_requested", entity_type="task", entity_id=task.id)
+            record_audit(
+                self.session,
+                actor_id=user.id,
+                action="embeddings.refresh_requested",
+                entity_type="task",
+                entity_id=task.id,
+            )
             await self.session.commit()
         return task, created
 
-    async def _bucket(self, population: str, entity: Any, where: list[Any], model_col: Any, version_col: Any, emb_col: Any) -> EmbeddingBucket:
+    async def _bucket(
+        self, population: str, entity: Any, where: list[Any], model_col: Any, version_col: Any, emb_col: Any
+    ) -> EmbeddingBucket:
         s = get_settings()
         right_model = (model_col == s.embedding_model_name) & (version_col == s.embedding_version)
         row = (
@@ -427,34 +520,58 @@ class AdminService:
                     func.count().filter(emb_col.is_not(None), right_model),
                     func.count().filter(
                         emb_col.is_not(None),
-                        model_col.is_distinct_from(s.embedding_model_name) | version_col.is_distinct_from(s.embedding_version),
+                        model_col.is_distinct_from(s.embedding_model_name)
+                        | version_col.is_distinct_from(s.embedding_version),
                     ),
                 )
                 .select_from(entity)
                 .where(*where)
             )
         ).one()
-        return EmbeddingBucket(population=population, total=int(row[0]), missing=int(row[1]), current=int(row[2]), outdated=int(row[3]))
+        return EmbeddingBucket(
+            population=population,
+            total=int(row[0]),
+            missing=int(row[1]),
+            current=int(row[2]),
+            outdated=int(row[3]),
+        )
 
     async def embeddings_status(self, user: User) -> EmbeddingsStatus:
         self._require_admin(user)
         s = get_settings()
         jobs = await self._bucket(
-            "jobs that are PUBLISHED or PAUSED (drafts and closed jobs are not embedded)", Job,
-            [Job.status.in_((JobStatus.PUBLISHED, JobStatus.PAUSED))], Job.embedding_model, Job.embedding_version, Job.embedding,
+            "jobs that are PUBLISHED or PAUSED (drafts and closed jobs are not embedded)",
+            Job,
+            [Job.status.in_((JobStatus.PUBLISHED, JobStatus.PAUSED))],
+            Job.embedding_model,
+            Job.embedding_version,
+            Job.embedding,
         )
         candidates = await self._bucket(
-            "all candidate profiles (profiles without any text cannot be embedded)", CandidateProfile, [],
-            CandidateProfile.embedding_model, CandidateProfile.embedding_version, CandidateProfile.embedding,
+            "all candidate profiles (profiles without any text cannot be embedded)",
+            CandidateProfile,
+            [],
+            CandidateProfile.embedding_model,
+            CandidateProfile.embedding_version,
+            CandidateProfile.embedding,
         )
         from app.db.models import ProcessingStatus
 
         resumes = await self._bucket(
-            "successfully processed résumés", ResumeProcessingResult, [ResumeProcessingResult.status == ProcessingStatus.COMPLETED],
-            ResumeProcessingResult.embedding_model, ResumeProcessingResult.embedding_version, ResumeProcessingResult.embedding,
+            "successfully processed résumés",
+            ResumeProcessingResult,
+            [ResumeProcessingResult.status == ProcessingStatus.COMPLETED],
+            ResumeProcessingResult.embedding_model,
+            ResumeProcessingResult.embedding_version,
+            ResumeProcessingResult.embedding,
         )
         active = await self.session.scalar(
-            select(BackgroundTask.id).where(BackgroundTask.type == TaskType.REFRESH_EMBEDDINGS, BackgroundTask.status.in_(ACTIVE_TASK_STATUSES)).limit(1)
+            select(BackgroundTask.id)
+            .where(
+                BackgroundTask.type == TaskType.REFRESH_EMBEDDINGS,
+                BackgroundTask.status.in_(ACTIVE_TASK_STATUSES),
+            )
+            .limit(1)
         )
         last = (
             await self.session.execute(
@@ -472,7 +589,11 @@ class AdminService:
             candidates=candidates,
             resume_results=resumes,
             active_refresh_task_id=active,
-            last_refresh=LastRefresh(task_id=last.id, status=last.status, finished_at=last.finished_at, result=last.result) if last else None,
+            last_refresh=LastRefresh(
+                task_id=last.id, status=last.status, finished_at=last.finished_at, result=last.result
+            )
+            if last
+            else None,
         )
 
     # ------------------------------------------------------------------------------------------------------------
@@ -485,47 +606,72 @@ class AdminService:
         pairs, jobs, cands, last = (
             await sess.execute(
                 select(
-                    func.count(), func.count(func.distinct(CandidateJobMatch.job_id)),
-                    func.count(func.distinct(CandidateJobMatch.candidate_id)), func.max(CandidateJobMatch.generated_at),
+                    func.count(),
+                    func.count(func.distinct(CandidateJobMatch.job_id)),
+                    func.count(func.distinct(CandidateJobMatch.candidate_id)),
+                    func.max(CandidateJobMatch.generated_at),
                 )
             )
         ).one()
         versions = (
             await sess.execute(
                 select(
-                    CandidateJobMatch.matching_version, CandidateJobMatch.embedding_model, CandidateJobMatch.embedding_version, func.count()
+                    CandidateJobMatch.matching_version,
+                    CandidateJobMatch.embedding_model,
+                    CandidateJobMatch.embedding_version,
+                    func.count(),
                 )
-                .group_by(CandidateJobMatch.matching_version, CandidateJobMatch.embedding_model, CandidateJobMatch.embedding_version)
+                .group_by(
+                    CandidateJobMatch.matching_version,
+                    CandidateJobMatch.embedding_model,
+                    CandidateJobMatch.embedding_version,
+                )
                 .order_by(func.count().desc())
             )
         ).all()
         by_version = [
             MatchVersionCount(
-                matching_version=mv, embedding_model=em, embedding_version=ev, pairs=int(n),
-                current=(mv == MATCHING_VERSION and em == s.embedding_model_name and ev == s.embedding_version),
+                matching_version=mv,
+                embedding_model=em,
+                embedding_version=ev,
+                pairs=int(n),
+                current=(
+                    mv == MATCHING_VERSION and em == s.embedding_model_name and ev == s.embedding_version
+                ),
             )
             for mv, em, ev, n in versions
         ]
-        published = int(await sess.scalar(select(func.count()).select_from(Job).where(Job.status == JobStatus.PUBLISHED)) or 0)
+        published = int(
+            await sess.scalar(select(func.count()).select_from(Job).where(Job.status == JobStatus.PUBLISHED))
+            or 0
+        )
         without = int(
             await sess.scalar(
                 select(func.count())
                 .select_from(Job)
-                .where(Job.status == JobStatus.PUBLISHED, ~select(CandidateJobMatch.id).where(CandidateJobMatch.job_id == Job.id).exists())
+                .where(
+                    Job.status == JobStatus.PUBLISHED,
+                    ~select(CandidateJobMatch.id).where(CandidateJobMatch.job_id == Job.id).exists(),
+                )
             )
             or 0
         )
         match_types = (TaskType.MATCH_JOB, TaskType.MATCH_CANDIDATE)
         active = int(
             await sess.scalar(
-                select(func.count()).select_from(BackgroundTask).where(BackgroundTask.type.in_(match_types), BackgroundTask.status.in_(ACTIVE_TASK_STATUSES))
+                select(func.count())
+                .select_from(BackgroundTask)
+                .where(BackgroundTask.type.in_(match_types), BackgroundTask.status.in_(ACTIVE_TASK_STATUSES))
             )
             or 0
         )
         recent = (
             await sess.execute(
                 select(BackgroundTask.status, func.count())
-                .where(BackgroundTask.type.in_(match_types), BackgroundTask.created_at >= utcnow() - timedelta(hours=24))
+                .where(
+                    BackgroundTask.type.in_(match_types),
+                    BackgroundTask.created_at >= utcnow() - timedelta(hours=24),
+                )
                 .group_by(BackgroundTask.status)
             )
         ).all()
@@ -541,5 +687,7 @@ class AdminService:
             by_version=by_version,
             published_jobs=published,
             published_jobs_without_matches=without,
-            tasks=MatchTaskCounts(active=active, last_24h_by_status=_fill_status([(k, n) for k, n in recent])),
+            tasks=MatchTaskCounts(
+                active=active, last_24h_by_status=_fill_status([(k, n) for k, n in recent])
+            ),
         )

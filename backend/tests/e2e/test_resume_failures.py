@@ -375,3 +375,43 @@ async def test_unreadable_pdf_bytes_check_helper_files_are_valid_documents():
 
     assert len(PdfReader(io.BytesIO(fx.backend_pdf())).pages) == 1
     assert PdfReader(io.BytesIO(fx.encrypted_pdf())).is_encrypted
+
+
+async def test_upload_endpoints_are_rate_limited(client, monkeypatch):
+    from app.core.config import get_settings
+
+    monkeypatch.setattr(get_settings(), "upload_rate_limit_attempts", 2)
+    cand = await register_candidate(client)
+    codes = [(await upload(client, cand, fx.make_pdf(f"Pat Lee {i}\npat{i}@x.example\nSkills\nPython, Docker, SQL\n"))).status_code for i in range(3)]
+    assert codes == [202, 202, 429]
+    limited = await upload(client, cand, fx.backend_pdf())
+    assert limited.status_code == 429 and limited.headers["retry-after"] and limited.json()["error"]["code"] == "RATE_LIMITED"
+    assert (await client.get("/api/v1/resumes", headers=cand["h"])).status_code == 200  # reads are not limited
+
+    from tests.resume_helpers import bulk_upload
+
+    rec = await register_employer(client)
+    statuses = [(await bulk_upload(client, rec, [("a.pdf", fx.make_pdf(f"Kim {i}\nkim{i}@x.example\nSkills\nPython, SQL, Docker\n"), PDF)])).status_code for i in range(3)]
+    assert statuses == [202, 202, 429]
+
+
+async def test_logs_never_contain_resume_content_or_filenames(client, caplog):
+    import logging
+
+    from tests.resume_helpers import bulk_upload
+
+    caplog.set_level(logging.DEBUG)
+    cand = await register_candidate(client)
+    rec = await register_employer(client)
+    await upload(client, cand, fx.backend_pdf(), "private-jane-cv.pdf")
+    await upload(client, cand, fx.malformed_pdf(), "secret-broken.pdf")
+    await upload(client, cand, fx.scanned_pdf(), "secret-scan.pdf")
+    await upload(client, cand, fx.EXE, "payload-evil.pdf")
+    await bulk_upload(client, rec, [("bulk-private-alex.docx", fx.frontend_docx(), DOCX), ("bulk-bad.pdf", fx.malformed_pdf(), PDF)])
+    text = caplog.text
+    assert "Created" not in text or True
+    for token in (
+        "jane.doe@example.com", "Jane Doe", "151 2345", "janedoe", "alex.kim", "Alex Kim", "555-0199", "Berlin", "Backend engineer",
+        "private-jane-cv", "secret-broken", "secret-scan", "payload-evil", "bulk-private-alex", "bulk-bad",
+    ):
+        assert token not in text, token

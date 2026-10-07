@@ -8,23 +8,28 @@ from typing import Any
 import pytest
 from httpx import AsyncClient
 
-from app.cache.redis_cache import get_cache
-from tests.helpers import create_job, fill_backend_profile, register_candidate, register_employer
-from tests.helpers_spine import (  # noqa: F401
-    API,
-    apply_job,
-    assert_error,
-    expire_deadline,
-    fast_argon,
-    seed_search_corpus,
-    set_job_status,
-    sql,
-    walk,
-)
+from tests.helpers_spine import API, assert_error, seed_search_corpus, shared_world, walk
 
 pytestmark = pytest.mark.e2e
 
 SEARCH = f"{API}/search/jobs"
+
+
+# One corpus for the whole module: every test here only reads, so it is built once instead of once per test.
+@pytest.fixture(scope="module")
+async def _world(migrated_db: None, seeded_ontology: None):  # type: ignore[no-untyped-def]
+    async with shared_world(seed_search_corpus) as world:
+        yield world
+
+
+@pytest.fixture
+def client(_world):  # type: ignore[no-untyped-def]  # overrides the per-test fixture of tests/conftest.py
+    return _world[0]
+
+
+@pytest.fixture
+def corpus(_world):  # type: ignore[no-untyped-def]
+    return _world[1]
 
 
 async def search(client: AsyncClient, who: dict[str, Any] | None = None, **params: Any) -> dict[str, Any]:
@@ -46,8 +51,8 @@ async def ids_for(client: AsyncClient, corpus: dict[str, Any], **params: Any) ->
 # --- keyword relevance ---------------------------------------------------------------------------------------------------------------------
 
 
-async def test_title_match_outranks_description_match(client: AsyncClient) -> None:
-    c = await seed_search_corpus(client)
+async def test_title_match_outranks_description_match(client: AsyncClient, corpus: dict[str, Any]) -> None:
+    c = corpus
     body = await search(client, q="python")
     assert titles(body)[0] == "Python Developer", titles(body)
     assert "Office Manager" in titles(body), "description-only matches are still found"
@@ -55,21 +60,20 @@ async def test_title_match_outranks_description_match(client: AsyncClient) -> No
     assert c["python"]["id"] == body["items"][0]["id"]
 
 
-async def test_skills_are_searchable_keywords(client: AsyncClient) -> None:
-    c = await seed_search_corpus(client)
+async def test_skills_are_searchable_keywords(client: AsyncClient, corpus: dict[str, Any]) -> None:
+    c = corpus
     assert await ids_for(client, c, q="kubernetes") == {"devops"}
     assert await ids_for(client, c, q="spring boot") == {"java"}
 
 
 async def test_typos_are_tolerated_on_titles(client: AsyncClient) -> None:
-    await seed_search_corpus(client)
     assert titles(await search(client, q="pyton developr"))[0] == "Python Developer"
     assert "Senior Java Engineer" in titles(await search(client, q="senor java enginer"))
     assert titles(await search(client, q="qwertyuiop zxcvbnm"))== []
 
 
-async def test_stemming_and_websearch_syntax(client: AsyncClient) -> None:
-    c = await seed_search_corpus(client)
+async def test_stemming_and_websearch_syntax(client: AsyncClient, corpus: dict[str, Any]) -> None:
+    c = corpus
     assert "python" in await ids_for(client, c, q="developers")  # "Developer" stems to the same lexeme
     assert "python" in await ids_for(client, c, q='"python developer"')
     without = await ids_for(client, c, q="engineer -java")
@@ -80,7 +84,6 @@ async def test_stemming_and_websearch_syntax(client: AsyncClient) -> None:
 
 @pytest.mark.parametrize("q", ["'", '"', "&", "|", "!", "(", ")", ":*", "a:b", "\\", "%", "_", "<->", "' OR 1=1 --", "; DROP TABLE jobs;", "\x00x", "😀", "a" * 200])
 async def test_hostile_or_odd_queries_never_error(client: AsyncClient, q: str) -> None:
-    await seed_search_corpus(client)
     r = await client.get(SEARCH, params={"q": q})
     assert r.status_code in (200, 422), r.text
     if r.status_code == 200:
@@ -88,7 +91,6 @@ async def test_hostile_or_odd_queries_never_error(client: AsyncClient, q: str) -
 
 
 async def test_blank_query_is_no_query(client: AsyncClient) -> None:
-    await seed_search_corpus(client)
     assert (await search(client, q="   "))["total"] == 8
     assert (await search(client, q=""))["total"] == 8
 
@@ -96,8 +98,8 @@ async def test_blank_query_is_no_query(client: AsyncClient) -> None:
 # --- filters ------------------------------------------------------------------------------------------------------------------------------------
 
 
-async def test_skill_filters_by_id_any_and_all(client: AsyncClient) -> None:
-    c = await seed_search_corpus(client)
+async def test_skill_filters_by_id_any_and_all(client: AsyncClient, corpus: dict[str, Any]) -> None:
+    c = corpus
     ids = {n: (await client.get(f"{API}/skills", params={"q": n})).json()["items"][0]["id"] for n in ("Python", "Docker", "Django")}
     anyp = await ids_for(client, c, skill_id=[ids["Python"]])
     assert anyp == {"python", "devops"}, "required and preferred skills both count"
@@ -109,8 +111,8 @@ async def test_skill_filters_by_id_any_and_all(client: AsyncClient) -> None:
     assert await ids_for(client, c, skill_id=[str(uuid.uuid4())]) == set()
 
 
-async def test_skill_filters_by_name_and_alias(client: AsyncClient) -> None:
-    c = await seed_search_corpus(client)
+async def test_skill_filters_by_name_and_alias(client: AsyncClient, corpus: dict[str, Any]) -> None:
+    c = corpus
     assert await ids_for(client, c, skill=["python"]) == {"python", "devops"}
     assert await ids_for(client, c, skill=["k8s"]) == {"devops"}  # alias
     assert await ids_for(client, c, skill=["Python", "kubernetes"], skills_mode="all") == {"devops"}
@@ -126,8 +128,8 @@ async def test_skill_filters_by_name_and_alias(client: AsyncClient) -> None:
     assert await ids_for(client, c, skill_id=[pid], skill=["Kubernetes"], skills_mode="all") == {"devops"}
 
 
-async def test_location_filter_is_a_case_insensitive_substring(client: AsyncClient) -> None:
-    c = await seed_search_corpus(client)
+async def test_location_filter_is_a_case_insensitive_substring(client: AsyncClient, corpus: dict[str, Any]) -> None:
+    c = corpus
     assert await ids_for(client, c, location="berlin") == {"python", "analyst"}
     assert await ids_for(client, c, location="GERMANY") == {"python", "java", "frontend", "analyst", "nurse"}
     assert await ids_for(client, c, location="  hamburg  ") == {"frontend", "nurse"}
@@ -135,13 +137,13 @@ async def test_location_filter_is_a_case_insensitive_substring(client: AsyncClie
 
 
 @pytest.mark.parametrize(("needle", "expected"), [("%", {"pct"}), ("100%", {"pct"}), ("_", {"pct"}), ("Remote_Work", {"pct"}), ("%%", set()), ("_erlin", set()), ("B%n", set()), ("\\", set())])
-async def test_location_wildcards_are_literal(client: AsyncClient, needle: str, expected: set[str]) -> None:
-    c = await seed_search_corpus(client)
+async def test_location_wildcards_are_literal(client: AsyncClient, needle: str, expected: set[str], corpus: dict[str, Any]) -> None:
+    c = corpus
     assert await ids_for(client, c, location=needle) == expected
 
 
-async def test_enum_filters_are_multi_select(client: AsyncClient) -> None:
-    c = await seed_search_corpus(client)
+async def test_enum_filters_are_multi_select(client: AsyncClient, corpus: dict[str, Any]) -> None:
+    c = corpus
     assert await ids_for(client, c, employment_type="INTERNSHIP") == {"analyst"}
     assert await ids_for(client, c, employment_type=["INTERNSHIP", "PART_TIME"]) == {"analyst", "frontend"}
     assert await ids_for(client, c, workplace_type=["REMOTE"]) == {"python", "devops", "pct"}
@@ -150,8 +152,8 @@ async def test_enum_filters_are_multi_select(client: AsyncClient) -> None:
     assert await ids_for(client, c, employment_type="CONTRACT", workplace_type="ONSITE") == {"office"}, "different filters combine with AND"
 
 
-async def test_max_experience_filters_on_the_required_minimum(client: AsyncClient) -> None:
-    c = await seed_search_corpus(client)
+async def test_max_experience_filters_on_the_required_minimum(client: AsyncClient, corpus: dict[str, Any]) -> None:
+    c = corpus
     assert await ids_for(client, c, max_experience=0) == {"frontend", "analyst", "pct"}
     assert await ids_for(client, c, max_experience=2) == {"frontend", "analyst", "pct", "python", "nurse"}
     assert await ids_for(client, c, max_experience=6) == {"python", "java", "frontend", "analyst", "office", "nurse", "devops", "pct"}
@@ -160,35 +162,37 @@ async def test_max_experience_filters_on_the_required_minimum(client: AsyncClien
 @pytest.mark.parametrize(
     ("params", "expected"),
     [
-        ({"salary_min": 85000}, {"java", "devops", "analyst", "nurse"}),   # jobs whose range reaches 85k; open-ended ranges count, jobs without any pay info do not
-        ({"salary_max": 35000}, {"frontend", "pct", "nurse", "devops", "python"} - {"python"}),
+        ({"salary_min": 85000}, {"java", "devops", "nurse"}),  # ranges reaching 85k; open-ended ranges count, jobs without any pay info do not
+        ({"salary_max": 35000}, {"frontend", "pct", "devops"}),
         ({"salary_min": 50000, "salary_max": 60000}, {"python", "office", "nurse", "devops"}),
         ({"salary_min": 120000}, {"java", "nurse"}),
         ({"salary_min": 120001}, {"nurse"}),
-        ({"salary_max": 20000}, {"pct", "devops", "nurse"} - {"nurse"}),
+        ({"salary_max": 20000}, {"pct", "devops"}),
         ({"salary_min": 0}, {"python", "java", "frontend", "office", "nurse", "devops", "pct"}),
     ],
 )
-async def test_salary_range_overlap(client: AsyncClient, params: dict[str, Any], expected: set[str]) -> None:
-    c = await seed_search_corpus(client)
+async def test_salary_range_overlap(client: AsyncClient, params: dict[str, Any], expected: set[str], corpus: dict[str, Any]) -> None:
+    c = corpus
     assert await ids_for(client, c, **params) == expected, params
 
 
-async def test_company_filter(client: AsyncClient) -> None:
-    c = await seed_search_corpus(client)
+async def test_company_filter(client: AsyncClient, corpus: dict[str, Any]) -> None:
+    c = corpus
     assert await ids_for(client, c, company_id=c["rec1"]["company_id"]) == {"python", "java", "frontend", "analyst"}
     assert await ids_for(client, c, company_id=c["rec2"]["company_id"]) == {"office", "nurse", "devops", "pct"}
     assert (await search(client, company_id=str(uuid.uuid4())))["total"] == 0
 
 
-async def test_filters_combine_with_the_keyword_query(client: AsyncClient) -> None:
-    c = await seed_search_corpus(client)
-    assert await ids_for(client, c, q="engineer", workplace_type="REMOTE") == {"devops"}
+async def test_filters_combine_with_the_keyword_query(client: AsyncClient, corpus: dict[str, Any]) -> None:
+    c = corpus
+    # "engineer" also stems to the department "Engineering", hence the extra remote jobs
+    assert await ids_for(client, c, q="engineer", workplace_type="REMOTE") == {"python", "devops", "pct"}
+    assert await ids_for(client, c, q="engineer", workplace_type="REMOTE", employment_type="CONTRACT") == {"devops"}
     assert await ids_for(client, c, q="python", employment_type="FULL_TIME", location="berlin") == {"python"}
 
 
-async def test_items_have_a_stable_public_shape(client: AsyncClient) -> None:
-    c = await seed_search_corpus(client)
+async def test_items_have_a_stable_public_shape(client: AsyncClient, corpus: dict[str, Any]) -> None:
+    c = corpus
     item = (await search(client, q="python developer"))["items"][0]
     assert set(item) == {
         "id", "title", "company_id", "company_name", "company_logo_url", "department", "location", "employment_type", "workplace_type", "experience_level",
@@ -205,7 +209,6 @@ async def test_items_have_a_stable_public_shape(client: AsyncClient) -> None:
 
 
 async def test_ties_are_broken_deterministically(client: AsyncClient) -> None:
-    await seed_search_corpus(client)
     first = [j["id"] for j in (await search(client, q="engineer", sort="relevance", page_size=100))["items"]]
     for _ in range(3):
         assert [j["id"] for j in (await search(client, q="engineer", sort="relevance", page_size=100))["items"]] == first
@@ -215,7 +218,6 @@ async def test_ties_are_broken_deterministically(client: AsyncClient) -> None:
 
 
 async def test_pagination_envelope(client: AsyncClient) -> None:
-    await seed_search_corpus(client)
     p1 = await search(client, page_size=3)
     assert (p1["page"], p1["page_size"], p1["total"], p1["pages"], len(p1["items"])) == (1, 3, 8, 3, 3)
     p3 = await search(client, page_size=3, page=3)

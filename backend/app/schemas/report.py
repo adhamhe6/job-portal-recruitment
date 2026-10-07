@@ -35,7 +35,9 @@ class FunnelStage(BaseModel):
         "For the REJECTED / WITHDRAWN branches: applications currently in that terminal state."
     )
     pct_of_applied: float | None = Field(description="Share of all applications, 0-100")
-    pct_of_previous: float | None = Field(description="Conversion from the previous main-line stage, 0-100 (null for branches)")
+    pct_of_previous: float | None = Field(
+        description="Conversion from the previous main-line stage, 0-100 (null for branches)"
+    )
     is_branch: bool = False
 
 
@@ -158,7 +160,9 @@ class ResumeStatusBrief(BaseModel):
     resume_id: uuid.UUID | None = None
     filename: str | None = None
     status: str | None = Field(default=None, description="UPLOADED | PROCESSING | PROCESSED | FAILED")
-    processing_status: str | None = Field(default=None, description="PROCESSING | COMPLETED | FAILED (from the worker result)")
+    processing_status: str | None = Field(
+        default=None, description="PROCESSING | COMPLETED | FAILED (from the worker result)"
+    )
     error_code: str | None = None
     uploaded_at: datetime | None = None
 
@@ -280,7 +284,9 @@ class JobPerformanceRow(BaseModel):
     hire_rate: float | None = Field(description="hires / applications, 0..1")
     avg_days_to_first_status_change: float | None
     avg_days_to_hire: float | None
-    avg_match_score: float | None = Field(description="Mean overall match score of applicants that have a stored score")
+    avg_match_score: float | None = Field(
+        description="Mean overall match score of applicants that have a stored score"
+    )
     applicants_scored: int
 
 
@@ -335,19 +341,29 @@ class OutcomeScore(BaseModel):
 class TopTenStats(BaseModel):
     applicants: int
     applicants_with_score: int
-    applicants_in_top10: int = Field(description="Applicants ranked in the 10 best scores of their job's scored candidates")
+    applicants_in_top10: int = Field(
+        description="Applicants ranked in the 10 best scores of their job's scored candidates"
+    )
     pct_in_top10: float | None = Field(description="applicants_in_top10 / applicants_with_score, 0-100")
 
 
 class MatchingPerformanceOut(BaseModel):
     period: Period
     scored_pairs: int
-    all_scored_distribution: list[BandCount] = Field(description="Every scored candidate of the in-scope jobs (not period-filtered)")
-    applicant_distribution: list[BandCount] = Field(description="Applicants (applied in the period) that have a stored score")
+    all_scored_distribution: list[BandCount] = Field(
+        description="Every scored candidate of the in-scope jobs (not period-filtered)"
+    )
+    applicant_distribution: list[BandCount] = Field(
+        description="Applicants (applied in the period) that have a stored score"
+    )
     avg_score_by_outcome: list[OutcomeScore]
-    hired_minus_rejected: float | None = Field(description="avg(HIRED) - avg(REJECTED) when both groups have scores")
+    hired_minus_rejected: float | None = Field(
+        description="avg(HIRED) - avg(REJECTED) when both groups have scores"
+    )
     top10: TopTenStats
-    notes: list[str] = Field(description="Data-driven caveats (e.g. small samples). The score is a ranking aid, not a hiring decision.")
+    notes: list[str] = Field(
+        description="Data-driven caveats (e.g. small samples). The score is a ranking aid, not a hiring decision."
+    )
 
 
 class SkillDemand(BaseModel):
@@ -375,7 +391,9 @@ class TopSkillsOut(BaseModel):
 class PipelineStageRow(BaseModel):
     stage: ApplicationStatus
     count: int
-    avg_days_in_stage: float | None = Field(description="Mean days since the last status change (live stages only)")
+    avg_days_in_stage: float | None = Field(
+        description="Mean days since the last status change (live stages only)"
+    )
     max_days_in_stage: float | None
     stale: int = Field(description="Live applications unchanged for more than `stale_after_days`")
 

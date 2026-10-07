@@ -48,10 +48,14 @@ def parse(resp) -> list[list[str]]:
 
 async def test_csv_is_escaped_and_neutralises_formula_injection(evil):
     c, rec = evil["client"], evil["rec"]
-    r = await c.get(f"{API}/reports/job-performance", headers=rec["h"], params={"format": "csv", "page_size": 2})
+    r = await c.get(
+        f"{API}/reports/job-performance", headers=rec["h"], params={"format": "csv", "page_size": 2}
+    )
     assert r.status_code == 200, r.text
     assert r.headers["content-type"].startswith("text/csv")
-    assert re.fullmatch(r'attachment; filename="talentlens-job-performance-\d{8}\.csv"', r.headers["content-disposition"])
+    assert re.fullmatch(
+        r'attachment; filename="talentlens-job-performance-\d{8}\.csv"', r.headers["content-disposition"]
+    )
     assert r.headers["cache-control"] == "no-store"
     rows = parse(r)
     header, body = rows[0], rows[1:]
@@ -59,7 +63,12 @@ async def test_csv_is_escaped_and_neutralises_formula_injection(evil):
     assert len(body) == 6  # the CSV ignores pagination (page_size=2) and exports everything
     titles = {row[1] for row in body}
     assert titles == {
-        "'=HYPERLINK(\"http://evil.example/steal\",\"click me\")", "'+1+1", "'-2+3", "'@SUM(A1:A9)", 'Senior "Rockstar", Backend', "Plain title",
+        '\'=HYPERLINK("http://evil.example/steal","click me")',
+        "'+1+1",
+        "'-2+3",
+        "'@SUM(A1:A9)",
+        'Senior "Rockstar", Backend',
+        "Plain title",
     }
     # raw quoting: commas / quotes are escaped the RFC 4180 way
     assert '"Senior ""Rockstar"", Backend"' in r.text
@@ -91,7 +100,10 @@ async def test_csv_is_escaped_and_neutralises_formula_injection(evil):
 async def test_every_report_can_be_exported_as_csv(evil, path, expected_header):
     r = await evil["client"].get(f"{API}/reports/{path}", headers=evil["rec"]["h"], params={"format": "csv"})
     assert r.status_code == 200, r.text
-    assert r.headers["content-type"].startswith("text/csv") and f"talentlens-{path}-" in r.headers["content-disposition"]
+    assert (
+        r.headers["content-type"].startswith("text/csv")
+        and f"talentlens-{path}-" in r.headers["content-disposition"]
+    )
     rows = parse(r)
     assert rows[0][: len(expected_header)] == expected_header and len(rows) >= 2
     assert all(len(row) == len(rows[0]) for row in rows)
@@ -103,9 +115,17 @@ async def test_csv_respects_authorization_and_sorting(evil):
     r = await c.get(f"{API}/reports/job-performance", headers=other["h"], params={"format": "csv"})
     assert r.status_code == 200 and len(parse(r)) == 1  # header only: nothing of mine leaks
     cand = await register_candidate(c)
-    assert (await c.get(f"{API}/reports/job-performance", headers=cand["h"], params={"format": "csv"})).status_code == 403
+    assert (
+        await c.get(f"{API}/reports/job-performance", headers=cand["h"], params={"format": "csv"})
+    ).status_code == 403
     assert (await c.get(f"{API}/reports/job-performance", params={"format": "csv"})).status_code == 401
-    asc = parse(await c.get(f"{API}/reports/job-performance", headers=rec["h"], params={"format": "csv", "sort": "title", "order": "asc"}))
+    asc = parse(
+        await c.get(
+            f"{API}/reports/job-performance",
+            headers=rec["h"],
+            params={"format": "csv", "sort": "title", "order": "asc"},
+        )
+    )
     titles = [row[1] for row in asc[1:]]
     assert titles == sorted(titles, key=str.lower)
 
@@ -115,17 +135,30 @@ async def test_csv_respects_authorization_and_sorting(evil):
 # --------------------------------------------------------------------------------------------------------------------
 async def test_export_task_produces_the_csv_in_the_task_result(evil):
     c, rec = evil["client"], evil["rec"]
-    r = await c.post(f"{API}/reports/job-performance/export", headers=rec["h"], params={"sort": "title", "order": "asc"})
+    r = await c.post(
+        f"{API}/reports/job-performance/export", headers=rec["h"], params={"sort": "title", "order": "asc"}
+    )
     assert r.status_code == 202, r.text
     task_id = r.json()["task_id"]
-    task = (await c.get(f"{API}/tasks/{task_id}", headers=rec["h"])).json()  # the inline dispatcher already ran it
+    task = (
+        await c.get(f"{API}/tasks/{task_id}", headers=rec["h"])
+    ).json()  # the inline dispatcher already ran it
     assert task["type"] == "EXPORT_REPORT" and task["status"] == "COMPLETED" and task["progress"] == 100, task
     res = task["result"]
-    assert res["report"] == "job-performance" and res["rows"] == 6 and res["total_rows"] == 6 and res["truncated"] is False
-    assert res["content_type"] == "text/csv" and re.fullmatch(r"talentlens-job-performance-\d{8}\.csv", res["filename"])
+    assert (
+        res["report"] == "job-performance"
+        and res["rows"] == 6
+        and res["total_rows"] == 6
+        and res["truncated"] is False
+    )
+    assert res["content_type"] == "text/csv" and re.fullmatch(
+        r"talentlens-job-performance-\d{8}\.csv", res["filename"]
+    )
     rows = list(csv.reader(io.StringIO(res["csv"])))
     assert rows[0][1] == "title" and len(rows) == 7
-    assert "'=HYPERLINK" in res["csv"] and all(not row[1].startswith(("=", "+", "-", "@")) for row in rows[1:])
+    assert "'=HYPERLINK" in res["csv"] and all(
+        not row[1].startswith(("=", "+", "-", "@")) for row in rows[1:]
+    )
     titles = [row[1] for row in rows[1:]]
     assert titles == sorted(titles, key=str.lower)
     # the task belongs to the requester's company: a colleague may read it, another tenant may not
@@ -134,12 +167,22 @@ async def test_export_task_produces_the_csv_in_the_task_result(evil):
     other = await register_employer(c)
     assert (await c.get(f"{API}/tasks/{task_id}", headers=other["h"])).status_code == 404
     # parameters are validated before anything is queued; candidates cannot export
-    bad = await c.post(f"{API}/reports/job-performance/export", headers=rec["h"], params={"from_date": "2026-05-02", "to_date": "2026-05-01"})
+    bad = await c.post(
+        f"{API}/reports/job-performance/export",
+        headers=rec["h"],
+        params={"from_date": "2026-05-02", "to_date": "2026-05-01"},
+    )
     assert bad.status_code == 422
     cand = await register_candidate(c)
     assert (await c.post(f"{API}/reports/job-performance/export", headers=cand["h"])).status_code == 403
     assert (await c.post(f"{API}/reports/job-performance/export")).status_code == 401
-    assert (await c.post(f"{API}/reports/job-performance/export", headers=other["h"], params={"company_id": rec["company_id"]})).status_code == 403
+    assert (
+        await c.post(
+            f"{API}/reports/job-performance/export",
+            headers=other["h"],
+            params={"company_id": rec["company_id"]},
+        )
+    ).status_code == 403
 
 
 async def test_export_task_scope_follows_the_requesting_user(client):
@@ -147,7 +190,9 @@ async def test_export_task_scope_follows_the_requesting_user(client):
     hm = await client.post(f"{API}/reports/job-performance/export", headers=w["hm"]["h"])
     assert hm.status_code == 202, hm.text
     res = (await client.get(f"{API}/tasks/{hm.json()['task_id']}", headers=w["hm"]["h"])).json()["result"]
-    assert res["rows"] == 1 and "Dash Job Two" in res["csv"] and "Dash Job One" not in res["csv"]  # assigned jobs only
+    assert (
+        res["rows"] == 1 and "Dash Job Two" in res["csv"] and "Dash Job One" not in res["csv"]
+    )  # assigned jobs only
     admin = await create_admin(client)
     full = await client.post(f"{API}/reports/job-performance/export", headers=admin["h"])
     result = (await client.get(f"{API}/tasks/{full.json()['task_id']}", headers=admin["h"])).json()["result"]
@@ -159,14 +204,23 @@ async def test_export_task_is_deduplicated_while_active(client):
     await create_job(client, rec, publish=True, title="Only job")
     first = (await client.post(f"{API}/reports/job-performance/export", headers=rec["h"])).json()["task_id"]
     # force the finished task back to PENDING to simulate "still queued": an identical request returns the same task
-    await sql("UPDATE background_tasks SET status = 'PENDING', started_at = NULL, finished_at = NULL WHERE id = :i", i=uuid.UUID(first))
+    await sql(
+        "UPDATE background_tasks SET status = 'PENDING', started_at = NULL, finished_at = NULL WHERE id = :i",
+        i=uuid.UUID(first),
+    )
     again = await client.post(f"{API}/reports/job-performance/export", headers=rec["h"])
-    assert again.status_code == 202 and again.json()["task_id"] == first and again.json()["status"] == "PENDING"
-    other_params = await client.post(f"{API}/reports/job-performance/export", headers=rec["h"], params={"sort": "title"})
+    assert (
+        again.status_code == 202 and again.json()["task_id"] == first and again.json()["status"] == "PENDING"
+    )
+    other_params = await client.post(
+        f"{API}/reports/job-performance/export", headers=rec["h"], params={"sort": "title"}
+    )
     assert other_params.json()["task_id"] != first
 
 
-async def _ctx(params: dict, created_by: uuid.UUID | None, company_id: uuid.UUID | None = None) -> TaskContext:
+async def _ctx(
+    params: dict, created_by: uuid.UUID | None, company_id: uuid.UUID | None = None
+) -> TaskContext:
     from app.cache.redis_cache import get_cache
 
     sm = get_sessionmaker()
@@ -183,7 +237,9 @@ async def test_export_handler_contract_and_failures(client):
     uid = uuid.UUID(rec["user"]["id"])
     # the handler can run without the HTTP layer; progress updates on a non-existent task row are harmless no-ops
     ok = await handle_export_report(await _ctx({"report": "job-performance"}, uid))
-    assert ok["rows"] == 0 and ok["csv"].splitlines()[0].startswith("job_id,title") and ok["truncated"] is False  # no applications yet
+    assert (
+        ok["rows"] == 0 and ok["csv"].splitlines()[0].startswith("job_id,title") and ok["truncated"] is False
+    )  # no applications yet
     with pytest.raises(TaskFailure) as e1:
         await handle_export_report(await _ctx({"report": "salary-benchmarks"}, uid))
     assert e1.value.code == "UNSUPPORTED_REPORT"
@@ -199,9 +255,13 @@ async def test_export_handler_contract_and_failures(client):
     with pytest.raises(TaskFailure) as e5:
         await handle_export_report(await _ctx({"report": "job-performance", "from_date": "garbage"}, uid))
     assert e5.value.code == "INVALID_PARAMETERS"
-    with pytest.raises(TaskFailure) as e6:  # params can not widen the scope: a recruiter naming another company is refused
-        other = await register_employer(client)
-        await handle_export_report(await _ctx({"report": "job-performance", "company_id": other["company_id"]}, uid))
+    other = await register_employer(
+        client
+    )  # params cannot widen the scope: a recruiter naming another company is refused
+    with pytest.raises(TaskFailure) as e6:
+        await handle_export_report(
+            await _ctx({"report": "job-performance", "company_id": other["company_id"]}, uid)
+        )
     assert e6.value.code == "FORBIDDEN"
     # a suspended requester no longer exports
     await sql("UPDATE users SET status = 'SUSPENDED' WHERE id = :u", u=uid)
@@ -231,6 +291,10 @@ async def test_export_task_truncates_large_results(client):
         "FROM jobs j WHERE j.title LIKE 'Bulk job %'",
     )
     await bust_cache()
-    res = await handle_export_report(await _ctx({"report": "job-performance", "sort": "title", "order": "asc"}, uuid.UUID(rec["user"]["id"])))
+    res = await handle_export_report(
+        await _ctx(
+            {"report": "job-performance", "sort": "title", "order": "asc"}, uuid.UUID(rec["user"]["id"])
+        )
+    )
     assert res["total_rows"] == 1005 and res["rows"] == RESULT_MAX_ROWS and res["truncated"] is True
     assert len(list(csv.reader(io.StringIO(res["csv"])))) == RESULT_MAX_ROWS + 1

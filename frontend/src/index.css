@@ -264,6 +264,14 @@
   h3 {
     text-wrap: balance;
   }
+  /*
+   * A bare \`grid\` has one implicit \`auto\` column, which refuses to shrink below its content's min-content width
+   * (long words / nowrap rows then push the page wider than the viewport on phones). Default it to minmax(0, 1fr);
+   * any \`grid-cols-*\` utility still wins because utilities sit in a later layer.
+   */
+  .grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
   /* Visible focus ring everywhere, for keyboard users only. */
   :focus-visible {
     @apply outline-2 outline-offset-2 outline-ring;

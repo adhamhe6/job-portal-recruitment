@@ -610,3 +610,20 @@ async def test_api_uses_content_type_by_sniffing_not_the_client(client):
     b = await upload(client, cand, fx.frontend_pdf(), "b.pdf", content_type=None)
     assert a.status_code == 202 and a.json()["content_type"] == "application/pdf"
     assert b.status_code == 202 and b.json()["content_type"] == "application/pdf"
+
+
+async def test_concurrent_uploads_keep_one_copy_of_identical_files_and_one_primary(client, session):
+    import asyncio
+
+    cand = await register_candidate(client)
+    pdf = fx.backend_pdf()
+    same = await asyncio.gather(*[upload(client, cand, pdf, f"copy{i}.pdf") for i in range(4)])
+    assert all(r.status_code in (200, 202) for r in same), [r.text for r in same]
+    assert len({r.json()["id"] for r in same}) == 1
+    assert await session.scalar(select(func.count()).select_from(Resume)) == 1
+
+    others = [fx.frontend_pdf(), fx.nurse_pdf(), fx.make_pdf("Pat Lee\npat@x.example\nSkills\nPython, Docker, SQL, Redis\n")]
+    mixed = await asyncio.gather(*[upload(client, cand, data, f"other{i}.pdf") for i, data in enumerate(others)])
+    assert all(r.status_code == 202 for r in mixed), [r.text for r in mixed]
+    lst = (await client.get("/api/v1/resumes", headers=cand["h"])).json()
+    assert lst["total"] == 4 and [i["is_primary"] for i in lst["items"]].count(True) == 1  # the partial unique index never fired

@@ -34,7 +34,7 @@ export function SettingsLayout() {
   return (
     <>
       <PageHeader title="Settings" description="Manage your account and preferences." />
-      <div className="grid gap-6 lg:grid-cols-[14rem_minmax(0,1fr)]">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[14rem_minmax(0,1fr)]">
         <nav aria-label="Settings sections" className="flex gap-1 overflow-x-auto lg:flex-col">
           {sections.map(({ to, label, icon: Icon, end }) => (
             <NavLink

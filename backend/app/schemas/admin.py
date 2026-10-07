@@ -16,7 +16,9 @@ class AppInfo(BaseModel):
     version: str
     environment: str
     python_version: str
-    job_backend: str = Field(description="`arq` (Redis + worker process) or `inline` (in-process, tests / no-worker mode)")
+    job_backend: str = Field(
+        description="`arq` (Redis + worker process) or `inline` (in-process, tests / no-worker mode)"
+    )
     cache_enabled: bool
 
 
@@ -25,15 +27,21 @@ class DatabaseStatus(BaseModel):
     latency_ms: float | None = None
     pgvector_version: str | None = None
     migration_revision: str | None = Field(default=None, description="Revision stored in alembic_version")
-    migration_head: str | None = Field(default=None, description="Newest revision shipped with this build (best effort)")
-    migrations_current: bool | None = Field(default=None, description="revision == head; null when either is unknown")
+    migration_head: str | None = Field(
+        default=None, description="Newest revision shipped with this build (best effort)"
+    )
+    migrations_current: bool | None = Field(
+        default=None, description="revision == head; null when either is unknown"
+    )
     error: str | None = None
 
 
 class RedisStatus(BaseModel):
     ok: bool
     latency_ms: float | None = None
-    queue_depth: int | None = Field(default=None, description="Jobs waiting in the ARQ queue (ZCARD arq:queue), best effort")
+    queue_depth: int | None = Field(
+        default=None, description="Jobs waiting in the ARQ queue (ZCARD arq:queue), best effort"
+    )
     error: str | None = None
 
 
@@ -42,13 +50,19 @@ class EmbeddingModelStatus(BaseModel):
     model_name: str
     model_version: str
     dimension: int
-    loaded: bool = Field(description="True when the model could be loaded and produced a vector of the expected size")
+    loaded: bool = Field(
+        description="True when the model could be loaded and produced a vector of the expected size"
+    )
     error: str | None = None
 
 
 class WorkerStatus(BaseModel):
-    mode: str = Field(description="`arq`: a separate worker process; `inline`: tasks run inside the API process")
-    alive: bool | None = Field(description="ARQ health-check key present (the worker refreshes it periodically); null when not applicable/unknown")
+    mode: str = Field(
+        description="`arq`: a separate worker process; `inline`: tasks run inside the API process"
+    )
+    alive: bool | None = Field(
+        description="ARQ health-check key present (the worker refreshes it periodically); null when not applicable/unknown"
+    )
     health_key: str
     health_ttl_seconds: float | None = None
     last_check: str | None = Field(default=None, description="Raw summary line written by the worker")
@@ -66,8 +80,12 @@ class StaleTask(BaseModel):
     stage: str | None
     created_at: datetime
     updated_at: datetime
-    age_minutes: float = Field(description="Minutes since creation (PENDING) or since the last progress update (RUNNING)")
-    worker_heartbeat: bool | None = Field(default=None, description="RUNNING only: the executing worker's heartbeat key exists")
+    age_minutes: float = Field(
+        description="Minutes since creation (PENDING) or since the last progress update (RUNNING)"
+    )
+    worker_heartbeat: bool | None = Field(
+        default=None, description="RUNNING only: the executing worker's heartbeat key exists"
+    )
 
 
 class TaskHealth(BaseModel):
@@ -126,7 +144,9 @@ class AuditEventOut(BaseModel):
 class EmbeddingRefreshOut(BaseModel):
     task_id: uuid.UUID
     status: TaskStatus
-    created: bool = Field(description="False when an identical refresh was already queued or running (deduplicated)")
+    created: bool = Field(
+        description="False when an identical refresh was already queued or running (deduplicated)"
+    )
 
 
 class EmbeddingBucket(BaseModel):
@@ -176,7 +196,9 @@ class MatchingStatus(BaseModel):
     jobs_with_matches: int
     candidates_with_matches: int
     last_generated_at: datetime | None
-    stale_by_version: int = Field(description="Pairs computed with another matching/embedding version (hash staleness is checked on read)")
+    stale_by_version: int = Field(
+        description="Pairs computed with another matching/embedding version (hash staleness is checked on read)"
+    )
     by_version: list[MatchVersionCount]
     published_jobs: int
     published_jobs_without_matches: int

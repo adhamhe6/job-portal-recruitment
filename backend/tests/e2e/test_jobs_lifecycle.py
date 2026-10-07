@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import itertools
 import uuid
 from datetime import date, timedelta
 from typing import Any
@@ -292,36 +291,37 @@ async def test_publish_from_paused_resumes_the_job(client: AsyncClient) -> None:
     assert (await client.post(f"{JOBS}/{job['id']}/publish", headers=rec["h"])).json()["status"] == "PUBLISHED"
 
 
-@pytest.mark.parametrize(("source", "action"), list(itertools.product(list(JobStatus), list(ENDPOINTS))))
-async def test_transition_matrix(client: AsyncClient, source: JobStatus, action: str) -> None:
+@pytest.mark.parametrize("source", list(JobStatus))
+async def test_transition_matrix(client: AsyncClient, source: JobStatus) -> None:
+    """Every (source status, action) pair: accepted exactly when the target is in the transition table."""
     rec = await register_employer(client)
-    job = await create_job(client, rec)
-    await set_job_status(job["id"], source.value)
-    r = await client.post(f"{JOBS}/{job['id']}/{action}", headers=rec["h"])
-    target = ENDPOINTS[action]
-    if target in JOB_TRANSITIONS[source]:
-        assert r.status_code == 200, r.text
-        assert r.json()["status"] == target.value
-    else:
-        err = assert_error(r, 409, "INVALID_STATE_TRANSITION")
-        assert err["details"] == {"from": source.value, "to": target.value, "allowed": sorted(s.value for s in JOB_TRANSITIONS[source])}
-        assert await scalar("SELECT status FROM jobs WHERE id = :i", i=uuid.UUID(job["id"])) == source.value, "a refused transition changes nothing"
+    for action, target in ENDPOINTS.items():
+        job = await create_job(client, rec, title=f"Matrix {source.value} {action}")
+        await set_job_status(job["id"], source.value)
+        r = await client.post(f"{JOBS}/{job['id']}/{action}", headers=rec["h"])
+        if target in JOB_TRANSITIONS[source]:
+            assert r.status_code == 200, (source, action, r.text)
+            assert r.json()["status"] == target.value
+        else:
+            err = assert_error(r, 409, "INVALID_STATE_TRANSITION")
+            assert err["details"] == {"from": source.value, "to": target.value, "allowed": sorted(s.value for s in JOB_TRANSITIONS[source])}
+            assert await scalar("SELECT status FROM jobs WHERE id = :i", i=uuid.UUID(job["id"])) == source.value, "a refused transition changes nothing"
 
 
 # --- editing / deleting -------------------------------------------------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("status", list(JobStatus))
-async def test_only_open_statuses_are_editable(client: AsyncClient, status: JobStatus) -> None:
+async def test_only_open_statuses_are_editable(client: AsyncClient) -> None:
     rec = await register_employer(client)
-    job = await create_job(client, rec)
-    await set_job_status(job["id"], status.value)
-    r = await client.patch(f"{JOBS}/{job['id']}", headers=rec["h"], json={"department": "Changed"})
-    if status in EDITABLE_STATUSES:
-        assert r.status_code == 200 and r.json()["department"] == "Changed"
-    else:
-        assert_error(r, 422, "JOB_NOT_EDITABLE")
-        assert (await client.get(f"{JOBS}/{job['id']}", headers=rec["h"])).json()["department"] == "Engineering"
+    for status in JobStatus:
+        job = await create_job(client, rec, title=f"Editable {status.value}")
+        await set_job_status(job["id"], status.value)
+        r = await client.patch(f"{JOBS}/{job['id']}", headers=rec["h"], json={"department": "Changed"})
+        if status in EDITABLE_STATUSES:
+            assert r.status_code == 200 and r.json()["department"] == "Changed", status
+        else:
+            assert_error(r, 422, "JOB_NOT_EDITABLE")
+            assert (await client.get(f"{JOBS}/{job['id']}", headers=rec["h"])).json()["department"] == "Engineering"
 
 
 async def test_update_semantics(client: AsyncClient) -> None:

@@ -167,7 +167,7 @@ export default function JobSearchPage() {
       />
       <JobsTabs />
 
-      <div className="grid items-start gap-6 lg:grid-cols-[17.5rem_minmax(0,1fr)]">
+      <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-6 lg:grid-cols-[17.5rem_minmax(0,1fr)]">
         {isDesktop && (
           <aside
             aria-label="Filters"

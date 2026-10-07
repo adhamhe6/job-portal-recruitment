@@ -754,3 +754,50 @@ def test_non_resume_text_yields_empty_suggestions_not_guesses():
 
 def test_split_lines_caps_line_length():
     assert max(len(line) for line in split_lines("a" * 100_000)) <= 2000
+
+
+# --- layouts seen in the wild ------------------------------------------------------------------------------------
+
+
+def test_several_roles_under_one_employer_inherit_the_company_with_lower_confidence():
+    exps = parse_experiences(
+        [
+            "ACME CORPORATION — Austin, TX",
+            "Senior Product Manager                      2018 – Present",
+            "Managed the roadmap.",
+            "Product Manager                             2015 – 2018",
+            "Owned onboarding.",
+        ],
+        TODAY,
+    )
+    assert [(e.title, e.company) for e in exps] == [
+        ("Senior Product Manager", "ACME CORPORATION"),
+        ("Product Manager", "ACME CORPORATION"),
+    ]
+    assert exps[1].confidence < exps[0].confidence
+    assert exps[0].location == "Austin, TX"
+
+
+def test_pipe_separated_header_and_parenthesised_location():
+    exps = parse_experiences(
+        [
+            "Senior Software Engineer | Stripe | San Francisco, CA | Mar 2019 – Present",
+            "• Led a team of 6 engineers",
+            "Data Scientist, Alibaba Cloud (Hangzhou, China)",
+            "Jul 2017 - Feb 2019",
+        ],
+        TODAY,
+    )
+    assert (exps[0].title, exps[0].company, exps[0].location) == ("Senior Software Engineer", "Stripe", "San Francisco, CA")
+    assert (exps[1].title, exps[1].company, exps[1].location) == ("Data Scientist", "Alibaba Cloud", "Hangzhou, China")
+
+
+def test_degree_with_parenthesised_abbreviation_and_gpa_line():
+    edus = parse_educations(["Bachelor of Science (B.Sc.) in Computer Science, University of Washington, 2011 - 2015", "GPA: 3.8/4.0"], TODAY)
+    assert len(edus) == 1
+    assert (edus[0].degree, edus[0].field_of_study, edus[0].institution) == ("Bachelor of Science", "Computer Science", "University of Washington")
+
+
+def test_bullet_separated_skills_line_and_proficiency_annotations():
+    found = names(extract_skills_from_text("Skills\n• Python • Java • Kotlin • AWS\nPython (Expert), Java (Intermediate), SQL (Advanced)"))
+    assert {"Python", "Java", "Kotlin", "AWS", "SQL"} <= found

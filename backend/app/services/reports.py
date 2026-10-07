@@ -254,7 +254,10 @@ class Window:
         return conds
 
     def params(self) -> dict[str, Any]:
-        return {"from": self.start.isoformat() if self.start else None, "to": self.end.isoformat() if self.end else None}
+        return {
+            "from": self.start.isoformat() if self.start else None,
+            "to": self.end.isoformat() if self.end else None,
+        }
 
     def period(self, granularity: Granularity | None = None) -> Period:
         return Period(from_date=self.start, to_date=self.end, granularity=granularity)
@@ -270,7 +273,9 @@ def make_window(from_date: date | None, to_date: date | None, *, default_days: i
         if from_date > to_date:
             raise ValidationFailure("from_date must not be after to_date", code="INVALID_DATE_RANGE")
     if from_date and to_date and (to_date - from_date).days > MAX_RANGE_DAYS:
-        raise ValidationFailure(f"The date range may span at most {MAX_RANGE_DAYS} days", code="DATE_RANGE_TOO_LARGE")
+        raise ValidationFailure(
+            f"The date range may span at most {MAX_RANGE_DAYS} days", code="DATE_RANGE_TOO_LARGE"
+        )
     return Window(from_date, to_date)
 
 
@@ -315,7 +320,11 @@ def pick_granularity(window: Window, requested: Granularity | None) -> Granulari
 
 def _bucket_expr(col: Any, gran: Granularity) -> Any:
     """``date_trunc(gran, col AT TIME ZONE 'UTC')::date`` with the unit inlined (a closed set, never user text)."""
-    units: dict[str, Any] = {"day": literal_column("'day'"), "week": literal_column("'week'"), "month": literal_column("'month'")}
+    units: dict[str, Any] = {
+        "day": literal_column("'day'"),
+        "week": literal_column("'week'"),
+        "month": literal_column("'month'"),
+    }
     unit = units[gran]
     return cast(func.date_trunc(unit, func.timezone("UTC", col)), Date)
 
@@ -324,7 +333,9 @@ def _series(rows: Sequence[tuple[date, int]], window: Window, gran: Granularity)
     assert window.start is not None
     assert window.end is not None
     have = {d: int(n) for d, n in rows}
-    return [SeriesPoint(bucket=b, count=have.get(b, 0)) for b in bucket_starts(window.start, window.end, gran)]
+    return [
+        SeriesPoint(bucket=b, count=have.get(b, 0)) for b in bucket_starts(window.start, window.end, gran)
+    ]
 
 
 # --------------------------------------------------------------------------------------------------------------------
@@ -366,9 +377,16 @@ def render_csv(table: Table) -> str:
     return buf.getvalue()
 
 
-def build_page[P: BaseModel](cls: type[P], items: list[Any], *, page: int, page_size: int, total: int, period: Period) -> P:
+def build_page[P: BaseModel](
+    cls: type[P], items: list[Any], *, page: int, page_size: int, total: int, period: Period
+) -> P:
     return cls(
-        items=items, page=page, page_size=page_size, total=total, pages=math.ceil(total / page_size) if total else 0, period=period
+        items=items,
+        page=page,
+        page_size=page_size,
+        total=total,
+        pages=math.ceil(total / page_size) if total else 0,
+        period=period,
     )
 
 
@@ -427,7 +445,9 @@ class ReportService:
     # ----------------------------------------------------------------------------------------------------------------
     # authorization
     # ----------------------------------------------------------------------------------------------------------------
-    async def resolve_scope(self, user: User, company_id: uuid.UUID | None = None, *, allow_hiring_manager: bool = True) -> Scope:
+    async def resolve_scope(
+        self, user: User, company_id: uuid.UUID | None = None, *, allow_hiring_manager: bool = True
+    ) -> Scope:
         if user.role == Role.ADMIN:
             if company_id is not None and await self.session.get(Company, company_id) is None:
                 raise NotFoundError("Company not found", code="COMPANY_NOT_FOUND")
@@ -446,14 +466,18 @@ class ReportService:
     # shared building blocks
     # ----------------------------------------------------------------------------------------------------------------
     @staticmethod
-    def _app_conds(scope: Scope, window: Window, job_id: uuid.UUID | None = None) -> list[ColumnElement[bool]]:
+    def _app_conds(
+        scope: Scope, window: Window, job_id: uuid.UUID | None = None
+    ) -> list[ColumnElement[bool]]:
         conds = scope.job_conds()
         conds += window.conds(A.applied_at)
         if job_id:
             conds.append(A.job_id == job_id)
         return conds
 
-    async def _status_counts(self, scope: Scope, window: Window, job_id: uuid.UUID | None = None) -> list[StatusCount]:
+    async def _status_counts(
+        self, scope: Scope, window: Window, job_id: uuid.UUID | None = None
+    ) -> list[StatusCount]:
         rows = (
             await self.session.execute(
                 select(A.status, func.count())
@@ -466,10 +490,13 @@ class ReportService:
         have = {st: int(n) for st, n in rows}
         total = sum(have.values())
         return [
-            StatusCount(status=st, count=have.get(st, 0), percent=_pct(have.get(st, 0), total)) for st in ApplicationStatus
+            StatusCount(status=st, count=have.get(st, 0), percent=_pct(have.get(st, 0), total))
+            for st in ApplicationStatus
         ]
 
-    async def _funnel(self, scope: Scope, window: Window, job_id: uuid.UUID | None = None) -> tuple[int, list[FunnelStage]]:
+    async def _funnel(
+        self, scope: Scope, window: Window, job_id: uuid.UUID | None = None
+    ) -> tuple[int, list[FunnelStage]]:
         """Cumulative "reached" counts from application_status_history (an application that was shortlisted and later
         rejected still counts as having reached SHORTLISTED)."""
         reached = func.greatest(func.coalesce(func.max(_rank(H.to_status)), 1), _rank(A.status)).label("r")
@@ -506,7 +533,15 @@ class ReportService:
                 )
             )
         for st, n in ((ApplicationStatus.REJECTED, int(row[6])), (ApplicationStatus.WITHDRAWN, int(row[7]))):
-            stages.append(FunnelStage(stage=st, count=n, pct_of_applied=_pct(n, applied) if applied else None, pct_of_previous=None, is_branch=True))
+            stages.append(
+                FunnelStage(
+                    stage=st,
+                    count=n,
+                    pct_of_applied=_pct(n, applied) if applied else None,
+                    pct_of_previous=None,
+                    is_branch=True,
+                )
+            )
         return applied, stages
 
     def _cohort(self, scope: Scope, window: Window, job_id: uuid.UUID | None = None) -> tuple[Any, Any]:
@@ -563,7 +598,9 @@ class ReportService:
             ttl=DASHBOARD_TTL,
         )
 
-    async def _recruiter_dashboard(self, scope: Scope, window: Window, gran: Granularity) -> RecruiterDashboard:
+    async def _recruiter_dashboard(
+        self, scope: Scope, window: Window, gran: Granularity
+    ) -> RecruiterDashboard:
         s = self.session
         now = utcnow()
         today = _today()
@@ -604,7 +641,12 @@ class ReportService:
             .select_from(Iv)
             .join(A, A.id == Iv.application_id)
             .join(J, J.id == A.job_id)
-            .where(*jc, Iv.status.in_(ACTIVE_INTERVIEW_STATUSES), Iv.start_at >= now, Iv.start_at < now + timedelta(days=7))
+            .where(
+                *jc,
+                Iv.status.in_(ACTIVE_INTERVIEW_STATUSES),
+                Iv.start_at >= now,
+                Iv.start_at < now + timedelta(days=7),
+            )
         )
         hires = await s.scalar(
             select(func.count(func.distinct(H.application_id)))
@@ -650,7 +692,9 @@ class ReportService:
                 .group_by(ibucket, Iv.status)
             )
         ).all()
-        activity = {b: InterviewActivityPoint(bucket=b) for b in bucket_starts(window.start, window.end, gran)}
+        activity = {
+            b: InterviewActivityPoint(bucket=b) for b in bucket_starts(window.start, window.end, gran)
+        }
         for b, st, n in act_rows:
             if b in activity:
                 setattr(activity[b], st.value.lower(), int(n))
@@ -659,12 +703,29 @@ class ReportService:
         jx = aliased(Job)  # an alias keeps visibility_predicate's own Job subquery uncorrelated from this one
         top_rows = (
             await s.execute(
-                select(Mt.overall_score, CandidateProfile.id, CandidateProfile.display_name, CandidateProfile.headline, jx.id, jx.title, A.id)
+                select(
+                    Mt.overall_score,
+                    CandidateProfile.id,
+                    CandidateProfile.display_name,
+                    CandidateProfile.headline,
+                    jx.id,
+                    jx.title,
+                    A.id,
+                )
                 .select_from(Mt)
                 .join(jx, jx.id == Mt.job_id)
                 .join(CandidateProfile, CandidateProfile.id == Mt.candidate_id)
-                .outerjoin(A, and_(A.job_id == Mt.job_id, A.candidate_id == Mt.candidate_id, A.status != ApplicationStatus.WITHDRAWN))
-                .where(jx.status == JobStatus.PUBLISHED, *scope.job_conds(jx), visibility_predicate(scope.user))
+                .outerjoin(
+                    A,
+                    and_(
+                        A.job_id == Mt.job_id,
+                        A.candidate_id == Mt.candidate_id,
+                        A.status != ApplicationStatus.WITHDRAWN,
+                    ),
+                )
+                .where(
+                    jx.status == JobStatus.PUBLISHED, *scope.job_conds(jx), visibility_predicate(scope.user)
+                )
                 .order_by(Mt.overall_score.desc(), CandidateProfile.id)
                 .limit(5)
             )
@@ -672,7 +733,16 @@ class ReportService:
 
         recent_rows = (
             await s.execute(
-                select(A.id, CandidateProfile.id, CandidateProfile.display_name, J.id, J.title, A.status, A.applied_at, Mt.overall_score)
+                select(
+                    A.id,
+                    CandidateProfile.id,
+                    CandidateProfile.display_name,
+                    J.id,
+                    J.title,
+                    A.status,
+                    A.applied_at,
+                    Mt.overall_score,
+                )
                 .select_from(A)
                 .join(J, J.id == A.job_id)
                 .join(CandidateProfile, CandidateProfile.id == A.candidate_id)
@@ -700,7 +770,10 @@ class ReportService:
             ),
             funnel=funnel,
             applications_over_time=_series([(b, int(n)) for b, n in over_time], window, gran),
-            applications_by_job=[JobCount(job_id=jid, title=t, job_status=st, applications=int(n)) for jid, t, st, n in by_job_rows],
+            applications_by_job=[
+                JobCount(job_id=jid, title=t, job_status=st, applications=int(n))
+                for jid, t, st, n in by_job_rows
+            ],
             status_distribution=status_dist,
             interview_activity=list(activity.values()),
             top_matching_candidates=[
@@ -738,7 +811,9 @@ class ReportService:
     async def candidate_dashboard(self, user: User) -> CandidateDashboard:
         if user.role != Role.CANDIDATE:
             raise PermissionDeniedError("Only candidates have a candidate dashboard")
-        cand = (await self.session.execute(select(CandidateProfile).where(CandidateProfile.user_id == user.id))).scalar_one_or_none()
+        cand = (
+            await self.session.execute(select(CandidateProfile).where(CandidateProfile.user_id == user.id))
+        ).scalar_one_or_none()
         if cand is None:
             raise NotFoundError("Candidate profile not found", code="CANDIDATE_NOT_FOUND")
         candidate_id = cand.id
@@ -752,7 +827,9 @@ class ReportService:
         )
         # Live parts: nothing invalidates a cache domain when these change.
         completion = (await CandidateService(self.session).own_profile(user)).completion
-        saved = await self.session.scalar(select(func.count()).select_from(SavedJob).where(SavedJob.candidate_id == candidate_id))
+        saved = await self.session.scalar(
+            select(func.count()).select_from(SavedJob).where(SavedJob.candidate_id == candidate_id)
+        )
         return CandidateDashboard(
             generated_at=core.generated_at,
             profile_completion=ProfileCompletionBrief(percent=completion.percent, missing=completion.missing),
@@ -781,7 +858,11 @@ class ReportService:
                 .outerjoin(ResumeDocument, ResumeDocument.resume_id == Resume.id)
                 .outerjoin(ResumeProcessingResult, ResumeProcessingResult.resume_id == Resume.id)
                 .where(Resume.candidate_id == candidate_id)
-                .order_by(Resume.is_primary.desc(), Resume.created_at.desc(), ResumeDocument.created_at.desc().nulls_last())
+                .order_by(
+                    Resume.is_primary.desc(),
+                    Resume.created_at.desc(),
+                    ResumeDocument.created_at.desc().nulls_last(),
+                )
                 .limit(1)
             )
         ).first()
@@ -804,12 +885,17 @@ class ReportService:
         counts = {
             st: int(n)
             for st, n in (
-                await s.execute(select(A.status, func.count()).where(A.candidate_id == candidate_id).group_by(A.status))
+                await s.execute(
+                    select(A.status, func.count()).where(A.candidate_id == candidate_id).group_by(A.status)
+                )
             ).all()
         }
         total = sum(counts.values())
         live = sum(n for st, n in counts.items() if st in _LIVE)
-        by_status = [StatusCount(status=st, count=counts.get(st, 0), percent=_pct(counts.get(st, 0), total)) for st in ApplicationStatus]
+        by_status = [
+            StatusCount(status=st, count=counts.get(st, 0), percent=_pct(counts.get(st, 0), total))
+            for st in ApplicationStatus
+        ]
 
         iv_rows = (
             await s.execute(
@@ -818,13 +904,19 @@ class ReportService:
                 .join(A, A.id == Iv.application_id)
                 .join(J, J.id == A.job_id)
                 .join(Company, Company.id == J.company_id)
-                .where(Iv.candidate_id == candidate_id, Iv.status.in_(ACTIVE_INTERVIEW_STATUSES), Iv.end_at >= now)
+                .where(
+                    Iv.candidate_id == candidate_id,
+                    Iv.status.in_(ACTIVE_INTERVIEW_STATUSES),
+                    Iv.end_at >= now,
+                )
                 .order_by(Iv.start_at, Iv.id)
                 .limit(5)
             )
         ).all()
 
-        applied = select(A.job_id).where(A.candidate_id == candidate_id, A.status != ApplicationStatus.WITHDRAWN)
+        applied = select(A.job_id).where(
+            A.candidate_id == candidate_id, A.status != ApplicationStatus.WITHDRAWN
+        )
         rec_rows = (
             await s.execute(
                 select(Mt.overall_score, Mt.explanation["summary"].astext, J, Company.name)
@@ -889,7 +981,12 @@ class ReportService:
         if user.role != Role.ADMIN:
             raise PermissionDeniedError("Platform reports are available to administrators only")
         return await self._cached(
-            "admin-dashboard", _ALL_DOMAINS, {"scope": "platform"}, self._admin_dashboard, AdminDashboard, ttl=ADMIN_TTL
+            "admin-dashboard",
+            _ALL_DOMAINS,
+            {"scope": "platform"},
+            self._admin_dashboard,
+            AdminDashboard,
+            ttl=ADMIN_TTL,
         )
 
     async def _admin_dashboard(self) -> AdminDashboard:
@@ -936,13 +1033,16 @@ class ReportService:
             users_total=sum(users_by_role.values()),
             users_by_role=users_by_role,
             users_by_status=users_by_status,
-            companies=CompanyTotals(total=sum(companies.values()), active=companies["ACTIVE"], suspended=companies["SUSPENDED"]),
+            companies=CompanyTotals(
+                total=sum(companies.values()), active=companies["ACTIVE"], suspended=companies["SUSPENDED"]
+            ),
             jobs_by_status=_fill(JobStatus, await grouped(J.status)),
             applications_by_status=_fill(ApplicationStatus, await grouped(A.status)),
             interviews_by_status=_fill(InterviewStatus, await grouped(Iv.status)),
             resumes_by_status=_fill(ResumeStatus, await grouped(Resume.status)),
             tasks_last_24h_by_status=_fill(
-                TaskStatus, await grouped(BackgroundTask.status, BackgroundTask.created_at >= now - timedelta(hours=24))
+                TaskStatus,
+                await grouped(BackgroundTask.status, BackgroundTask.created_at >= now - timedelta(hours=24)),
             ),
             signups_over_time=_series([(b, int(n)) for b, n in signups], since, "day"),
             recent_audit_events=[
@@ -958,14 +1058,25 @@ class ReportService:
                 )
                 for ev, fn, ln in audit_rows
             ],
-            matches=MatchTotals(pairs=int(m_pairs), jobs_with_matches=int(m_jobs), candidates_with_matches=int(m_cands), last_generated_at=m_last),
+            matches=MatchTotals(
+                pairs=int(m_pairs),
+                jobs_with_matches=int(m_jobs),
+                candidates_with_matches=int(m_cands),
+                last_generated_at=m_last,
+            ),
         )
 
     # ----------------------------------------------------------------------------------------------------------------
     # analytics: applications by job / by status / funnel
     # ----------------------------------------------------------------------------------------------------------------
     async def _abj_items(
-        self, scope: Scope, window: Window, sort: str, order: SortOrder, page: int | None, page_size: int | None
+        self,
+        scope: Scope,
+        window: Window,
+        sort: str,
+        order: SortOrder,
+        page: int | None,
+        page_size: int | None,
     ) -> tuple[list[ApplicationsByJobRow], int]:
         status_cols = {st: _cnt(A.status == st).label(f"n_{st.value.lower()}") for st in ApplicationStatus}
         n = func.count().label("n")
@@ -1000,44 +1111,98 @@ class ReportService:
         return items, total
 
     async def applications_by_job(
-        self, user: User, *, company_id: uuid.UUID | None, from_date: date | None, to_date: date | None, sort: str, order: SortOrder,
-        page: int, page_size: int,
+        self,
+        user: User,
+        *,
+        company_id: uuid.UUID | None,
+        from_date: date | None,
+        to_date: date | None,
+        sort: str,
+        order: SortOrder,
+        page: int,
+        page_size: int,
     ) -> ApplicationsByJobPage:
         scope = await self.resolve_scope(user, company_id)
         window = make_window(from_date, to_date)
 
         async def compute() -> ApplicationsByJobPage:
             items, total = await self._abj_items(scope, window, sort, order, page, page_size)
-            return build_page(ApplicationsByJobPage, items, page=page, page_size=page_size, total=total, period=window.period())
+            return build_page(
+                ApplicationsByJobPage,
+                items,
+                page=page,
+                page_size=page_size,
+                total=total,
+                period=window.period(),
+            )
 
         return await self._cached(
             "applications-by-job",
             (CacheDomain.JOBS, CacheDomain.APPLICATIONS),
-            {**scope.cache_params(), **window.params(), "sort": sort, "order": order, "page": page, "size": page_size},
+            {
+                **scope.cache_params(),
+                **window.params(),
+                "sort": sort,
+                "order": order,
+                "page": page,
+                "size": page_size,
+            },
             compute,
             ApplicationsByJobPage,
         )
 
     async def applications_by_job_table(
-        self, user: User, *, company_id: uuid.UUID | None, from_date: date | None, to_date: date | None, sort: str, order: SortOrder
+        self,
+        user: User,
+        *,
+        company_id: uuid.UUID | None,
+        from_date: date | None,
+        to_date: date | None,
+        sort: str,
+        order: SortOrder,
     ) -> Table:
         scope = await self.resolve_scope(user, company_id)
         items, _ = await self._abj_items(scope, make_window(from_date, to_date), sort, order, None, None)
         return Table(
             "applications-by-job",
-            ["job_id", "title", "job_status", "department", "applications", *[f"count_{st.value.lower()}" for st in ApplicationStatus]],
-            [[i.job_id, i.title, i.job_status.value, i.department, i.applications, *[i.by_status[st.value] for st in ApplicationStatus]] for i in items],
+            [
+                "job_id",
+                "title",
+                "job_status",
+                "department",
+                "applications",
+                *[f"count_{st.value.lower()}" for st in ApplicationStatus],
+            ],
+            [
+                [
+                    i.job_id,
+                    i.title,
+                    i.job_status.value,
+                    i.department,
+                    i.applications,
+                    *[i.by_status[st.value] for st in ApplicationStatus],
+                ]
+                for i in items
+            ],
         )
 
     async def applications_by_status(
-        self, user: User, *, company_id: uuid.UUID | None, from_date: date | None, to_date: date | None, job_id: uuid.UUID | None
+        self,
+        user: User,
+        *,
+        company_id: uuid.UUID | None,
+        from_date: date | None,
+        to_date: date | None,
+        job_id: uuid.UUID | None,
     ) -> ApplicationsByStatusOut:
         scope = await self.resolve_scope(user, company_id)
         window = make_window(from_date, to_date)
 
         async def compute() -> ApplicationsByStatusOut:
             items = await self._status_counts(scope, window, job_id)
-            return ApplicationsByStatusOut(period=window.period(), job_id=job_id, total=sum(i.count for i in items), items=items)
+            return ApplicationsByStatusOut(
+                period=window.period(), job_id=job_id, total=sum(i.count for i in items), items=items
+            )
 
         return await self._cached(
             "applications-by-status",
@@ -1049,10 +1214,20 @@ class ReportService:
 
     @staticmethod
     def applications_by_status_table(out: ApplicationsByStatusOut) -> Table:
-        return Table("applications-by-status", ["status", "count", "percent"], [[i.status.value, i.count, i.percent] for i in out.items])
+        return Table(
+            "applications-by-status",
+            ["status", "count", "percent"],
+            [[i.status.value, i.count, i.percent] for i in out.items],
+        )
 
     async def funnel(
-        self, user: User, *, company_id: uuid.UUID | None, from_date: date | None, to_date: date | None, job_id: uuid.UUID | None
+        self,
+        user: User,
+        *,
+        company_id: uuid.UUID | None,
+        from_date: date | None,
+        to_date: date | None,
+        job_id: uuid.UUID | None,
     ) -> FunnelOut:
         scope = await self.resolve_scope(user, company_id)
         window = make_window(from_date, to_date)
@@ -1074,7 +1249,16 @@ class ReportService:
         return Table(
             "funnel",
             ["stage", "kind", "count", "pct_of_applied", "pct_of_previous"],
-            [[s.stage.value, "branch" if s.is_branch else "stage", s.count, s.pct_of_applied, s.pct_of_previous] for s in out.stages],
+            [
+                [
+                    s.stage.value,
+                    "branch" if s.is_branch else "stage",
+                    s.count,
+                    s.pct_of_applied,
+                    s.pct_of_previous,
+                ]
+                for s in out.stages
+            ],
         )
 
     # ----------------------------------------------------------------------------------------------------------------
@@ -1174,7 +1358,13 @@ class ReportService:
     # analytics: job performance
     # ----------------------------------------------------------------------------------------------------------------
     async def _perf_items(
-        self, scope: Scope, window: Window, sort: str, order: SortOrder, page: int | None, page_size: int | None
+        self,
+        scope: Scope,
+        window: Window,
+        sort: str,
+        order: SortOrder,
+        page: int | None,
+        page_size: int | None,
     ) -> tuple[list[JobPerformanceRow], int]:
         apps, hist = self._cohort(scope, window)
         agg = (
@@ -1186,7 +1376,9 @@ class ReportService:
                 func.count(apps.c.id).label("applications"),
                 func.count(apps.c.id).filter(hist.c.shortlisted.is_(True)).label("reached_shortlist"),
                 func.count(apps.c.id).filter(hist.c.hired_at.is_not(None)).label("hires"),
-                func.avg(extract("epoch", hist.c.first_change_at - apps.c.applied_at) / 86400.0).label("d_first"),
+                func.avg(extract("epoch", hist.c.first_change_at - apps.c.applied_at) / 86400.0).label(
+                    "d_first"
+                ),
                 func.avg(extract("epoch", hist.c.hired_at - apps.c.applied_at) / 86400.0).label("d_hire"),
                 func.avg(Mt.overall_score).label("avg_score"),
                 func.count(Mt.id).label("scored"),
@@ -1234,20 +1426,37 @@ class ReportService:
         return items, total
 
     async def job_performance(
-        self, user: User, *, company_id: uuid.UUID | None, from_date: date | None, to_date: date | None, sort: str, order: SortOrder,
-        page: int, page_size: int,
+        self,
+        user: User,
+        *,
+        company_id: uuid.UUID | None,
+        from_date: date | None,
+        to_date: date | None,
+        sort: str,
+        order: SortOrder,
+        page: int,
+        page_size: int,
     ) -> JobPerformancePage:
         scope = await self.resolve_scope(user, company_id)
         window = make_window(from_date, to_date)
 
         async def compute() -> JobPerformancePage:
             items, total = await self._perf_items(scope, window, sort, order, page, page_size)
-            return build_page(JobPerformancePage, items, page=page, page_size=page_size, total=total, period=window.period())
+            return build_page(
+                JobPerformancePage, items, page=page, page_size=page_size, total=total, period=window.period()
+            )
 
         return await self._cached(
             "job-performance",
             (CacheDomain.JOBS, CacheDomain.APPLICATIONS, CacheDomain.MATCHES),
-            {**scope.cache_params(), **window.params(), "sort": sort, "order": order, "page": page, "size": page_size},
+            {
+                **scope.cache_params(),
+                **window.params(),
+                "sort": sort,
+                "order": order,
+                "page": page,
+                "size": page_size,
+            },
             compute,
             JobPerformancePage,
         )
@@ -1258,7 +1467,14 @@ class ReportService:
     )  # fmt: skip
 
     async def job_performance_table(
-        self, user: User, *, company_id: uuid.UUID | None, from_date: date | None, to_date: date | None, sort: str, order: SortOrder
+        self,
+        user: User,
+        *,
+        company_id: uuid.UUID | None,
+        from_date: date | None,
+        to_date: date | None,
+        sort: str,
+        order: SortOrder,
     ) -> Table:
         scope = await self.resolve_scope(user, company_id)
         items, _ = await self._perf_items(scope, make_window(from_date, to_date), sort, order, None, None)
@@ -1267,8 +1483,19 @@ class ReportService:
             list(self.JOB_PERFORMANCE_HEADERS),
             [
                 [
-                    i.job_id, i.title, i.job_status.value, i.published_at, i.applications, i.reached_shortlist, i.hires, i.shortlist_rate,
-                    i.hire_rate, i.avg_days_to_first_status_change, i.avg_days_to_hire, i.avg_match_score, i.applicants_scored,
+                    i.job_id,
+                    i.title,
+                    i.job_status.value,
+                    i.published_at,
+                    i.applications,
+                    i.reached_shortlist,
+                    i.hires,
+                    i.shortlist_rate,
+                    i.hire_rate,
+                    i.avg_days_to_first_status_change,
+                    i.avg_days_to_hire,
+                    i.avg_match_score,
+                    i.applicants_scored,
                 ]
                 for i in items
             ],
@@ -1278,7 +1505,13 @@ class ReportService:
     # analytics: recruiter activity
     # ----------------------------------------------------------------------------------------------------------------
     async def _activity_items(
-        self, scope: Scope, window: Window, sort: str, order: SortOrder, page: int | None, page_size: int | None
+        self,
+        scope: Scope,
+        window: Window,
+        sort: str,
+        order: SortOrder,
+        page: int | None,
+        page_size: int | None,
     ) -> tuple[list[RecruiterActivityRow], int]:
         jc = scope.job_conds()
         company_audit = [AuditEvent.company_id == scope.company_id] if scope.company_id else []
@@ -1294,7 +1527,12 @@ class ReportService:
         )
         scheduled = (
             select(AuditEvent.actor_id.label("uid"), func.count().label("n"))
-            .where(AuditEvent.action == "interview.scheduled", AuditEvent.actor_id.is_not(None), *company_audit, *window.conds(AuditEvent.created_at))
+            .where(
+                AuditEvent.action == "interview.scheduled",
+                AuditEvent.actor_id.is_not(None),
+                *company_audit,
+                *window.conds(AuditEvent.created_at),
+            )
             .group_by(AuditEvent.actor_id)
             .subquery("scheduled")
         )
@@ -1366,35 +1604,84 @@ class ReportService:
         return items, count
 
     async def recruiter_activity(
-        self, user: User, *, company_id: uuid.UUID | None, from_date: date | None, to_date: date | None, sort: str, order: SortOrder,
-        page: int, page_size: int,
+        self,
+        user: User,
+        *,
+        company_id: uuid.UUID | None,
+        from_date: date | None,
+        to_date: date | None,
+        sort: str,
+        order: SortOrder,
+        page: int,
+        page_size: int,
     ) -> RecruiterActivityPage:
         scope = await self.resolve_scope(user, company_id, allow_hiring_manager=False)
         window = make_window(from_date, to_date)
 
         async def compute() -> RecruiterActivityPage:
             items, total = await self._activity_items(scope, window, sort, order, page, page_size)
-            return build_page(RecruiterActivityPage, items, page=page, page_size=page_size, total=total, period=window.period())
+            return build_page(
+                RecruiterActivityPage,
+                items,
+                page=page,
+                page_size=page_size,
+                total=total,
+                period=window.period(),
+            )
 
         return await self._cached(
             "recruiter-activity",
             (CacheDomain.JOBS, CacheDomain.APPLICATIONS, CacheDomain.INTERVIEWS, CacheDomain.USERS),
-            {**scope.cache_params(), **window.params(), "sort": sort, "order": order, "page": page, "size": page_size},
+            {
+                **scope.cache_params(),
+                **window.params(),
+                "sort": sort,
+                "order": order,
+                "page": page,
+                "size": page_size,
+            },
             compute,
             RecruiterActivityPage,
             ttl=ACTIVITY_TTL,
         )
 
     async def recruiter_activity_table(
-        self, user: User, *, company_id: uuid.UUID | None, from_date: date | None, to_date: date | None, sort: str, order: SortOrder
+        self,
+        user: User,
+        *,
+        company_id: uuid.UUID | None,
+        from_date: date | None,
+        to_date: date | None,
+        sort: str,
+        order: SortOrder,
     ) -> Table:
         scope = await self.resolve_scope(user, company_id, allow_hiring_manager=False)
         items, _ = await self._activity_items(scope, make_window(from_date, to_date), sort, order, None, None)
         return Table(
             "recruiter-activity",
-            ["user_id", "name", "role", "company", "status_changes", "interviews_scheduled", "notes_added", "feedback_submitted", "total_actions"],
             [
-                [i.user_id, i.name, i.role, i.company_name, i.status_changes, i.interviews_scheduled, i.notes_added, i.feedback_submitted, i.total_actions]
+                "user_id",
+                "name",
+                "role",
+                "company",
+                "status_changes",
+                "interviews_scheduled",
+                "notes_added",
+                "feedback_submitted",
+                "total_actions",
+            ],
+            [
+                [
+                    i.user_id,
+                    i.name,
+                    i.role,
+                    i.company_name,
+                    i.status_changes,
+                    i.interviews_scheduled,
+                    i.notes_added,
+                    i.feedback_submitted,
+                    i.total_actions,
+                ]
                 for i in items
             ],
         )
@@ -1403,14 +1690,25 @@ class ReportService:
     # analytics: source statistics
     # ----------------------------------------------------------------------------------------------------------------
     async def _source_items(
-        self, scope: Scope, window: Window, sort: str, order: SortOrder, page: int | None, page_size: int | None
+        self,
+        scope: Scope,
+        window: Window,
+        sort: str,
+        order: SortOrder,
+        page: int | None,
+        page_size: int | None,
     ) -> tuple[list[SourceStatRow], int]:
         apps, hist = self._cohort(scope, window)
         n = func.count(apps.c.id).label("n")
         grand = func.sum(func.count(apps.c.id)).over().label("grand")
         shortlisted = func.count(apps.c.id).filter(hist.c.shortlisted.is_(True)).label("shortlisted")
         hires = func.count(apps.c.id).filter(hist.c.hired_at.is_not(None)).label("hires")
-        sort_keys: dict[str, Any] = {"applications": n, "source": apps.c.source, "hires": hires, "shortlisted": shortlisted}
+        sort_keys: dict[str, Any] = {
+            "applications": n,
+            "source": apps.c.source,
+            "hires": hires,
+            "shortlisted": shortlisted,
+        }
         key = sort_keys.get(sort, n)
         stmt = (
             select(apps.c.source, n, grand, shortlisted, hires)
@@ -1435,33 +1733,73 @@ class ReportService:
         return items, total
 
     async def source_statistics(
-        self, user: User, *, company_id: uuid.UUID | None, from_date: date | None, to_date: date | None, sort: str, order: SortOrder,
-        page: int, page_size: int,
+        self,
+        user: User,
+        *,
+        company_id: uuid.UUID | None,
+        from_date: date | None,
+        to_date: date | None,
+        sort: str,
+        order: SortOrder,
+        page: int,
+        page_size: int,
     ) -> SourceStatisticsPage:
         scope = await self.resolve_scope(user, company_id)
         window = make_window(from_date, to_date)
 
         async def compute() -> SourceStatisticsPage:
             items, total = await self._source_items(scope, window, sort, order, page, page_size)
-            return build_page(SourceStatisticsPage, items, page=page, page_size=page_size, total=total, period=window.period())
+            return build_page(
+                SourceStatisticsPage,
+                items,
+                page=page,
+                page_size=page_size,
+                total=total,
+                period=window.period(),
+            )
 
         return await self._cached(
             "source-statistics",
             (CacheDomain.JOBS, CacheDomain.APPLICATIONS),
-            {**scope.cache_params(), **window.params(), "sort": sort, "order": order, "page": page, "size": page_size},
+            {
+                **scope.cache_params(),
+                **window.params(),
+                "sort": sort,
+                "order": order,
+                "page": page,
+                "size": page_size,
+            },
             compute,
             SourceStatisticsPage,
         )
 
     async def source_statistics_table(
-        self, user: User, *, company_id: uuid.UUID | None, from_date: date | None, to_date: date | None, sort: str, order: SortOrder
+        self,
+        user: User,
+        *,
+        company_id: uuid.UUID | None,
+        from_date: date | None,
+        to_date: date | None,
+        sort: str,
+        order: SortOrder,
     ) -> Table:
         scope = await self.resolve_scope(user, company_id)
         items, _ = await self._source_items(scope, make_window(from_date, to_date), sort, order, None, None)
         return Table(
             "source-statistics",
             ["source", "applications", "share", "reached_shortlist", "hires", "shortlist_rate", "hire_rate"],
-            [[i.source, i.applications, i.share, i.reached_shortlist, i.hires, i.shortlist_rate, i.hire_rate] for i in items],
+            [
+                [
+                    i.source,
+                    i.applications,
+                    i.share,
+                    i.reached_shortlist,
+                    i.hires,
+                    i.shortlist_rate,
+                    i.hire_rate,
+                ]
+                for i in items
+            ],
         )
 
     # ----------------------------------------------------------------------------------------------------------------
@@ -1481,16 +1819,30 @@ class ReportService:
             def bands(rows: Sequence[tuple[str, int]]) -> list[BandCount]:
                 have = {b: int(n) for b, n in rows}
                 total = sum(have.values())
-                return [BandCount(band=b, count=have.get(b, 0), percent=_pct(have.get(b, 0), total)) for b in BAND_ORDER]
+                return [
+                    BandCount(band=b, count=have.get(b, 0), percent=_pct(have.get(b, 0), total))
+                    for b in BAND_ORDER
+                ]
 
             all_rows = (
-                await s.execute(select(band, func.count()).select_from(Mt).join(J, J.id == Mt.job_id).where(*jc).group_by(band))
+                await s.execute(
+                    select(band, func.count())
+                    .select_from(Mt)
+                    .join(J, J.id == Mt.job_id)
+                    .where(*jc)
+                    .group_by(band)
+                )
             ).all()
             app_join = and_(Mt.job_id == A.job_id, Mt.candidate_id == A.candidate_id)
             app_conds = self._app_conds(scope, window)
             app_rows = (
                 await s.execute(
-                    select(band, func.count()).select_from(A).join(J, J.id == A.job_id).join(Mt, app_join).where(*app_conds).group_by(band)
+                    select(band, func.count())
+                    .select_from(A)
+                    .join(J, J.id == A.job_id)
+                    .join(Mt, app_join)
+                    .where(*app_conds)
+                    .group_by(band)
                 )
             ).all()
             outcome = case(
@@ -1523,22 +1875,36 @@ class ReportService:
             )
             top = (
                 await s.execute(
-                    select(func.count(A.id), func.count(ranked.c.job_id), func.count(A.id).filter(ranked.c.rk <= 10))
+                    select(
+                        func.count(A.id),
+                        func.count(ranked.c.job_id),
+                        func.count(A.id).filter(ranked.c.rk <= 10),
+                    )
                     .select_from(A)
                     .join(J, J.id == A.job_id)
-                    .outerjoin(ranked, and_(ranked.c.job_id == A.job_id, ranked.c.candidate_id == A.candidate_id))
+                    .outerjoin(
+                        ranked, and_(ranked.c.job_id == A.job_id, ranked.c.candidate_id == A.candidate_id)
+                    )
                     .where(*app_conds)
                 )
             ).one()
             scored_pairs = sum(n for _, n in all_rows)
 
             outcomes = [
-                OutcomeScore(outcome=o, applications=by_outcome.get(o, (0, None))[0], avg_score=by_outcome.get(o, (0, None))[1])
+                OutcomeScore(
+                    outcome=o,
+                    applications=by_outcome.get(o, (0, None))[0],
+                    avg_score=by_outcome.get(o, (0, None))[1],
+                )
                 for o in ("HIRED", "REJECTED", "WITHDRAWN", "IN_PROGRESS")
             ]
             hired, rejected = by_outcome.get("HIRED", (0, None)), by_outcome.get("REJECTED", (0, None))
-            delta = round(hired[1] - rejected[1], 4) if hired[1] is not None and rejected[1] is not None else None
-            notes = ["Scores rank candidates against a job; they are a relevance aid, not a prediction of hiring success."]
+            delta = (
+                round(hired[1] - rejected[1], 4) if hired[1] is not None and rejected[1] is not None else None
+            )
+            notes = [
+                "Scores rank candidates against a job; they are a relevance aid, not a prediction of hiring success."
+            ]
             if scored_pairs == 0:
                 notes.append("No match scores have been computed yet for these jobs.")
             if delta is not None and (hired[0] < 10 or rejected[0] < 10):
@@ -1549,7 +1915,9 @@ class ReportService:
             elif delta is None and (hired[0] or rejected[0]):
                 notes.append("Hired-vs-rejected needs scored applicants in both groups.")
             if int(top[0]) > int(top[1]):
-                notes.append(f"{int(top[0]) - int(top[1])} of {int(top[0])} applicants have no stored match score yet.")
+                notes.append(
+                    f"{int(top[0]) - int(top[1])} of {int(top[0])} applicants have no stored match score yet."
+                )
             return MatchingPerformanceOut(
                 period=window.period(),
                 scored_pairs=scored_pairs,
@@ -1576,9 +1944,13 @@ class ReportService:
 
     @staticmethod
     def matching_performance_table(out: MatchingPerformanceOut) -> Table:
-        rows: list[list[Any]] = [["all_scored_band", b.band, b.count, b.percent] for b in out.all_scored_distribution]
+        rows: list[list[Any]] = [
+            ["all_scored_band", b.band, b.count, b.percent] for b in out.all_scored_distribution
+        ]
         rows += [["applicant_band", b.band, b.count, b.percent] for b in out.applicant_distribution]
-        rows += [["avg_score_by_outcome", o.outcome, o.applications, o.avg_score] for o in out.avg_score_by_outcome]
+        rows += [
+            ["avg_score_by_outcome", o.outcome, o.applications, o.avg_score] for o in out.avg_score_by_outcome
+        ]
         rows += [
             ["top10", "applicants", out.top10.applicants, None],
             ["top10", "applicants_with_score", out.top10.applicants_with_score, None],
@@ -1623,7 +1995,11 @@ class ReportService:
             )
             supply = (
                 await s.execute(
-                    select(Skill.id, Skill.name, func.count(func.distinct(CandidateSkill.candidate_id)).label("n"))
+                    select(
+                        Skill.id,
+                        Skill.name,
+                        func.count(func.distinct(CandidateSkill.candidate_id)).label("n"),
+                    )
                     .select_from(CandidateSkill)
                     .join(Skill, Skill.id == CandidateSkill.skill_id)
                     .join(applicants, applicants.c.candidate_id == CandidateSkill.candidate_id)
@@ -1640,10 +2016,18 @@ class ReportService:
                 jobs_considered=int(n_jobs or 0),
                 applicants_considered=int(n_apps or 0),
                 requested=[
-                    SkillDemand(skill_id=sid, skill=name, jobs=int(n), required_in_jobs=int(req), preferred_in_jobs=int(pref))
+                    SkillDemand(
+                        skill_id=sid,
+                        skill=name,
+                        jobs=int(n),
+                        required_in_jobs=int(req),
+                        preferred_in_jobs=int(pref),
+                    )
                     for sid, name, n, req, pref in demand
                 ],
-                available=[SkillSupply(skill_id=sid, skill=name, candidates=int(n)) for sid, name, n in supply],
+                available=[
+                    SkillSupply(skill_id=sid, skill=name, candidates=int(n)) for sid, name, n in supply
+                ],
             )
 
         return await self._cached(
@@ -1656,14 +2040,18 @@ class ReportService:
 
     @staticmethod
     def top_skills_table(out: TopSkillsOut) -> Table:
-        rows: list[list[Any]] = [["requested", d.skill, d.jobs, d.required_in_jobs, d.preferred_in_jobs] for d in out.requested]
+        rows: list[list[Any]] = [
+            ["requested", d.skill, d.jobs, d.required_in_jobs, d.preferred_in_jobs] for d in out.requested
+        ]
         rows += [["available", a.skill, a.candidates, None, None] for a in out.available]
         return Table("top-skills", ["list", "skill", "count", "required_in_jobs", "preferred_in_jobs"], rows)
 
     # ----------------------------------------------------------------------------------------------------------------
     # analytics: pipeline summary (a snapshot of the current state)
     # ----------------------------------------------------------------------------------------------------------------
-    async def pipeline_summary(self, user: User, *, company_id: uuid.UUID | None, job_id: uuid.UUID | None) -> PipelineSummaryOut:
+    async def pipeline_summary(
+        self, user: User, *, company_id: uuid.UUID | None, job_id: uuid.UUID | None
+    ) -> PipelineSummaryOut:
         scope = await self.resolve_scope(user, company_id)
 
         async def compute() -> PipelineSummaryOut:
@@ -1673,7 +2061,13 @@ class ReportService:
                 conds.append(A.job_id == job_id)
             rows = (
                 await self.session.execute(
-                    select(A.status, func.count(), func.avg(age_days), func.max(age_days), _cnt(age_days > STALE_AFTER_DAYS))
+                    select(
+                        A.status,
+                        func.count(),
+                        func.avg(age_days),
+                        func.max(age_days),
+                        _cnt(age_days > STALE_AFTER_DAYS),
+                    )
                     .select_from(A)
                     .join(J, J.id == A.job_id)
                     .where(*conds)

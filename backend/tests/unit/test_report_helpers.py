@@ -70,10 +70,20 @@ def test_make_window_validation_and_defaults():
 
 
 def test_bucket_starts():
-    assert bucket_starts(date(2026, 1, 30), date(2026, 2, 2), "day") == [date(2026, 1, 30), date(2026, 1, 31), date(2026, 2, 1), date(2026, 2, 2)]
+    assert bucket_starts(date(2026, 1, 30), date(2026, 2, 2), "day") == [
+        date(2026, 1, 30),
+        date(2026, 1, 31),
+        date(2026, 2, 1),
+        date(2026, 2, 2),
+    ]
     weeks = bucket_starts(date(2026, 10, 7), date(2026, 10, 21), "week")  # 2026-10-07 is a Wednesday
     assert weeks == [date(2026, 10, 5), date(2026, 10, 12), date(2026, 10, 19)]
-    assert bucket_starts(date(2025, 11, 20), date(2026, 2, 3), "month") == [date(2025, 11, 1), date(2025, 12, 1), date(2026, 1, 1), date(2026, 2, 1)]
+    assert bucket_starts(date(2025, 11, 20), date(2026, 2, 3), "month") == [
+        date(2025, 11, 1),
+        date(2025, 12, 1),
+        date(2026, 1, 1),
+        date(2026, 2, 1),
+    ]
     assert bucket_starts(date(2026, 5, 5), date(2026, 5, 5), "month") == [date(2026, 5, 1)]
 
 

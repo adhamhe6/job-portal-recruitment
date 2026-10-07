@@ -52,12 +52,16 @@ Viewer = Annotated[User, Depends(require(Permission.VIEW_REPORTS))]
 PlatformAdmin = Annotated[User, Depends(require(Permission.VIEW_ADMIN_REPORTS))]
 
 CompanyParam = Annotated[
-    uuid.UUID | None, Query(description="Admins only: restrict to one company (omit for the whole platform). Staff may only pass their own.")
+    uuid.UUID | None,
+    Query(
+        description="Admins only: restrict to one company (omit for the whole platform). Staff may only pass their own."
+    ),
 ]
 FromParam = Annotated[date | None, Query(description="First day to include (UTC, inclusive)")]
 ToParam = Annotated[date | None, Query(description="Last day to include (UTC, inclusive)")]
 FormatParam = Annotated[
-    Literal["json", "csv"], Query(alias="format", description="`csv` returns text/csv (all rows up to 5000, ignoring pagination)")
+    Literal["json", "csv"],
+    Query(alias="format", description="`csv` returns text/csv (all rows up to 5000, ignoring pagination)"),
 ]
 OrderParam = Annotated[Literal["asc", "desc"], Query(description="Sort direction")]
 
@@ -74,7 +78,10 @@ def csv_response(table: Table) -> Response:
     return Response(
         content=render_csv(table),
         media_type="text/csv; charset=utf-8",
-        headers={"Content-Disposition": f'attachment; filename="{csv_filename(table.name)}"', "Cache-Control": "no-store"},
+        headers={
+            "Content-Disposition": f'attachment; filename="{csv_filename(table.name)}"',
+            "Cache-Control": "no-store",
+        },
     )
 
 
@@ -96,9 +103,13 @@ async def recruiter_dashboard(
     company_id: CompanyParam = None,
     from_date: FromParam = None,
     to_date: ToParam = None,
-    granularity: Annotated[Granularity | None, Query(description="Bucket size for time series (default: chosen from the range)")] = None,
+    granularity: Annotated[
+        Granularity | None, Query(description="Bucket size for time series (default: chosen from the range)")
+    ] = None,
 ) -> RecruiterDashboard:
-    return await svc.recruiter_dashboard(user, company_id=company_id, from_date=from_date, to_date=to_date, granularity=granularity)
+    return await svc.recruiter_dashboard(
+        user, company_id=company_id, from_date=from_date, to_date=to_date, granularity=granularity
+    )
 
 
 @router.get(
@@ -138,14 +149,27 @@ async def applications_by_job(
     company_id: CompanyParam = None,
     from_date: FromParam = None,
     to_date: ToParam = None,
-    sort: Annotated[Literal["applications", "title", "shortlisted", "hired", "rejected"], Query()] = "applications",
+    sort: Annotated[
+        Literal["applications", "title", "shortlisted", "hired", "rejected"], Query()
+    ] = "applications",
     order: OrderParam = "desc",
     fmt: FormatParam = "json",
 ) -> ApplicationsByJobPage | Response:
     if fmt == "csv":
-        return csv_response(await svc.applications_by_job_table(user, company_id=company_id, from_date=from_date, to_date=to_date, sort=sort, order=order))
+        return csv_response(
+            await svc.applications_by_job_table(
+                user, company_id=company_id, from_date=from_date, to_date=to_date, sort=sort, order=order
+            )
+        )
     return await svc.applications_by_job(
-        user, company_id=company_id, from_date=from_date, to_date=to_date, sort=sort, order=order, page=p.page, page_size=p.page_size
+        user,
+        company_id=company_id,
+        from_date=from_date,
+        to_date=to_date,
+        sort=sort,
+        order=order,
+        page=p.page,
+        page_size=p.page_size,
     )
 
 
@@ -165,7 +189,9 @@ async def applications_by_status(
     job_id: uuid.UUID | None = None,
     fmt: FormatParam = "json",
 ) -> ApplicationsByStatusOut | Response:
-    out = await svc.applications_by_status(user, company_id=company_id, from_date=from_date, to_date=to_date, job_id=job_id)
+    out = await svc.applications_by_status(
+        user, company_id=company_id, from_date=from_date, to_date=to_date, job_id=job_id
+    )
     return csv_response(svc.applications_by_status_table(out)) if fmt == "csv" else out
 
 
@@ -227,15 +253,29 @@ async def job_performance(
     from_date: FromParam = None,
     to_date: ToParam = None,
     sort: Annotated[
-        Literal["applications", "title", "shortlist_rate", "hire_rate", "avg_days_to_hire", "avg_match_score"], Query()
+        Literal[
+            "applications", "title", "shortlist_rate", "hire_rate", "avg_days_to_hire", "avg_match_score"
+        ],
+        Query(),
     ] = "applications",
     order: OrderParam = "desc",
     fmt: FormatParam = "json",
 ) -> JobPerformancePage | Response:
     if fmt == "csv":
-        return csv_response(await svc.job_performance_table(user, company_id=company_id, from_date=from_date, to_date=to_date, sort=sort, order=order))
+        return csv_response(
+            await svc.job_performance_table(
+                user, company_id=company_id, from_date=from_date, to_date=to_date, sort=sort, order=order
+            )
+        )
     return await svc.job_performance(
-        user, company_id=company_id, from_date=from_date, to_date=to_date, sort=sort, order=order, page=p.page, page_size=p.page_size
+        user,
+        company_id=company_id,
+        from_date=from_date,
+        to_date=to_date,
+        sort=sort,
+        order=order,
+        page=p.page,
+        page_size=p.page_size,
     )
 
 
@@ -257,7 +297,10 @@ async def export_job_performance(
     from_date: FromParam = None,
     to_date: ToParam = None,
     sort: Annotated[
-        Literal["applications", "title", "shortlist_rate", "hire_rate", "avg_days_to_hire", "avg_match_score"], Query()
+        Literal[
+            "applications", "title", "shortlist_rate", "hire_rate", "avg_days_to_hire", "avg_match_score"
+        ],
+        Query(),
     ] = "applications",
     order: OrderParam = "desc",
 ) -> TaskRef:
@@ -298,14 +341,27 @@ async def recruiter_activity(
     company_id: CompanyParam = None,
     from_date: FromParam = None,
     to_date: ToParam = None,
-    sort: Annotated[Literal["total", "status_changes", "interviews_scheduled", "notes", "feedback", "name"], Query()] = "total",
+    sort: Annotated[
+        Literal["total", "status_changes", "interviews_scheduled", "notes", "feedback", "name"], Query()
+    ] = "total",
     order: OrderParam = "desc",
     fmt: FormatParam = "json",
 ) -> RecruiterActivityPage | Response:
     if fmt == "csv":
-        return csv_response(await svc.recruiter_activity_table(user, company_id=company_id, from_date=from_date, to_date=to_date, sort=sort, order=order))
+        return csv_response(
+            await svc.recruiter_activity_table(
+                user, company_id=company_id, from_date=from_date, to_date=to_date, sort=sort, order=order
+            )
+        )
     return await svc.recruiter_activity(
-        user, company_id=company_id, from_date=from_date, to_date=to_date, sort=sort, order=order, page=p.page, page_size=p.page_size
+        user,
+        company_id=company_id,
+        from_date=from_date,
+        to_date=to_date,
+        sort=sort,
+        order=order,
+        page=p.page,
+        page_size=p.page_size,
     )
 
 
@@ -328,9 +384,20 @@ async def source_statistics(
     fmt: FormatParam = "json",
 ) -> SourceStatisticsPage | Response:
     if fmt == "csv":
-        return csv_response(await svc.source_statistics_table(user, company_id=company_id, from_date=from_date, to_date=to_date, sort=sort, order=order))
+        return csv_response(
+            await svc.source_statistics_table(
+                user, company_id=company_id, from_date=from_date, to_date=to_date, sort=sort, order=order
+            )
+        )
     return await svc.source_statistics(
-        user, company_id=company_id, from_date=from_date, to_date=to_date, sort=sort, order=order, page=p.page, page_size=p.page_size
+        user,
+        company_id=company_id,
+        from_date=from_date,
+        to_date=to_date,
+        sort=sort,
+        order=order,
+        page=p.page,
+        page_size=p.page_size,
     )
 
 
@@ -390,4 +457,3 @@ async def pipeline_summary(
 ) -> PipelineSummaryOut | Response:
     out = await svc.pipeline_summary(user, company_id=company_id, job_id=job_id)
     return csv_response(svc.pipeline_summary_table(out)) if fmt == "csv" else out
-

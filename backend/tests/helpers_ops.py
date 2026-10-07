@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import uuid
 from datetime import UTC, datetime, timedelta
 from typing import Any
@@ -133,7 +134,7 @@ async def put_match(job_id: str, candidate_id: str, score: float, summary: str =
         "INSERT INTO candidate_job_matches (id, job_id, candidate_id, overall_score, semantic_score, raw_cosine, explanation, "
         "matching_version, embedding_model, embedding_version, job_hash, candidate_hash, generated_at) "
         "VALUES (gen_random_uuid(), :j, :c, :s, :s, :s, CAST(:e AS jsonb), 'v1', 'wordllama-l2-supercat-256', 'v1', 'h', 'h', now())",
-        j=uuid.UUID(job_id), c=uuid.UUID(candidate_id), s=score, e='{"summary": "%s"}' % summary,
+        j=uuid.UUID(job_id), c=uuid.UUID(candidate_id), s=score, e=json.dumps({"summary": summary}),
     )  # fmt: skip
 
 
@@ -194,4 +195,16 @@ async def build_pipeline(client: AsyncClient) -> dict[str, Any]:
         await put_match(job["id"], cid[who], score)
     await put_match(j1["id"], zed["candidate_id"], 0.95)
     await bust_cache()
-    return {"co": co, "rec": rec, "rec2": co["rec2"], "hm": co["hm"], "j1": j1, "j2": j2, "j3": j3, "cands": cands, "apps": apps, "zed": zed, "interview": iv.json()}
+    return {
+        "co": co,
+        "rec": rec,
+        "rec2": co["rec2"],
+        "hm": co["hm"],
+        "j1": j1,
+        "j2": j2,
+        "j3": j3,
+        "cands": cands,
+        "apps": apps,
+        "zed": zed,
+        "interview": iv.json(),
+    }

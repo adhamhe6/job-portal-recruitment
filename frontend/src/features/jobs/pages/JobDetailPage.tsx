@@ -145,7 +145,7 @@ function DetailSkeleton() {
           <Skeleton className="h-6 w-1/2" />
         </div>
       </div>
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <Skeleton className="h-96 rounded-xl" />
         <Skeleton className="h-72 rounded-xl" />
       </div>
@@ -251,7 +251,7 @@ export default function JobDetailPage() {
         </div>
       )}
 
-      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
+      <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <div className="min-w-0 space-y-8">
           <Card>
             <CardContent className="space-y-8 p-5 pt-5 sm:p-7 sm:pt-7">

@@ -70,7 +70,10 @@ async def list_tasks(
     summary="Retry a failed task",
     description="Only FAILED tasks: resets the attempt counter, sets the task back to PENDING and re-enqueues it. "
     "`409 TASK_NOT_RETRYABLE` for any other state, `409 TASK_ALREADY_ACTIVE` if an equivalent task is running.",
-    responses={**COMMON_ERRORS, 409: {"model": ErrorResponse, "description": "TASK_NOT_RETRYABLE / TASK_ALREADY_ACTIVE"}},
+    responses={
+        **COMMON_ERRORS,
+        409: {"model": ErrorResponse, "description": "TASK_NOT_RETRYABLE / TASK_ALREADY_ACTIVE"},
+    },
 )
 async def retry_task(task_id: uuid.UUID, user: Admin, svc: Svc, dispatcher: DispatcherDep) -> AdminTaskOut:
     return await svc.retry_task(user, task_id, dispatcher)
@@ -96,8 +99,16 @@ async def audit_log(
     to_date: date | None = None,
 ) -> Page[AuditEventOut]:
     items, total = await svc.list_audit(
-        user, actor_id=actor_id, action=action, entity_type=entity_type, entity_id=entity_id, company_id=company_id,
-        from_date=from_date, to_date=to_date, page=p.page, page_size=p.page_size,
+        user,
+        actor_id=actor_id,
+        action=action,
+        entity_type=entity_type,
+        entity_id=entity_id,
+        company_id=company_id,
+        from_date=from_date,
+        to_date=to_date,
+        page=p.page,
+        page_size=p.page_size,
     )
     return Page.build(items, page=p.page, page_size=p.page_size, total=total)
 

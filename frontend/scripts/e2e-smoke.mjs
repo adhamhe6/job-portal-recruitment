@@ -10,7 +10,12 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE ?? '/opt/node-tools/n
 const BASE = process.env.BASE_URL ?? 'http://127.0.0.1:5173'
 const PASSWORD = 'DemoPass123!'
 const root = process.env.PLAYWRIGHT_BROWSERS_PATH ?? '/opt/pw-browsers'
-const chrome = join(root, readdirSync(root).find((d) => d.startsWith('chromium-')), 'chrome-linux', 'chrome')
+const chrome = join(
+  root,
+  readdirSync(root).find((d) => d.startsWith('chromium-')),
+  'chrome-linux',
+  'chrome',
+)
 
 const browser = await chromium.launch({ executablePath: chrome, args: ['--no-sandbox'] })
 let failures = 0
@@ -64,7 +69,10 @@ console.log('Anonymous visitor')
     // the same link in a fresh page restores the same filtered view
     await page.goto(page.url())
     await page.getByText(new RegExp(`^${expected} jobs? found`)).waitFor()
-    assert(await page.getByRole('checkbox', { name: 'Remote' }).isChecked(), 'checkbox should reflect the URL')
+    assert(
+      await page.getByRole('checkbox', { name: 'Remote' }).isChecked(),
+      'checkbox should reflect the URL',
+    )
   })
   await step('keyword search + skill autocomplete', async () => {
     await page.goto(`${BASE}/jobs`)
@@ -108,25 +116,40 @@ console.log('Candidate (Alex Rivera)')
     await page.getByRole('button', { name: 'Apply now' }).waitFor()
   })
   await step('save and unsave a job (persisted by the API)', async () => {
-    await page.getByRole('button', { name: /^Save DevOps/ }).first().click()
-    await page.getByRole('button', { name: /^Remove DevOps.* from saved jobs/ }).first().waitFor()
+    await page
+      .getByRole('button', { name: /^Save DevOps/ })
+      .first()
+      .click()
+    await page
+      .getByRole('button', { name: /^Remove DevOps.* from saved jobs/ })
+      .first()
+      .waitFor()
     await page.reload()
-    await page.getByRole('button', { name: /^Remove DevOps.* from saved jobs/ }).first().waitFor()
+    await page
+      .getByRole('button', { name: /^Remove DevOps.* from saved jobs/ })
+      .first()
+      .waitFor()
     await page.goto(`${BASE}/jobs/saved`)
     await page.getByRole('heading', { name: /DevOps Engineer/ }).waitFor()
     await page.getByRole('button', { name: /^Remove DevOps.* from saved jobs/ }).click()
     await page.getByRole('heading', { name: 'No saved jobs yet' }).waitFor()
   })
-  await step('apply dialog opens, handles the missing résumés endpoint, and Escape returns focus', async () => {
-    await page.goto(`${BASE}/jobs?q=DevOps`)
-    await page.locator('article h3 a').first().click()
-    const apply = page.getByRole('button', { name: 'Apply now' })
-    await apply.click()
-    await page.getByRole('dialog').getByText('Upload a résumé first').waitFor()
-    await page.keyboard.press('Escape')
-    await page.getByRole('dialog').waitFor({ state: 'detached' })
-    assert(await apply.evaluate((el) => el === document.activeElement), 'focus should return to the Apply button')
-  })
+  await step(
+    'apply dialog opens, handles the missing résumés endpoint, and Escape returns focus',
+    async () => {
+      await page.goto(`${BASE}/jobs?q=DevOps`)
+      await page.locator('article h3 a').first().click()
+      const apply = page.getByRole('button', { name: 'Apply now' })
+      await apply.click()
+      await page.getByRole('dialog').getByText('Upload a résumé first').waitFor()
+      await page.keyboard.press('Escape')
+      await page.getByRole('dialog').waitFor({ state: 'detached' })
+      assert(
+        await apply.evaluate((el) => el === document.activeElement),
+        'focus should return to the Apply button',
+      )
+    },
+  )
   await step('already-applied job shows status instead of Apply', async () => {
     await page.goto(`${BASE}/jobs?q=Senior+Backend`)
     await page.locator('article h3 a').first().click()
@@ -177,22 +200,30 @@ console.log('Recruiter (Northwind Labs)')
     await page.getByText('Add at least one required skill to publish').first().waitFor()
   })
   await step('create a draft with an existing skill -> lands on its edit page', async () => {
-    await page.getByLabel(/about the role/i).fill('A scratch job used by the automated QA run; it is deleted again right away.')
+    await page
+      .getByLabel(/about the role/i)
+      .fill('A scratch job used by the automated QA run; it is deleted again right away.')
     await page.getByRole('combobox', { name: 'Skills' }).click()
     await page.getByPlaceholder('Type a skill name…').fill('Python')
-    await page.getByRole('option', { name: /^Python/ }).first().click()
+    await page
+      .getByRole('option', { name: /^Python/ })
+      .first()
+      .click()
     await page.keyboard.press('Escape')
     await page.getByRole('button', { name: /save as draft/i }).click()
     await page.waitForURL('**/manage/jobs/*/edit')
     await page.getByRole('heading', { name: new RegExp(title) }).waitFor()
   })
-  await step('server rejects bad data and the error lands on the field (INVALID_DEADLINE/range)', async () => {
-    await page.getByLabel(/salary from/i).fill('90000')
-    await page.getByLabel(/salary up to/i).fill('50000')
-    await page.getByRole('button', { name: /save as draft/i }).click()
-    await page.getByText('Maximum salary must be at least the minimum').waitFor()
-    await page.getByLabel(/salary up to/i).fill('120000')
-  })
+  await step(
+    'server rejects bad data and the error lands on the field (INVALID_DEADLINE/range)',
+    async () => {
+      await page.getByLabel(/salary from/i).fill('90000')
+      await page.getByLabel(/salary up to/i).fill('50000')
+      await page.getByRole('button', { name: /save as draft/i }).click()
+      await page.getByText('Maximum salary must be at least the minimum').waitFor()
+      await page.getByLabel(/salary up to/i).fill('120000')
+    },
+  )
   await step('edit + save the draft (PATCH)', async () => {
     await page.getByLabel(/department/i).fill('QA')
     await page.getByRole('button', { name: /save as draft/i }).click()
@@ -214,7 +245,9 @@ console.log('Recruiter (Northwind Labs)')
   await step('status tab filters through the API', async () => {
     await page.getByRole('tab', { name: 'Paused' }).click()
     await page.waitForURL('**status=PAUSED**')
-    await page.getByRole('link', { name: 'Senior Backend Engineer', exact: true }).waitFor({ state: 'detached' })
+    await page
+      .getByRole('link', { name: 'Senior Backend Engineer', exact: true })
+      .waitFor({ state: 'detached' })
     await page.getByRole('link', { name: 'Platform Engineer', exact: true }).waitFor()
   })
   assert(errors.length === 0, `page errors: ${errors.join('; ')}`)
@@ -234,7 +267,10 @@ console.log('Hiring manager & admin')
   await step('admin sees jobs across companies', async () => {
     await admin.page.goto(`${BASE}/manage/jobs`)
     await admin.page.getByText('All jobs across companies.').waitFor()
-    await admin.page.getByRole('link', { name: /Financial Analyst|Clinical Data Analyst|Marketing Manager/ }).first().waitFor()
+    await admin.page
+      .getByRole('link', { name: /Financial Analyst|Clinical Data Analyst|Marketing Manager/ })
+      .first()
+      .waitFor()
   })
   await admin.context.close()
 }

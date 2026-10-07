@@ -115,7 +115,6 @@ from app.services.notifications import NotificationService
 logger = logging.getLogger(__name__)
 
 M = TypeVar("M", bound=BaseModel)
-P = TypeVar("P", bound=Any)
 Granularity = Literal["day", "week", "month"]
 SortOrder = Literal["asc", "desc"]
 
@@ -367,7 +366,7 @@ def render_csv(table: Table) -> str:
     return buf.getvalue()
 
 
-def build_page(cls: type[P], items: list[Any], *, page: int, page_size: int, total: int, period: Period) -> P:
+def build_page[P: BaseModel](cls: type[P], items: list[Any], *, page: int, page_size: int, total: int, period: Period) -> P:
     return cls(
         items=items, page=page, page_size=page_size, total=total, pages=math.ceil(total / page_size) if total else 0, period=period
     )

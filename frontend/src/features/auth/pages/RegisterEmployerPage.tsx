@@ -107,7 +107,7 @@ export default function RegisterEmployerPage() {
       {formError && <Alert variant="danger">{formError}</Alert>}
       <form onSubmit={onSubmit} noValidate className="grid gap-6" aria-label="Register as employer">
         <fieldset className="grid gap-4">
-          <legend className="mb-1 text-sm font-semibold">Your account</legend>
+          <legend className="mb-2 text-base font-semibold">Your account</legend>
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="First name" error={errors.first_name?.message} required>
               <Input autoComplete="given-name" {...register('first_name')} />
@@ -147,7 +147,7 @@ export default function RegisterEmployerPage() {
         </fieldset>
 
         <fieldset className="grid gap-4">
-          <legend className="mb-1 text-sm font-semibold">Your company</legend>
+          <legend className="mb-2 text-base font-semibold">Your company</legend>
           <Field label="Company name" error={errors.company_name?.message} required>
             <Input autoComplete="organization" {...register('company_name')} />
           </Field>

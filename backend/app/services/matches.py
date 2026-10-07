@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from collections.abc import Sequence
 from decimal import Decimal
 from typing import Any
 
@@ -204,8 +205,8 @@ class MatchQueryService:
         user: User,
         *,
         min_score: float = 0.0,
-        workplace_types: list[str] | None = None,
-        employment_types: list[str] | None = None,
+        workplace_types: Sequence[str] | None = None,
+        employment_types: Sequence[str] | None = None,
         location: str | None = None,
         skill_ids: list[uuid.UUID] | None = None,
         sort: str = "score",

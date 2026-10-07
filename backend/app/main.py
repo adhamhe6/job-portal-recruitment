@@ -178,6 +178,24 @@ def create_app() -> FastAPI:
 
     app.include_router(api_router, prefix=settings.api_prefix)
 
+    original_openapi = app.openapi
+
+    def openapi() -> dict[str, Any]:
+        """FastAPI documents 422 as ``{detail: [...]}``, but this API answers with the standard error envelope everywhere."""
+        schema = original_openapi()
+        if "ErrorResponse" in schema.get("components", {}).get("schemas", {}):
+            for item in schema["paths"].values():
+                for operation in item.values():
+                    response = operation.get("responses", {}).get("422") if isinstance(operation, dict) else None
+                    if response and "content" in response:
+                        response["description"] = "Validation or business-rule failure"
+                        response["content"]["application/json"]["schema"] = {"$ref": "#/components/schemas/ErrorResponse"}
+            for unused in ("HTTPValidationError", "ValidationError"):
+                schema["components"]["schemas"].pop(unused, None)
+        return schema
+
+    app.openapi = openapi  # type: ignore[method-assign]
+
     # --- health -----------------------------------------------------------------------------------
     @app.get("/health", tags=["Health"], summary="Liveness", include_in_schema=True)
     async def health() -> dict[str, str]:

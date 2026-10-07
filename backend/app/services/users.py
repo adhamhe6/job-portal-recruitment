@@ -130,7 +130,7 @@ class UserService:
         if user.id == actor.id and (changes.get("status") == UserStatus.SUSPENDED or changes.get("role", user.role) != user.role):
             raise BusinessRuleError("You cannot suspend or change the role of your own account", code="SELF_MODIFICATION")
         new_role = changes.get("role", user.role)
-        new_company = changes["company_id"] if "company_id" in changes else user.company_id
+        new_company = changes.get("company_id", user.company_id)
         if new_role in STAFF_ROLES and new_company is None:
             raise BusinessRuleError("Recruiters and hiring managers must belong to a company", code="COMPANY_REQUIRED")
         if new_role not in STAFF_ROLES:

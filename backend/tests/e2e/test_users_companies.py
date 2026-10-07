@@ -355,3 +355,22 @@ async def test_member_suspension_blocks_the_member_but_not_themselves(client: As
     assert_error(await refresh(client, cookie), 401)
     assert (await client.patch(f"{base}/{hm['user']['id']}", headers=rec["h"], json={"status": "ACTIVE"})).status_code == 200
     assert (await login(client, hm["email"])).status_code == 200
+
+
+async def test_suspended_company_postings_leave_the_public_site_and_return_on_reactivation(client: AsyncClient) -> None:
+    admin = await create_admin(client)
+    rec = await register_employer(client, "Vanishing Co")
+    job = await create_job(client, rec, publish=True)
+    cand = await register_candidate(client)
+    jobs_url = f"{API}/search/jobs"
+    assert (await client.get(jobs_url)).json()["total"] == 1
+    await client.patch(f"{API}/companies/{rec['company_id']}", headers=admin["h"], json={"status": "SUSPENDED"})
+    assert (await client.get(jobs_url)).json()["total"] == 0
+    assert_error(await client.get(f"{API}/jobs/{job['id']}"), 404, "JOB_NOT_FOUND")
+    assert_error(await client.get(f"{API}/jobs/{job['id']}", headers=cand["h"]), 404, "JOB_NOT_FOUND")
+    assert_error(await client.post(f"{API}/applications", headers=cand["h"], json={"job_id": job["id"]}), 404, "JOB_NOT_FOUND")
+    assert_error(await client.put(f"{API}/jobs/{job['id']}/save", headers=cand["h"]), 404, "JOB_NOT_FOUND")
+    assert (await client.get(f"{API}/jobs/{job['id']}", headers=rec["h"])).status_code == 200  # the company itself still sees it
+    await client.patch(f"{API}/companies/{rec['company_id']}", headers=admin["h"], json={"status": "ACTIVE"})
+    assert (await client.get(jobs_url)).json()["total"] == 1
+    assert (await client.post(f"{API}/applications", headers=cand["h"], json={"job_id": job["id"]})).status_code == 201

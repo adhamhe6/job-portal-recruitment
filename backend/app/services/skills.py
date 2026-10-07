@@ -117,7 +117,7 @@ class SkillService:
         if skill is None:
             raise NotFoundError("Skill not found", code="SKILL_NOT_FOUND")
         changes = data.model_dump(exclude_unset=True, exclude={"add_aliases"})
-        if "name" in changes and changes["name"]:
+        if changes.get("name"):
             key = skill_key(changes["name"])
             other = await self.find_by_term(changes["name"])
             if other and other.id != skill.id:
@@ -134,6 +134,8 @@ class SkillService:
                 self.session.add(SkillAlias(skill_id=skill.id, alias=key, display_alias=" ".join(alias.split())))
         await self.session.commit()
         await self._invalidate()
+        if self.cache:  # job lists show required-skill names
+            await self.cache.invalidate(CacheDomain.JOBS)
         return await self.detail(skill_id)
 
 

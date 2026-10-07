@@ -109,8 +109,11 @@ def _has_company_suffix(text: str) -> bool:
     return any(w.casefold().strip(".,") in COMPANY_SUFFIXES for w in text.split())
 
 
+_MINOR_WORDS = frozenset({"and", "the", "for", "with", "from", "into", "per", "von", "van", "der", "des", "del", "las", "los"})
+
+
 def _capitalised_ratio(text: str) -> float:
-    words = [w for w in _words(text) if len(w) >= 3]
+    words = [w for w in _words(text) if len(w) >= 3 and w.casefold() not in _MINOR_WORDS]
     if not words:
         return 0.0
     return sum(1 for w in words if w[0].isupper()) / len(words)
@@ -211,7 +214,10 @@ _RANGE_SEP = r"(?:-|–|—|‑|to|until|till|through|thru|~)"
 _RANGE_RE = re.compile(
     rf"(?P<s>{_DATE})[ \t]*{_RANGE_SEP}[ \t]*(?P<e>{_DATE}|{_PRESENT})(?![\w])", re.IGNORECASE
 )
-_SINCE_RE = re.compile(rf"\b(?:since|from)[ \t]+(?P<s>{_DATE})(?![\w])", re.IGNORECASE)
+_SINCE_RE = re.compile(
+    rf"\b(?:since|from)[ \t]+(?P<s>{_DATE})(?![\w])|(?P<s2>{_DATE})[ \t]*(?:to|till|until)[ \t]+(?:date|now|present)(?![\w])",
+    re.IGNORECASE,
+)
 _PRESENT_RE = re.compile(rf"^{_PRESENT}$", re.IGNORECASE)
 _MONTH_RE = re.compile(_MONTH, re.IGNORECASE)
 _YEAR_RE = re.compile(_YEAR)
@@ -281,7 +287,7 @@ def find_date_range(line: str, today: date | None = None) -> DateRange | None:
         return DateRange(start, end, False, m.span())
     s = _SINCE_RE.search(line)
     if s:
-        start = _token_to_date(s.group("s"), end=False, today=today)
+        start = _token_to_date(s.group("s") or s.group("s2"), end=False, today=today)
         if start and start <= today:
             return DateRange(start, None, True, s.span())
     return None
@@ -595,7 +601,10 @@ def _looks_like_header(line: str) -> bool:
         return False
     if is_skill_list_line(s) or s.count(",") >= 3:
         return False
-    return bool(_title_word_count(s) or _has_company_suffix(s) or _capitalised_ratio(s) >= 0.6)
+    ratio = _capitalised_ratio(s)
+    # Strongly capitalised lines are headers; title / company vocabulary needs at least half the words capitalised too,
+    # so "Mentored junior engineers" (a description) is not mistaken for a job title.
+    return ratio >= 0.8 or (bool(_title_word_count(s) or _has_company_suffix(s)) and ratio >= 0.5 and len(s.split()) <= 8)
 
 
 def _looks_like_location_piece(text: str) -> bool:
@@ -1035,6 +1044,16 @@ _CERT_ISSUER_BY = re.compile(r"\b(?:issued by|by)\s+([A-Z][\w&.\- ]{2,60})$")
 _MONTH_YEAR = re.compile(rf"({_MONTH})[ \t]*,?[ \t]*({_YEAR})", re.IGNORECASE)
 
 
+def _tidy_cert_text(text: str) -> str:
+    """Trim separators but keep a balanced ``(CKA)``."""
+    t = text.strip(" ,;:-–—")
+    if t.endswith(")") and t.count(")") > t.count("("):
+        t = t[:-1].rstrip(" ,;:-–—")
+    if t.startswith("(") and t.count("(") > t.count(")"):
+        t = t[1:].lstrip(" ,;:-–—")
+    return re.sub(r"\s+", " ", t)
+
+
 def _cert_from_line(line: str) -> ParsedCertification | None:
     text = strip_bullet(line)
     if not text or len(text) > 160 or (text.endswith(".") and len(text.split()) > 12):
@@ -1062,13 +1081,13 @@ def _cert_from_line(line: str) -> ParsedCertification | None:
     parts = [
         p
         for p in (
-            _clean_piece(x) for x in re.split(r"\s+[|•·]\s+|\s+[–—-]\s+|,\s+(?=\d{4}|[A-Z]{2,}\b)", body)
+            _tidy_cert_text(x) for x in re.split(r"\s+[|•·]\s+|\s+[–—-]\s+|,\s+(?=\d{4}|[A-Z]{2,}\b)", body)
         )
         if p
     ]
     if not parts:
         return None
-    name = re.sub(rf"\b{_MONTH}[ \t]*,?[ \t]*{_YEAR}\b|\b{_YEAR}\b", "", parts[0]).strip(" ,-–—()")
+    name = _tidy_cert_text(re.sub(rf"\b{_MONTH}[ \t]*,?[ \t]*{_YEAR}\b|\b{_YEAR}\b", "", parts[0], flags=re.IGNORECASE))
     # keep "Associate"/"Professional" level suffixes that belong to the certification name
     if len(parts) > 1 and re.match(
         r"^(?:Associate|Professional|Specialty|Foundational|Practitioner)\b", parts[1]
@@ -1076,7 +1095,7 @@ def _cert_from_line(line: str) -> ParsedCertification | None:
         name = f"{name} – {parts[1].split(',')[0].strip()}"
         parts = parts[:1] + parts[2:]
     if issuer is None and len(parts) > 1:
-        cand = re.sub(rf"\b{_MONTH}[ \t]*,?[ \t]*{_YEAR}\b|\b{_YEAR}\b", "", parts[1]).strip(" ,-–—()")
+        cand = _tidy_cert_text(re.sub(rf"\b{_MONTH}[ \t]*,?[ \t]*{_YEAR}\b|\b{_YEAR}\b", "", parts[1], flags=re.IGNORECASE))
         if cand and len(cand) <= 80 and not cand.isdigit():
             issuer = cand
     if not name or len(name) < 2 or not any(ch.isalpha() for ch in name):

@@ -37,7 +37,7 @@ class RetryableError(Exception):
         self.delay_seconds = delay_seconds
 
 
-class TaskFailure(Exception):
+class TaskFailure(Exception):  # noqa: N818 - reads as a domain term, not an error type
     """Expected, non-retryable failure with a *safe* user-facing message."""
 
     def __init__(self, code: str, message: str) -> None:

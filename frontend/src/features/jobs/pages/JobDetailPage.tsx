@@ -1,4 +1,4 @@
-import { Building2, CalendarClock, ExternalLink, GraduationCap, MapPin, Share2, Timer, Wallet } from 'lucide-react'
+import { Building2, CalendarClock, ExternalLink, GraduationCap, MapPin, Timer, Wallet } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { CopyButton } from '@/components/common/CopyButton'
@@ -14,6 +14,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import { useMyJobMatch } from '@/features/matches/api/matches'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
+import { useMediaQuery } from '@/hooks/useMediaQuery'
 import type { JobPublic } from '@/lib/api'
 import { ApiError } from '@/lib/api'
 import { EDUCATION_LEVEL_LABELS, EXPERIENCE_LEVEL_LABELS } from '@/lib/enums'
@@ -145,6 +146,7 @@ function DetailSkeleton() {
 export default function JobDetailPage() {
   const { id } = useParams()
   const { isCandidate, status } = useAuth()
+  const isLg = useMediaQuery('(min-width: 1024px)', true)
   const job = useJob(id)
   // Kicked off in parallel with the job request (same query keys as the cards below), so the page has no request waterfall.
   const match = useMyJobMatch(id)
@@ -182,7 +184,7 @@ export default function JobDetailPage() {
   const url = typeof window !== 'undefined' ? window.location.href : ''
 
   return (
-    <div className={cn(showCandidateCta && 'pb-24 lg:pb-0')}>
+    <div className={cn(showCandidateCta && !isLg && 'pb-24')}>
       <PageHeader
         breadcrumbs={[{ label: 'Jobs', to: staff ? paths.manageJobs : paths.jobs }, { label: j.title }]}
         title={
@@ -214,7 +216,7 @@ export default function JobDetailPage() {
         actions={
           <>
             <CopyButton value={url} label="Copy link to this job" size="icon" />
-            <SaveJobButton jobId={j.id} jobTitle={j.title} saved={j.is_saved} variant="button" className="hidden sm:inline-flex" />
+            {isLg && <SaveJobButton jobId={j.id} jobTitle={j.title} saved={j.is_saved} variant="button" />}
           </>
         }
       />
@@ -254,8 +256,8 @@ export default function JobDetailPage() {
         </div>
 
         <aside className="space-y-4 lg:sticky lg:top-24" aria-label="Job summary">
-          {showCandidateCta && (
-            <Card className="hidden lg:block">
+          {showCandidateCta && isLg && (
+            <Card>
               <CardContent className="space-y-3 p-5">
                 <ApplyCta job={j} />
                 {deadline && j.can_apply !== false && (
@@ -309,13 +311,12 @@ export default function JobDetailPage() {
         </aside>
       </div>
 
-      {showCandidateCta && (
-        <div className="fixed inset-x-0 bottom-0 z-30 flex items-center gap-2 border-t bg-background/95 p-3 backdrop-blur lg:hidden">
+      {showCandidateCta && !isLg && (
+        <div className="fixed inset-x-0 bottom-0 z-30 flex items-center gap-2 border-t bg-background/95 p-3 backdrop-blur">
           <div className="min-w-0 flex-1">
             <ApplyCta job={j} compact />
           </div>
           <SaveJobButton jobId={j.id} jobTitle={j.title} saved={j.is_saved} />
-          <Share2 className="hidden" aria-hidden />
         </div>
       )}
     </div>

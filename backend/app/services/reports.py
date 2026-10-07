@@ -314,7 +314,8 @@ def pick_granularity(window: Window, requested: Granularity | None) -> Granulari
 
 def _bucket_expr(col: Any, gran: Granularity) -> Any:
     """``date_trunc(gran, col AT TIME ZONE 'UTC')::date`` with the unit inlined (a closed set, never user text)."""
-    unit: dict[str, Any] = {"day": literal_column("'day'"), "week": literal_column("'week'"), "month": literal_column("'month'")}[gran]
+    units: dict[str, Any] = {"day": literal_column("'day'"), "week": literal_column("'week'"), "month": literal_column("'month'")}
+    unit = units[gran]
     return cast(func.date_trunc(unit, func.timezone("UTC", col)), Date)
 
 

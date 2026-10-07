@@ -9,6 +9,7 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.cache.redis_cache import Cache, CacheDomain
 from app.core.errors import BusinessRuleError, ConflictError, NotFoundError, PermissionDeniedError
 from app.core.security import STAFF_ROLES, Role
 from app.db.models import Company, CompanyStatus, RecruiterProfile, User, UserStatus
@@ -20,8 +21,9 @@ from app.services.users import UserService
 
 
 class CompanyService:
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(self, session: AsyncSession, cache: Cache | None = None) -> None:
         self.session = session
+        self.cache = cache
 
     async def get(self, company_id: uuid.UUID) -> Company:
         company = await self.session.get(Company, company_id)
@@ -81,6 +83,8 @@ class CompanyService:
             self.session, actor_id=actor.id, action="company.updated", entity_type="company", entity_id=company.id, company_id=company.id
         )
         await self.session.commit()
+        if self.cache:  # company name/logo/status are part of cached job lists, searches and recommendations
+            await self.cache.invalidate(CacheDomain.JOBS, CacheDomain.MATCHES)
         return company
 
     # --- members -------------------------------------------------------------------------------------

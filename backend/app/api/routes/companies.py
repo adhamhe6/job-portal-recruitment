@@ -7,7 +7,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query, status
 
-from app.api.dependencies import CurrentUser, Pagination, SessionDep, require
+from app.api.dependencies import CacheDep, CurrentUser, Pagination, SessionDep, require
 from app.core.errors import PermissionDeniedError
 from app.core.security import Permission, Role
 from app.db.models import CompanyStatus, User
@@ -68,10 +68,12 @@ async def get_company(company_id: uuid.UUID, session: SessionDep) -> CompanyPubl
 
 
 @router.patch("/{company_id}", response_model=CompanyOut, summary="Update a company", responses=COMMON_ERRORS)
-async def update_company(company_id: uuid.UUID, data: CompanyUpdate, user: CurrentUser, session: SessionDep) -> CompanyOut:
+async def update_company(
+    company_id: uuid.UUID, data: CompanyUpdate, user: CurrentUser, session: SessionDep, cache: CacheDep
+) -> CompanyOut:
     if user.role not in (Role.ADMIN, Role.RECRUITER):
         raise PermissionDeniedError("You cannot manage companies")
-    return CompanyOut.model_validate(await CompanyService(session).update(user, company_id, data))
+    return CompanyOut.model_validate(await CompanyService(session, cache).update(user, company_id, data))
 
 
 @router.get("/{company_id}/members", response_model=list[MemberOut], summary="Company staff", responses=COMMON_ERRORS)

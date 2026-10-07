@@ -27,6 +27,8 @@ def _redact(value: Any, key: str = "") -> Any:
         return "***"
     if isinstance(value, dict):
         return {k: _redact(v, str(k)) for k, v in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_redact(v, key) for v in value]
     return value
 
 

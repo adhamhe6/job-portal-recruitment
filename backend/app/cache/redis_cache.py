@@ -20,7 +20,6 @@ a connection timeout on every request while Redis is down.
 
 from __future__ import annotations
 
-import contextlib
 import enum
 import hashlib
 import json
@@ -41,6 +40,23 @@ _KEY_PREFIX = "cache:v1"
 _BREAKER_SECONDS = 15.0
 
 
+class _Breaker:
+    """Process-wide circuit breaker for Redis: after a failure, skip Redis for a few seconds instead of paying the connect
+    timeout on every request (cache, rate limiter and token denylist all consult it)."""
+
+    def __init__(self) -> None:
+        self.down_until = 0.0
+
+    def is_open(self) -> bool:
+        return time.monotonic() < self.down_until
+
+    def trip(self) -> None:
+        self.down_until = time.monotonic() + _BREAKER_SECONDS
+
+
+redis_breaker = _Breaker()
+
+
 class CacheDomain(enum.StrEnum):
     SKILLS = "skills"
     JOBS = "jobs"  # postings (public search, company lists)
@@ -56,7 +72,6 @@ class Cache:
         self._redis = redis
         self.enabled = enabled and redis is not None
         self.default_ttl = default_ttl
-        self._down_until = 0.0
         self.hits = 0
         self.misses = 0
 
@@ -64,12 +79,20 @@ class Cache:
     def redis(self) -> Redis | None:
         return self._redis
 
+    @property
+    def _down_until(self) -> float:  # kept for tests/diagnostics; backed by the shared breaker
+        return redis_breaker.down_until
+
+    @_down_until.setter
+    def _down_until(self, value: float) -> None:
+        redis_breaker.down_until = value
+
     def _available(self) -> bool:
-        return self.enabled and time.monotonic() >= self._down_until
+        return self.enabled and not redis_breaker.is_open()
 
     def _trip(self, exc: Exception, op: str) -> None:
-        self._down_until = time.monotonic() + _BREAKER_SECONDS
-        logger.warning("redis unavailable; cache bypassed", extra={"op": op, "error": str(exc)})
+        redis_breaker.trip()
+        logger.warning("redis unavailable; cache bypassed", extra={"op": op, "error": type(exc).__name__})
 
     async def _versions(self, domains: Iterable[CacheDomain]) -> str:
         assert self._redis is not None
@@ -141,7 +164,10 @@ class Cache:
         if self._redis is None:
             return False
         try:
-            return bool(await self._redis.ping())
+            ok = bool(await self._redis.ping())
+            if ok:
+                redis_breaker.down_until = 0.0
+            return ok
         except RedisError:
             return False
 
@@ -154,7 +180,7 @@ class RateLimiter:
 
     async def hit(self, bucket: str, limit: int, window_seconds: int) -> tuple[bool, int]:
         """Register a hit; returns (allowed, retry_after_seconds)."""
-        if self._redis is None:
+        if self._redis is None or redis_breaker.is_open():
             return True, 0
         key = f"ratelimit:{bucket}"
         try:
@@ -164,7 +190,8 @@ class RateLimiter:
             pipe.ttl(key)
             count, _, ttl = await pipe.execute()
         except RedisError as exc:
-            logger.warning("rate limiter unavailable; allowing request", extra={"error": str(exc)})
+            redis_breaker.trip()
+            logger.warning("rate limiter unavailable; allowing request", extra={"error": type(exc).__name__})
             return True, 0
         if int(count) > limit:
             return False, max(int(ttl), 1)
@@ -172,7 +199,7 @@ class RateLimiter:
 
     async def retry_after(self, bucket: str, limit: int) -> int:
         """Seconds until ``bucket`` accepts requests again (0 if not blocked). Read-only."""
-        if self._redis is None:
+        if self._redis is None or redis_breaker.is_open():
             return 0
         key = f"ratelimit:{bucket}"
         try:
@@ -181,17 +208,20 @@ class RateLimiter:
             pipe.ttl(key)
             count, ttl = await pipe.execute()
         except RedisError as exc:
-            logger.warning("rate limiter unavailable; allowing request", extra={"error": str(exc)})
+            redis_breaker.trip()
+            logger.warning("rate limiter unavailable; allowing request", extra={"error": type(exc).__name__})
             return 0
         if count is not None and int(count) >= limit:
             return max(int(ttl), 1)
         return 0
 
     async def reset(self, bucket: str) -> None:
-        if self._redis is None:
+        if self._redis is None or redis_breaker.is_open():
             return
-        with contextlib.suppress(RedisError):
+        try:
             await self._redis.delete(f"ratelimit:{bucket}")
+        except RedisError:
+            redis_breaker.trip()
 
 
 class TokenDenylist:
@@ -205,17 +235,20 @@ class TokenDenylist:
         self._redis = redis
 
     async def revoke(self, jti: str, ttl_seconds: int) -> None:
-        if self._redis is None or ttl_seconds <= 0:
+        if self._redis is None or ttl_seconds <= 0 or redis_breaker.is_open():
             return
-        with contextlib.suppress(RedisError):
+        try:
             await self._redis.set(f"denylist:jti:{jti}", b"1", ex=ttl_seconds)
+        except RedisError:
+            redis_breaker.trip()
 
     async def is_revoked(self, jti: str) -> bool:
-        if self._redis is None:
+        if self._redis is None or redis_breaker.is_open():
             return False
         try:
             return bool(await self._redis.exists(f"denylist:jti:{jti}"))
         except RedisError:
+            redis_breaker.trip()
             return False
 
 

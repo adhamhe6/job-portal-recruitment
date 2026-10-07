@@ -18,17 +18,10 @@ from app.db.models import (
     SkillProficiency,
     SkillStatus,
 )
-from app.schemas.common import ORMModel
+from app.schemas.common import ORMModel, validate_http_url, validate_phone
 from app.schemas.skill import SkillOut
 
-
-def _http_url(v: str | None) -> str | None:
-    if v is None or not v.strip():
-        return None
-    v = v.strip()
-    if not (v.startswith("http://") or v.startswith("https://")) or " " in v or len(v) > 500:
-        raise ValueError("must be a valid http(s) URL")
-    return v
+_http_url = validate_http_url
 
 
 class ProfileUpdate(BaseModel):
@@ -50,6 +43,7 @@ class ProfileUpdate(BaseModel):
     is_searchable: bool | None = None
 
     _urls = field_validator("portfolio_url", "linkedin_url", "github_url")(_http_url)
+    _phone = field_validator("phone")(validate_phone)
 
     @field_validator("salary_currency")
     @classmethod

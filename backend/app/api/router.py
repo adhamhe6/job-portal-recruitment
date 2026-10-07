@@ -13,6 +13,7 @@ from app.api.routes import (
     interviews,
     jobs,
     matches,
+    meta,
     notifications,
     reports,
     resumes,
@@ -26,6 +27,6 @@ api_router = APIRouter()
 for router in (
     auth.router, users.router, companies.router, skills.router, candidates.router, jobs.router, search.router,
     resumes.router, applications.router, interviews.router, matches.matches_router, matches.recs_router,
-    notifications.router, reports.router, tasks.router, admin.router,
+    notifications.router, reports.router, tasks.router, admin.router, meta.router,
 ):
     api_router.include_router(router)

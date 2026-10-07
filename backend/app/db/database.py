@@ -25,6 +25,9 @@ NAMING_CONVENTION = {
 
 class Base(DeclarativeBase):
     metadata = MetaData(naming_convention=NAMING_CONVENTION)
+    # Fetch server-generated values (updated_at …) in the same round trip as INSERT/UPDATE, so serialising an object right
+    # after commit never triggers a lazy load (which is illegal in async code).
+    __mapper_args__ = {"eager_defaults": True}
 
 
 class UUIDMixin:

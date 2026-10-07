@@ -1,0 +1,17 @@
+{
+  "name": "talentlens-e2e",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Browser-level end-to-end tests: UI → API → PostgreSQL/Redis/worker → API → UI against the docker compose stack",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "report": "playwright show-report"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.0",
+    "@types/node": "^22.0.0",
+    "pdf-lib": "^1.17.1",
+    "typescript": "^5.6.0"
+  }
+}

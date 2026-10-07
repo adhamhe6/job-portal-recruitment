@@ -33,7 +33,8 @@ from app.services.notifications import NotificationService
 
 logger = logging.getLogger(__name__)
 
-NOTIFY_THRESHOLD = 0.70
+NOTIFY_THRESHOLD = 0.70  # candidate is told about a newly published job at/above this score
+RECRUITER_NOTIFY_THRESHOLD = 0.80  # staff are told about a *newly* strong candidate at/above this score
 NOTIFY_MAX_PER_JOB = 25
 
 
@@ -250,6 +251,17 @@ class MatchingService:
                     job_id=job.id,
                     dedupe_key=f"job-rec:{job.id}",
                 )
+        top_strong = [r for r in ranked if r[1] >= RECRUITER_NOTIFY_THRESHOLD]
+        if top_strong:  # one aggregated heads-up for the people responsible for the job
+            for uid in {u for u in (job.created_by_id, job.hiring_manager_id) if u}:
+                await notifier.stage(
+                    uid,
+                    NotificationType.NEW_CANDIDATE_MATCH,
+                    "Strong candidate matches found",
+                    f"{len(top_strong)} candidate{'s' if len(top_strong) != 1 else ''} match “{job.title}” at {round(RECRUITER_NOTIFY_THRESHOLD * 100)}% or more.",
+                    job_id=job.id,
+                    dedupe_key=f"job-matches:{job.id}",
+                )
 
     async def match_candidate(self, candidate_id: uuid.UUID, *, limit: int | None = None) -> MatchRunSummary:
         """(Re)score one candidate against live jobs (vector top-K) and persist."""
@@ -276,7 +288,16 @@ class MatchingService:
         ]
         jfs = await load_job_features(self.session, job_ids)
         jobs = {j.id: j for j in (await self.session.execute(select(Job).where(Job.id.in_(job_ids)))).scalars()}
+        previously_scored = {
+            r[0]
+            for r in (
+                await self.session.execute(
+                    select(CandidateJobMatch.job_id).where(CandidateJobMatch.candidate_id == candidate_id, CandidateJobMatch.job_id.in_(job_ids))
+                )
+            ).all()
+        }
         rows, best = [], None
+        notifier = NotificationService(self.session)
         for jid in job_ids:
             j, jf = jobs.get(jid), jfs.get(jid)
             if j is None or jf is None:
@@ -284,6 +305,22 @@ class MatchingService:
             result = score_pair(jf, cf, self._cosine(j.embedding, cand.embedding))
             rows.append(self._row(j, cand, jf, cf, result))
             best = result.overall if best is None else max(best, result.overall)
+            # First time this candidate is strongly matched to a live job → tell the job's owner (marketplace candidates only).
+            if (
+                result.overall >= RECRUITER_NOTIFY_THRESHOLD
+                and jid not in previously_scored
+                and cand.source == CandidateSource.SELF
+                and cand.is_searchable
+                and j.created_by_id
+            ):
+                await notifier.stage(
+                    j.created_by_id,
+                    NotificationType.NEW_CANDIDATE_MATCH,
+                    "New strong candidate match",
+                    f"{cand.display_name} is a {round(result.overall * 100)}% match for “{j.title}”.",
+                    job_id=j.id,
+                    dedupe_key=f"cand-match:{j.id}:{cand.id}",
+                )
         await self._upsert(rows)
         await self.session.commit()
         return MatchRunSummary(len(rows), False, 0, best)

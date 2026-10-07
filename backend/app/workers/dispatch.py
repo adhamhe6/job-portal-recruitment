@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import uuid
 from collections.abc import Awaitable, Callable
 
 from arq import create_pool
@@ -27,9 +28,9 @@ class ArqDispatcher:
     async def _ensure_pool(self) -> ArqRedis:
         if self.pool is None:
             try:
-                self.pool = await create_pool(
-                    RedisSettings.from_dsn(get_settings().redis_url), conn_timeout=2, conn_retries=1, conn_retry_delay=0
-                )
+                rs = RedisSettings.from_dsn(get_settings().redis_url)
+                rs.conn_timeout, rs.conn_retries, rs.conn_retry_delay = 2, 1, 0  # fail fast: the API must not hang on a dead queue
+                self.pool = await create_pool(rs)
             except Exception as exc:
                 logger.error("job queue unavailable", extra={"error": type(exc).__name__})
                 raise ServiceUnavailableError("Job queue unavailable") from exc
@@ -38,8 +39,14 @@ class ArqDispatcher:
     async def dispatch(self, task_id: str, *, defer_seconds: float = 0) -> None:
         pool = await self._ensure_pool()
         try:
-            # A distinct queue-level job id per attempt keeps enqueueing idempotent without blocking retries.
-            await pool.enqueue_job("run_task", task_id, _job_id=f"{task_id}:{int(defer_seconds)}", _defer_by=defer_seconds or None)
+            # Unique queue-level id per delivery (ARQ would otherwise drop a re-enqueue while the previous result is retained).
+            # Duplicate deliveries are harmless: TaskStore.claim() only lets one worker move PENDING → RUNNING.
+            await pool.enqueue_job(
+                "run_task",
+                task_id,
+                _job_id=f"{task_id}:{uuid.uuid4().hex[:8]}",
+                _defer_by=defer_seconds or None,
+            )
         except (RedisError, OSError) as exc:
             logger.error("failed to enqueue task", extra={"task_id": task_id, "error": type(exc).__name__})
             raise ServiceUnavailableError("Job queue unavailable") from exc

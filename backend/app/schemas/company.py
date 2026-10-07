@@ -3,20 +3,14 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel, EmailStr, Field, HttpUrl, field_validator
+from pydantic import BaseModel, EmailStr, Field, field_validator
 
 from app.core.security import Role
 from app.db.models import CompanySize, CompanyStatus, UserStatus
 from app.schemas.auth import validate_password_strength
-from app.schemas.common import ORMModel
+from app.schemas.common import ORMModel, validate_http_url, validate_phone
 
-
-def _url(v: str | None) -> str | None:
-    if v is None or not v.strip():
-        return None
-    v = v.strip()
-    HttpUrl(v)  # raises on invalid
-    return v
+_url = validate_http_url
 
 
 class CompanyCreate(BaseModel):
@@ -68,6 +62,7 @@ class MemberCreate(BaseModel):
     first_name: str = Field(min_length=1, max_length=100)
     last_name: str = Field(min_length=1, max_length=100)
     phone: str | None = Field(default=None, max_length=32)
+    _phone = field_validator("phone")(validate_phone)
     role: Role = Role.RECRUITER
     job_title: str | None = Field(default=None, max_length=150)
     department: str | None = Field(default=None, max_length=100)
@@ -115,6 +110,7 @@ class AdminUserCreate(BaseModel):
     first_name: str = Field(min_length=1, max_length=100)
     last_name: str = Field(min_length=1, max_length=100)
     phone: str | None = Field(default=None, max_length=32)
+    _phone = field_validator("phone")(validate_phone)
     role: Role
     company_id: uuid.UUID | None = None
 
@@ -125,6 +121,7 @@ class AdminUserUpdate(BaseModel):
     first_name: str | None = Field(default=None, min_length=1, max_length=100)
     last_name: str | None = Field(default=None, min_length=1, max_length=100)
     phone: str | None = Field(default=None, max_length=32)
+    _phone = field_validator("phone")(validate_phone)
     role: Role | None = None
     status: UserStatus | None = None
     company_id: uuid.UUID | None = None

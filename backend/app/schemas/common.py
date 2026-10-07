@@ -3,12 +3,39 @@
 from __future__ import annotations
 
 import math
+import re
 from typing import Annotated, Any, Generic, TypeVar
 
 from fastapi import Query
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, HttpUrl, ValidationError
 
 T = TypeVar("T")
+
+_PHONE_RE = re.compile(r"^[+()\d][\d\s().\-]{5,30}$")
+
+
+def validate_phone(value: str | None) -> str | None:
+    """Blank -> None; otherwise a plausible phone number (digits, spaces and ``+ ( ) . -``)."""
+    if value is None or not value.strip():
+        return None
+    value = value.strip()
+    if not _PHONE_RE.match(value):
+        raise ValueError("Enter a valid phone number")
+    return value
+
+
+def validate_http_url(value: str | None) -> str | None:
+    """Blank -> None; otherwise a well-formed absolute http(s) URL (rejects ``javascript:``, empty hosts, spaces)."""
+    if value is None or not value.strip():
+        return None
+    value = value.strip()
+    if len(value) > 500 or any(ch.isspace() for ch in value):
+        raise ValueError("must be a valid http(s) URL")
+    try:
+        HttpUrl(value)
+    except ValidationError:
+        raise ValueError("must be a valid http(s) URL") from None
+    return value
 
 
 class ORMModel(BaseModel):

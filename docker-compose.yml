@@ -1,0 +1,106 @@
+# Full stack:  cp .env.example .env && docker compose up --build
+# Web UI: http://localhost:8080      API docs: http://localhost:8080/docs  (also http://localhost:8000/docs, loopback only)
+
+x-backend-env: &backend-env
+  ENVIRONMENT: ${ENVIRONMENT:-development}
+  LOG_LEVEL: ${LOG_LEVEL:-INFO}
+  LOG_JSON: ${LOG_JSON:-true}
+  DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-talentlens}:${POSTGRES_PASSWORD:-talentlens-dev-password}@postgres:5432/${POSTGRES_DB:-talentlens}
+  REDIS_URL: redis://redis:6379/0
+  SECRET_KEY: ${SECRET_KEY:?Set SECRET_KEY in .env (see .env.example)}
+  ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-15}
+  REFRESH_COOKIE_SECURE: ${REFRESH_COOKIE_SECURE:-false}
+  CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:8080}
+  FIRST_ADMIN_EMAIL: ${FIRST_ADMIN_EMAIL:-admin@example.com}
+  FIRST_ADMIN_PASSWORD: ${FIRST_ADMIN_PASSWORD:?Set FIRST_ADMIN_PASSWORD in .env}
+  SEED_DEMO_DATA: ${SEED_DEMO_DATA:-false}
+  JOB_BACKEND: arq
+  STORAGE_DIR: /data/resumes
+  MAX_RESUME_MB: ${MAX_RESUME_MB:-5}
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-talentlens}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-talentlens-dev-password}
+      POSTGRES_DB: ${POSTGRES_DB:-talentlens}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "256mb", "--maxmemory-policy", "noeviction"]
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  # One-shot: apply migrations, seed the skill taxonomy, create the first admin and (SEED_DEMO_DATA=true) the demo data.
+  migrate:
+    build: ./backend
+    image: talentlens-backend:local
+    command: ["sh", "-c", "alembic upgrade head && python -m app.scripts.bootstrap"]
+    environment: *backend-env
+    volumes:
+      - resumes:/data/resumes
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    restart: "no"
+
+  api:
+    image: talentlens-backend:local
+    environment: *backend-env
+    ports:
+      # Loopback only: the public entry point is nginx (WEB_PORT), which sets X-Forwarded-For and caps upload size.
+      - "127.0.0.1:${API_PORT:-8000}:8000"
+    volumes:
+      - resumes:/data/resumes
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    restart: unless-stopped
+
+  worker:
+    image: talentlens-backend:local
+    command: ["arq", "app.workers.worker.WorkerSettings"]
+    environment: *backend-env
+    volumes:
+      - resumes:/data/resumes
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      redis: { condition: service_healthy }
+    healthcheck:
+      # ARQ writes a heartbeat key to Redis; --check exits non-zero if it is stale.
+      test: ["CMD", "arq", "app.workers.worker.WorkerSettings", "--check"]
+      interval: 30s
+      timeout: 10s
+      start_period: 40s
+      retries: 3
+    restart: unless-stopped
+
+  web:
+    build: ./frontend
+    image: talentlens-web:local
+    ports:
+      - "${WEB_PORT:-8080}:80"
+    depends_on:
+      api: { condition: service_healthy }
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  redisdata:
+  resumes:

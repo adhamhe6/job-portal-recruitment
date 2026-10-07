@@ -39,6 +39,25 @@ class JobSkillOut(BaseModel):
     min_years: Decimal | None = None
 
 
+def _clean_title(v: str | None) -> str | None:
+    """Collapse whitespace; the *normalised* title must still be a real title (length is checked after trimming)."""
+    if v is None:
+        return None
+    v = " ".join(v.split())
+    if len(v) < 3:
+        raise ValueError("title must be at least 3 characters long")
+    return v
+
+
+def _clean_description(v: str | None) -> str | None:
+    if v is None:
+        return None
+    v = v.strip()
+    if len(v) < 10:
+        raise ValueError("description must be at least 10 characters long")
+    return v
+
+
 class _JobFields(BaseModel):
     title: str = Field(min_length=3, max_length=200)
     department: str | None = Field(default=None, max_length=100)
@@ -59,10 +78,8 @@ class _JobFields(BaseModel):
     application_deadline: date | None = None
     hiring_manager_id: uuid.UUID | None = None
 
-    @field_validator("title")
-    @classmethod
-    def _title(cls, v: str) -> str:
-        return " ".join(v.split())
+    _title = field_validator("title")(_clean_title)
+    _description = field_validator("description")(_clean_description)
 
     @field_validator("salary_currency")
     @classmethod
@@ -132,6 +149,9 @@ class JobUpdate(BaseModel):
     application_deadline: date | None = None
     hiring_manager_id: uuid.UUID | None = None
     skills: list[JobSkillIn] | None = Field(default=None, max_length=40)
+
+    _title = field_validator("title")(_clean_title)
+    _description = field_validator("description")(_clean_description)
 
     @field_validator("salary_currency")
     @classmethod

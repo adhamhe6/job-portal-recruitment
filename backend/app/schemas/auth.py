@@ -8,9 +8,7 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 from app.core.security import Role
 from app.db.models import CompanySize, UserStatus
-from app.schemas.common import ORMModel
-
-_PHONE_RE = re.compile(r"^[+()\d][\d\s().\-]{5,30}$")
+from app.schemas.common import ORMModel, validate_http_url, validate_phone
 
 
 def validate_password_strength(value: str) -> str:
@@ -36,15 +34,7 @@ class _NameFields(BaseModel):
             raise ValueError("must not be blank")
         return v
 
-    @field_validator("phone")
-    @classmethod
-    def _phone(cls, v: str | None) -> str | None:
-        if v is None or not v.strip():
-            return None
-        v = v.strip()
-        if not _PHONE_RE.match(v):
-            raise ValueError("Enter a valid phone number")
-        return v
+    _phone = field_validator("phone")(validate_phone)
 
 
 class RegisterCandidateRequest(_NameFields):
@@ -89,6 +79,7 @@ class RegisterEmployerRequest(_NameFields):
     company_size: CompanySize | None = None
 
     _pw = field_validator("password")(validate_password_strength)
+    _website = field_validator("company_website")(validate_http_url)
 
     @field_validator("company_name")
     @classmethod

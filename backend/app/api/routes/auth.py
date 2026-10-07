@@ -2,14 +2,17 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Request, Response, status
+from fastapi.responses import JSONResponse
 from fastapi.security import OAuth2PasswordRequestForm
 
 from app.api.dependencies import CurrentUser, SessionDep, login_limit, oauth2_scheme, register_limit
 from app.core.config import get_settings
 from app.core.errors import AuthenticationError
+from app.core.logging import request_id_ctx
 from app.core.security import decode_access_token
 from app.schemas.auth import (
     ChangePasswordRequest,
@@ -25,6 +28,7 @@ from app.services.auth import AuthService, IssuedTokens
 from app.services.users import build_me
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
+logger = logging.getLogger("app.request")
 
 _REFRESH_PATH = "/api/v1/auth"
 
@@ -123,13 +127,21 @@ async def oauth_token(
     "used one revokes the whole token family.",
     responses={401: {"description": "INVALID_REFRESH_TOKEN"}},
 )
-async def refresh(request: Request, response: Response, session: SessionDep) -> TokenResponse:
+async def refresh(request: Request, response: Response, session: SessionDep) -> TokenResponse | JSONResponse:
     raw = request.cookies.get(get_settings().refresh_cookie_name)
     try:
         issued = await AuthService(session).refresh(raw, user_agent=request.headers.get("user-agent"))
-    except AuthenticationError:
-        _clear_refresh_cookie(response)
-        raise
+    except AuthenticationError as exc:
+        logger.warning("authentication failure", extra={"code": exc.code})
+        # Headers set on the injected ``response`` are discarded when an exception propagates to the error handler, so the
+        # error envelope is built here to be able to expire the dead cookie in the same response.
+        failure = JSONResponse(
+            status_code=exc.status_code,
+            content={"error": {"code": exc.code, "message": exc.message, "details": exc.details, "request_id": request_id_ctx.get()}},
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+        _clear_refresh_cookie(failure)
+        return failure
     return await _token_response(session, issued, response)
 
 

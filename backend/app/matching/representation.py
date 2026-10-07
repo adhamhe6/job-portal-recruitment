@@ -33,18 +33,36 @@ MAX_PROSE_CHARS = 1800
 MAX_RESUME_EXCERPT_CHARS = 1200
 
 _WS = re.compile(r"\s+")
-_CONTACT = re.compile(r"(\S+@\S+|https?://\S+|www\.\S+|\+?\d[\d\s().\-]{7,}\d)")
+_CONTACT = re.compile(r"(\S+@\S+|https?://\S+|www\.\S+|\+?\(?\d[\d\s().\-]{7,}\d)")
 
 
 def clean(text: str | None, limit: int | None = None) -> str:
     t = _WS.sub(" ", (text or "")).strip()
     t = _CONTACT.sub(" ", t)  # contact details are noise for semantics (and personal data)
     t = _WS.sub(" ", t).strip()
-    return t[:limit].rsplit(" ", 1)[0] if limit and len(t) > limit else t
+    if not limit or len(t) <= limit:
+        return t
+    cut = t[:limit]
+    if not t[
+        limit
+    ].isspace():  # the cut falls inside a word: drop the partial word (a single overlong word is hard-cut)
+        cut = cut.rsplit(" ", 1)[0]
+    return cut.rstrip()
 
 
 def _hash(payload: Any) -> str:
     return hashlib.sha256(json.dumps(payload, sort_keys=True, default=str, ensure_ascii=False).encode()).hexdigest()
+
+
+def _names(skills: list[SkillRef]) -> list[str]:
+    return sorted((s.name for s in skills), key=str.casefold)
+
+
+def _newest_first(experiences: list[ExperienceItem]) -> list[ExperienceItem]:
+    """Most recent first; ties are broken by title/company so the order never depends on how the rows were loaded."""
+    return sorted(
+        experiences, key=lambda e: (e.start, e.title.casefold(), e.company.casefold()), reverse=True
+    )
 
 
 @dataclass(slots=True)
@@ -75,10 +93,21 @@ class JobFeatures:
     employment_type: str
 
     def components(self) -> dict[str, str]:
-        role = ". ".join(p for p in (self.title, (self.experience_level or "").title() + " level" if self.experience_level else "") if p)
-        skills = ", ".join(s.name for s in self.required)
+        role = ". ".join(
+            p
+            for p in (
+                clean(self.title),
+                (self.experience_level or "").title() + " level" if self.experience_level else "",
+            )
+            if p
+        )
+        skills = ", ".join(_names(self.required))
         if self.preferred:
-            skills = f"{skills}, {', '.join(s.name for s in self.preferred)}" if skills else ", ".join(s.name for s in self.preferred)
+            skills = (
+                f"{skills}, {', '.join(_names(self.preferred))}"
+                if skills
+                else ", ".join(_names(self.preferred))
+            )
         prose = clean(f"{self.responsibilities} {self.summary} {self.qualifications}", MAX_PROSE_CHARS)
         return {"role": role, "skills": skills, "prose": prose}
 
@@ -123,14 +152,20 @@ class CandidateFeatures:
     extra: dict[str, Any] = field(default_factory=dict)
 
     def recent_titles(self, n: int = 4) -> list[str]:
-        ordered = sorted(self.experiences, key=lambda e: e.start, reverse=True)
-        return [e.title for e in ordered[:n]]
+        return [e.title for e in _newest_first(self.experiences)[:n]]
 
     def components(self) -> dict[str, str]:
-        role = ". ".join(p for p in (self.headline, ", ".join(self.recent_titles())) if p)
-        skills = ", ".join(s.name for s in self.skills)
-        exp_text = " ".join(e.description or "" for e in sorted(self.experiences, key=lambda e: e.start, reverse=True)[:4])
-        extras = " ".join([*self.certifications[:6], *self.education_text[:3]])
+        # Everything is cleaned (contact details removed) and put in a canonical order, so the text - and therefore the hash -
+        # does not depend on the order in which rows happened to be loaded.
+        role = ". ".join(p for p in (clean(self.headline), clean(", ".join(self.recent_titles()))) if p)
+        skills = clean(", ".join(_names(self.skills)))
+        exp_text = " ".join(e.description or "" for e in _newest_first(self.experiences)[:4])
+        extras = " ".join(
+            [
+                *sorted(self.certifications, key=str.casefold)[:6],
+                *sorted(self.education_text, key=str.casefold)[:3],
+            ]
+        )
         prose = clean(f"{self.summary} {exp_text} {extras} {self.resume_excerpt}", MAX_PROSE_CHARS)
         return {"role": role, "skills": skills, "prose": prose}
 
@@ -151,13 +186,7 @@ def embedding_hash(components: dict[str, str], model: str, version: str) -> str:
     return _hash({"components": components, "model": model, "version": version})
 
 
-async def embed_components(components: dict[str, str]) -> np.ndarray:
-    """Weighted combination of component embeddings → one normalised vector of shape ``(dim,)``."""
-    present = {k: v for k, v in components.items() if v.strip()}
-    if not present:
-        raise EmbeddingError("insufficient data to build an embedding")
-    keys = list(present)
-    vectors = await aembed([present[k] for k in keys])
+def combine_component_vectors(keys: list[str], vectors: np.ndarray) -> np.ndarray:
     weights = np.array([COMPONENT_WEIGHTS[k] for k in keys], dtype=np.float32)
     weights = weights / weights.sum()
     combined = (vectors * weights[:, None]).sum(axis=0)
@@ -165,6 +194,24 @@ async def embed_components(components: dict[str, str]) -> np.ndarray:
     if not np.isfinite(norm) or norm == 0:
         raise EmbeddingError("degenerate embedding")
     return (combined / norm).astype(np.float32)
+
+
+async def embed_components(components: dict[str, str]) -> np.ndarray:
+    """Weighted combination of component embeddings → one normalised vector of shape ``(dim,)``."""
+    present = {k: v for k, v in components.items() if v.strip()}
+    if not present:
+        raise EmbeddingError("insufficient data to build an embedding")
+    keys = list(present)
+    return combine_component_vectors(keys, await aembed([present[k] for k in keys]))
+
+
+def embed_components_sync(components: dict[str, str], embedder: Any) -> np.ndarray:
+    """Synchronous variant (evaluation harness, scripts)."""
+    present = {k: v for k, v in components.items() if v.strip()}
+    if not present:
+        raise EmbeddingError("insufficient data to build an embedding")
+    keys = list(present)
+    return combine_component_vectors(keys, embedder.embed([present[k] for k in keys]))
 
 
 def total_years_of_experience(experiences: list[ExperienceItem], today: date | None = None) -> float:

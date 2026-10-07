@@ -23,3 +23,7 @@ test-results/
 backend/storage/
 /data/
 .DS_Store
+
+build/
+*.egg-info/
+backend/storage/

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from functools import lru_cache
 from typing import Annotated, Literal
 
@@ -84,8 +85,11 @@ class Settings(BaseSettings):
     @field_validator("cors_origins", mode="before")
     @classmethod
     def _split_origins(cls, value: object) -> object:
-        if isinstance(value, str) and not value.strip().startswith("["):
-            return [v.strip() for v in value.split(",") if v.strip()]
+        if isinstance(value, str):
+            text = value.strip()
+            if text.startswith("["):  # JSON array (NoDecode means pydantic-settings no longer parses it for us)
+                return json.loads(text)
+            return [v.strip() for v in text.split(",") if v.strip()]
         return value
 
     @model_validator(mode="after")

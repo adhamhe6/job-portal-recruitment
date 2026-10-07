@@ -24,13 +24,17 @@ async def upload(
     return await client.post("/api/v1/resumes", headers=who["h"], files=files, data=form)
 
 
-async def upload_ok(client: AsyncClient, who: dict[str, Any], data: bytes, name: str = "cv.pdf", **kw: Any) -> dict[str, Any]:
+async def upload_ok(
+    client: AsyncClient, who: dict[str, Any], data: bytes, name: str = "cv.pdf", **kw: Any
+) -> dict[str, Any]:
     r = await upload(client, who, data, name, **kw)
     assert r.status_code in (200, 202), r.text
     return r.json()  # type: ignore[no-any-return]
 
 
-async def bulk_upload(client: AsyncClient, who: dict[str, Any], files: list[tuple[str, bytes, str | None]], field: str = "files") -> Response:
+async def bulk_upload(
+    client: AsyncClient, who: dict[str, Any], files: list[tuple[str, bytes, str | None]], field: str = "files"
+) -> Response:
     parts = [(field, (name, data, ctype)) if ctype else (field, (name, data)) for name, data, ctype in files]
     return await client.post("/api/v1/resumes/bulk-imports", headers=who["h"], files=parts)
 

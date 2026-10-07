@@ -142,13 +142,13 @@ async def merge_skill_suggestions(
     ]
     if not rows:
         return 0
-    stmt = pg_insert(CandidateSkill).values(rows)
-    stmt = stmt.on_conflict_do_update(
+    insert = pg_insert(CandidateSkill).values(rows)
+    upsert = insert.on_conflict_do_update(
         constraint="uq_candidate_skills_candidate_skill",
-        set_={"confidence": stmt.excluded.confidence},
+        set_={"confidence": insert.excluded.confidence},
         where=(CandidateSkill.source == DataSource.RESUME) & (CandidateSkill.status == SkillStatus.SUGGESTED),
     ).returning(CandidateSkill.id)
-    return len((await session.execute(stmt)).all())
+    return len((await session.execute(upsert)).all())
 
 
 # --- structured rows created from suggestions (apply endpoint + bulk import) -------------------------------------------
@@ -267,7 +267,11 @@ def years_value(parsed: Mapping[str, Any]) -> Decimal | None:
 
 
 async def schedule_company_job_matches(
-    session: AsyncSession, dispatcher: Dispatcher | None, company_id: uuid.UUID, *, user_id: uuid.UUID | None = None
+    session: AsyncSession,
+    dispatcher: Dispatcher | None,
+    company_id: uuid.UUID,
+    *,
+    user_id: uuid.UUID | None = None,
 ) -> None:
     """Re-rank a company's live jobs (the only jobs its sourced candidates are eligible for)."""
     job_ids = (
@@ -303,6 +307,8 @@ async def refresh_after_change(
     if cache is not None:
         await cache.invalidate(CacheDomain.CANDIDATES, CacheDomain.MATCHES)
     if candidate.source == CandidateSource.IMPORTED and candidate.sourced_by_company_id is not None:
-        await schedule_company_job_matches(session, dispatcher, candidate.sourced_by_company_id, user_id=user_id)
+        await schedule_company_job_matches(
+            session, dispatcher, candidate.sourced_by_company_id, user_id=user_id
+        )
     else:
         await schedule_candidate_refresh(session, dispatcher, candidate.id, user_id)

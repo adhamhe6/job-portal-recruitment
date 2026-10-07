@@ -20,7 +20,9 @@ from app.schemas.common import Page
 class ProcessingOut(BaseModel):
     """Live status of the (latest) processing run; combines the processing result row and the background task."""
 
-    task_id: uuid.UUID | None = Field(default=None, description="Latest background task; poll `GET /tasks/{id}`")
+    task_id: uuid.UUID | None = Field(
+        default=None, description="Latest background task; poll `GET /tasks/{id}`"
+    )
     task_status: str | None = Field(default=None, description="PENDING | RUNNING | COMPLETED | FAILED")
     stage: str | None = Field(default=None, description="Current pipeline stage while the task runs")
     progress: int | None = Field(default=None, ge=0, le=100)
@@ -35,8 +37,12 @@ class ProcessingOut(BaseModel):
     has_embedding: bool = False
     embedding_model: str | None = None
     embedding_version: str | None = None
-    error_code: str | None = Field(default=None, description="Stable machine-readable failure code, e.g. NO_TEXT_EXTRACTED")
-    error_message: str | None = Field(default=None, description="Safe, user-facing explanation (never document content)")
+    error_code: str | None = Field(
+        default=None, description="Stable machine-readable failure code, e.g. NO_TEXT_EXTRACTED"
+    )
+    error_message: str | None = Field(
+        default=None, description="Safe, user-facing explanation (never document content)"
+    )
 
 
 class ResumeOut(BaseModel):
@@ -55,7 +61,12 @@ class ResumeOut(BaseModel):
                     "created_at": "2026-10-07T12:00:00Z",
                     "updated_at": "2026-10-07T12:00:04Z",
                     "task_id": "7a1d2d0e-1f2b-4c33-b1f0-0d3f5f6a7b88",
-                    "processing": {"task_status": "COMPLETED", "progress": 100, "parser_version": "v1", "has_embedding": True},
+                    "processing": {
+                        "task_status": "COMPLETED",
+                        "progress": 100,
+                        "parser_version": "v1",
+                        "has_embedding": True,
+                    },
                 }
             ]
         }
@@ -79,9 +90,13 @@ class ResumeUploadOut(ResumeOut):
     """Response of ``POST /resumes``: the résumé plus what happened to the processing request."""
 
     message: str | None = Field(
-        default=None, description="Set when processing could not be queued (the upload is kept; use `POST /resumes/{id}/process`)"
+        default=None,
+        description="Set when processing could not be queued (the upload is kept; use `POST /resumes/{id}/process`)",
     )
-    duplicate: bool = Field(default=False, description="True when this exact file was uploaded before and the existing résumé is returned")
+    duplicate: bool = Field(
+        default=False,
+        description="True when this exact file was uploaded before and the existing résumé is returned",
+    )
 
 
 # --- extracted data (suggestions) --------------------------------------------------------------------------------------
@@ -100,11 +115,18 @@ class ExtractedContact(BaseModel):
 class ExtractedSkill(BaseModel):
     index: int = Field(description="Stable position of this suggestion; used by PATCH / apply")
     name: str
-    skill_id: uuid.UUID | None = Field(default=None, description="Taxonomy skill this resolves to; null = not in the taxonomy (cannot be applied)")
+    skill_id: uuid.UUID | None = Field(
+        default=None,
+        description="Taxonomy skill this resolves to; null = not in the taxonomy (cannot be applied)",
+    )
     confidence: float = Field(ge=0, le=1)
-    listed: bool = Field(description="Found in a skills list (higher confidence) rather than only mentioned in prose")
+    listed: bool = Field(
+        description="Found in a skills list (higher confidence) rather than only mentioned in prose"
+    )
     already_on_profile: bool = Field(description="A confirmed skill with this name is already on the profile")
-    status: SkillStatus | None = Field(default=None, description="Status of the profile skill row, if any (SUGGESTED / CONFIRMED / REJECTED)")
+    status: SkillStatus | None = Field(
+        default=None, description="Status of the profile skill row, if any (SUGGESTED / CONFIRMED / REJECTED)"
+    )
     corrected: bool = False
 
 
@@ -120,7 +142,10 @@ class ExtractedExperience(BaseModel):
     confidence: float = Field(ge=0, le=1)
     already_on_profile: bool = False
     corrected: bool = False
-    missing_for_apply: list[str] = Field(default_factory=list, description="Required fields still empty; correct them via PATCH before applying")
+    missing_for_apply: list[str] = Field(
+        default_factory=list,
+        description="Required fields still empty; correct them via PATCH before applying",
+    )
 
 
 class ExtractedEducation(BaseModel):
@@ -160,7 +185,10 @@ class ExtractedLanguage(BaseModel):
 
 class ExtractedYears(BaseModel):
     value: float | None = None
-    basis: str | None = Field(default=None, description="employment_history (union of dated jobs) | stated (explicit claim) | corrected")
+    basis: str | None = Field(
+        default=None,
+        description="employment_history (union of dated jobs) | stated (explicit claim) | corrected",
+    )
     stated: float | None = None
 
 
@@ -191,11 +219,18 @@ class ExtractedResume(BaseModel):
 class _Item(BaseModel):
     model_config = ConfigDict(extra="forbid")
     index: Annotated[int, Field(ge=0, description="`index` of the suggestion, as returned by GET /extracted")]
-    remove: bool = Field(default=False, description="Drop this suggestion (it will not be offered or applied)")
+    remove: bool = Field(
+        default=False, description="Drop this suggestion (it will not be offered or applied)"
+    )
 
 
 class SkillPatch(_Item):
-    name: str | None = Field(default=None, min_length=1, max_length=100, description="Correct the skill name (re-resolved against the taxonomy)")
+    name: str | None = Field(
+        default=None,
+        min_length=1,
+        max_length=100,
+        description="Correct the skill name (re-resolved against the taxonomy)",
+    )
 
 
 class ExperiencePatch(_Item):
@@ -266,7 +301,9 @@ class ExtractedPatch(BaseModel):
                 {
                     "summary": "Backend engineer focused on reliable APIs.",
                     "skills": [{"index": 3, "remove": True}, {"index": 4, "name": "PostgreSQL"}],
-                    "experiences": [{"index": 0, "start_date": "2020-01-01", "title": "Senior Backend Engineer"}],
+                    "experiences": [
+                        {"index": 0, "start_date": "2020-01-01", "title": "Senior Backend Engineer"}
+                    ],
                 }
             ]
         },
@@ -287,7 +324,14 @@ class ExtractedPatch(BaseModel):
 
 Selection = Annotated[list[int] | Literal["all"], Field(description="Suggestion indices to copy, or `all`")]
 ProfileField = Literal[
-    "summary", "headline", "location", "years_experience", "linkedin_url", "github_url", "portfolio_url", "phone"
+    "summary",
+    "headline",
+    "location",
+    "years_experience",
+    "linkedin_url",
+    "github_url",
+    "portfolio_url",
+    "phone",
 ]
 
 
@@ -316,9 +360,12 @@ class ApplyRequest(BaseModel):
     educations: Selection = Field(default_factory=list)
     certifications: Selection = Field(default_factory=list)
     languages: Selection = Field(default_factory=list)
-    fields: list[ProfileField] = Field(default_factory=list, description="Profile fields to fill from the suggestions")
+    fields: list[ProfileField] = Field(
+        default_factory=list, description="Profile fields to fill from the suggestions"
+    )
     overwrite: list[ProfileField] = Field(
-        default_factory=list, description="Fields (subset of `fields`) that may replace an existing non-empty value"
+        default_factory=list,
+        description="Fields (subset of `fields`) that may replace an existing non-empty value",
     )
 
     @model_validator(mode="after")
@@ -332,7 +379,9 @@ class ApplyRequest(BaseModel):
 class SkippedItem(BaseModel):
     section: str
     index: int | None = None
-    reason: str = Field(description="ALREADY_ON_PROFILE | NOT_FOUND | REMOVED | UNKNOWN_SKILL | MISSING_* | INVALID_* | FIELD_NOT_EMPTY | NO_SUGGESTION")
+    reason: str = Field(
+        description="ALREADY_ON_PROFILE | NOT_FOUND | REMOVED | UNKNOWN_SKILL | MISSING_* | INVALID_* | FIELD_NOT_EMPTY | NO_SUGGESTION"
+    )
 
 
 class ApplyResult(BaseModel):
@@ -347,12 +396,18 @@ class ApplyResult(BaseModel):
 class RejectedFile(BaseModel):
     filename: str
     reason: str
-    code: str | None = Field(default=None, description="Machine-readable reason, e.g. UNSUPPORTED_MEDIA_TYPE, PAYLOAD_TOO_LARGE, EMPTY_FILE")
+    code: str | None = Field(
+        default=None,
+        description="Machine-readable reason, e.g. UNSUPPORTED_MEDIA_TYPE, PAYLOAD_TOO_LARGE, EMPTY_FILE",
+    )
 
 
 class BulkImportAccepted(BaseModel):
     batch_id: uuid.UUID
-    task_id: uuid.UUID | None = Field(default=None, description="null when the queue was unavailable; retry with `POST /resumes/bulk-imports/{id}/process`")
+    task_id: uuid.UUID | None = Field(
+        default=None,
+        description="null when the queue was unavailable; retry with `POST /resumes/bulk-imports/{id}/process`",
+    )
     accepted: int
     rejected: list[RejectedFile]
     message: str | None = None

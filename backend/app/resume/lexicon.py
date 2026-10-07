@@ -191,8 +191,13 @@ _alias(
 # Sections whose text is excluded from skill mining (personal or irrelevant content).
 SKILL_EXCLUDED_SECTIONS = frozenset({"ignored"})
 
+
+def _words(block: str) -> frozenset[str]:
+    return frozenset(block.split())
+
+
 # --- job-title vocabulary -------------------------------------------------------------------------------------
-TITLE_WORDS = frozenset(
+TITLE_WORDS = _words(
     """
     engineer engineers developer developers programmer architect manager director lead head analyst scientist consultant
     specialist administrator coordinator assistant associate officer executive designer nurse technician technologist
@@ -202,14 +207,14 @@ TITLE_WORDS = frozenset(
     vp cto ceo cfo coo cio founder co-founder cofounder owner president partner principal staff senior junior sr jr tester
     qa sdet devops sre dba paramedic midwife caregiver paralegal attorney lawyer counsel advisor adviser freelancer
     contractor volunteer generalist practitioner sales merchandiser stylist barista bartender server host cleaner
-    """.split()
+    """
 )
-COMPANY_SUFFIXES = frozenset(
+COMPANY_SUFFIXES = _words(
     """
     inc inc. llc ltd ltd. limited gmbh ag corp corp. corporation company co co. plc sa srl bv nv pty technologies
     technology systems labs lab group solutions university college hospital clinic bank partners holdings consulting
     industries software services studio studios agency institute school foundation authority association
-    """.split()
+    """
 )
 INSTITUTION_WORDS = (
     "university",

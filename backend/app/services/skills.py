@@ -86,9 +86,12 @@ class SkillService:
         stmt = select(Skill).order_by(Skill.name)
         if q:
             like = f"%{escape_like(q.strip().lower())}%"
-            key_like = f"%{escape_like(skill_key(q))}%"
-            alias_skill_ids = select(SkillAlias.skill_id).where(SkillAlias.alias.like(key_like))
-            stmt = stmt.where(or_(func.lower(Skill.name).like(like), Skill.normalized_name.like(key_like), Skill.id.in_(alias_skill_ids)))
+            conditions = [func.lower(Skill.name).like(like)]
+            key = skill_key(q)
+            if key:  # punctuation-only input ("...", "-") has an empty key, which would otherwise match every skill
+                key_like = f"%{escape_like(key)}%"
+                conditions += [Skill.normalized_name.like(key_like), Skill.id.in_(select(SkillAlias.skill_id).where(SkillAlias.alias.like(key_like)))]
+            stmt = stmt.where(or_(*conditions))
             # Prefix matches first, then alphabetical.
             stmt = stmt.order_by(None).order_by((func.lower(Skill.name).like(f"{escape_like(q.strip().lower())}%")).desc(), Skill.name)
         if category:

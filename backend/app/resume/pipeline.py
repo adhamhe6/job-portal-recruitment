@@ -146,14 +146,23 @@ def result_values(
     }
 
 
-async def upsert_result(session: AsyncSession, resume_id: uuid.UUID, document_id: uuid.UUID, values: dict[str, Any], *, bump_attempts: bool = False) -> None:
+async def upsert_result(
+    session: AsyncSession,
+    resume_id: uuid.UUID,
+    document_id: uuid.UUID,
+    values: dict[str, Any],
+    *,
+    bump_attempts: bool = False,
+) -> None:
     """Insert-or-update the single processing result of a résumé (idempotent)."""
     insert_values = {"resume_id": resume_id, "document_id": document_id, "attempts": 1, **values}
     stmt = pg_insert(ResumeProcessingResult).values(insert_values)
     update_set: dict[str, Any] = {"document_id": document_id, **{k: stmt.excluded[k] for k in values}}
     if bump_attempts:
         update_set["attempts"] = ResumeProcessingResult.attempts + 1
-    await session.execute(stmt.on_conflict_do_update(index_elements=[ResumeProcessingResult.resume_id], set_=update_set))
+    await session.execute(
+        stmt.on_conflict_do_update(index_elements=[ResumeProcessingResult.resume_id], set_=update_set)
+    )
 
 
 async def load_resume(session: AsyncSession, resume_id: uuid.UUID) -> LoadedResume:
@@ -168,44 +177,75 @@ async def load_resume(session: AsyncSession, resume_id: uuid.UUID) -> LoadedResu
         raise TaskFailure("RESUME_NOT_FOUND", "This résumé no longer exists.")
     doc = (
         await session.execute(
-            select(ResumeDocument).where(ResumeDocument.resume_id == resume_id).order_by(ResumeDocument.created_at.desc()).limit(1)
+            select(ResumeDocument)
+            .where(ResumeDocument.resume_id == resume_id)
+            .order_by(ResumeDocument.created_at.desc())
+            .limit(1)
         )
     ).scalar_one_or_none()
     if doc is None:
         raise TaskFailure("DOCUMENT_MISSING", "No file is attached to this résumé.")
-    return LoadedResume(resume_id, doc.id, doc.storage_key, kind_for_content_type(doc.content_type), row[1], row[2])
+    return LoadedResume(
+        resume_id, doc.id, doc.storage_key, kind_for_content_type(doc.content_type), row[1], row[2]
+    )
 
 
 async def mark_started(session: AsyncSession, loaded: LoadedResume) -> None:
-    await session.execute(update(Resume).where(Resume.id == loaded.resume_id).values(status=ResumeStatus.PROCESSING))
+    await session.execute(
+        update(Resume).where(Resume.id == loaded.resume_id).values(status=ResumeStatus.PROCESSING)
+    )
     await upsert_result(
-        session, loaded.resume_id, loaded.document_id,
-        {"status": ProcessingStatus.PROCESSING, "started_at": utcnow(), "finished_at": None, "error_code": None, "error_message": None},
+        session,
+        loaded.resume_id,
+        loaded.document_id,
+        {
+            "status": ProcessingStatus.PROCESSING,
+            "started_at": utcnow(),
+            "finished_at": None,
+            "error_code": None,
+            "error_message": None,
+        },
         bump_attempts=True,
     )
     await session.commit()
 
 
-async def record_failure(ctx: TaskContext, loaded: LoadedResume, code: str, message: str, started: float, *, notify: bool = True) -> None:
+async def record_failure(
+    ctx: TaskContext, loaded: LoadedResume, code: str, message: str, started: float, *, notify: bool = True
+) -> None:
     """Persist FAILED state + notify the owner. Must never raise (it runs while another error is propagating)."""
     try:
         async with ctx.sessionmaker() as s:
-            await s.execute(update(Resume).where(Resume.id == loaded.resume_id).values(status=ResumeStatus.FAILED))
+            await s.execute(
+                update(Resume).where(Resume.id == loaded.resume_id).values(status=ResumeStatus.FAILED)
+            )
             await upsert_result(
-                s, loaded.resume_id, loaded.document_id,
+                s,
+                loaded.resume_id,
+                loaded.document_id,
                 {
-                    "status": ProcessingStatus.FAILED, "finished_at": utcnow(), "duration_ms": int((time.monotonic() - started) * 1000),
-                    "error_code": code[:50], "error_message": message[:500],
+                    "status": ProcessingStatus.FAILED,
+                    "finished_at": utcnow(),
+                    "duration_ms": int((time.monotonic() - started) * 1000),
+                    "error_code": code[:50],
+                    "error_message": message[:500],
                 },
             )
             if notify and loaded.candidate_user_id is not None:
                 await NotificationService(s).stage(
-                    loaded.candidate_user_id, NotificationType.RESUME_FAILED, "Résumé could not be processed", message,
-                    resume_id=loaded.resume_id, dedupe_key=f"resume-failed:{loaded.resume_id}:{ctx.task_id}",
+                    loaded.candidate_user_id,
+                    NotificationType.RESUME_FAILED,
+                    "Résumé could not be processed",
+                    message,
+                    resume_id=loaded.resume_id,
+                    dedupe_key=f"resume-failed:{loaded.resume_id}:{ctx.task_id}",
                 )
             await s.commit()
     except Exception as exc:  # pragma: no cover - last-resort guard
-        logger.error("could not record résumé failure", extra={"resume_id": str(loaded.resume_id), "error": type(exc).__name__})
+        logger.error(
+            "could not record résumé failure",
+            extra={"resume_id": str(loaded.resume_id), "error": type(exc).__name__},
+        )
 
 
 async def get_dispatcher(ctx: TaskContext) -> tuple[Any, Any]:
@@ -237,9 +277,13 @@ async def run_process_resume(ctx: TaskContext) -> dict[str, Any]:
 
     try:
         try:
-            data = await read_bounded(get_storage(), loaded.storage_key, int(settings.max_resume_mb * MIB * 1.05))
+            data = await read_bounded(
+                get_storage(), loaded.storage_key, int(settings.max_resume_mb * MIB * 1.05)
+            )
         except StorageNotFoundError as exc:
-            raise TaskFailure("FILE_MISSING", "The stored file could not be found. Please upload the résumé again.") from exc
+            raise TaskFailure(
+                "FILE_MISSING", "The stored file could not be found. Please upload the résumé again."
+            ) from exc
         except StorageError as exc:
             raise TaskFailure("FILE_UNREADABLE", "The stored file could not be read.") from exc
         except OSError as exc:
@@ -267,7 +311,9 @@ async def run_process_resume(ctx: TaskContext) -> dict[str, Any]:
         await ctx.progress(88, "saving")
         will_retry = embedding_failed and ctx.attempt < settings.task_max_attempts
         duration_ms = int((time.monotonic() - started) * 1000)
-        suggested = await _save_success(ctx, loaded, analysis, resolved, embedding, embedding_failed, duration_ms, notify=not will_retry)
+        suggested = await _save_success(
+            ctx, loaded, analysis, resolved, embedding, embedding_failed, duration_ms, notify=not will_retry
+        )
         if will_retry:
             raise RetryableError("embedding model unavailable", delay_seconds=RETRY_DELAY_SECONDS)
 
@@ -279,10 +325,18 @@ async def run_process_resume(ctx: TaskContext) -> dict[str, Any]:
     except RetryableError:
         raise
     except asyncio.CancelledError:
-        await asyncio.shield(record_failure(ctx, loaded, "TIMEOUT", "The operation took too long and was stopped.", started))
+        await asyncio.shield(
+            record_failure(ctx, loaded, "TIMEOUT", "The operation took too long and was stopped.", started)
+        )
         raise
     except Exception:
-        await record_failure(ctx, loaded, "INTERNAL_ERROR", "An unexpected error occurred while processing this résumé.", started)
+        await record_failure(
+            ctx,
+            loaded,
+            "INTERNAL_ERROR",
+            "An unexpected error occurred while processing this résumé.",
+            started,
+        )
         raise
 
     return {
@@ -317,15 +371,25 @@ async def _save_success(
         if exists is None:
             raise TaskFailure("RESUME_NOT_FOUND", "This résumé was deleted while it was being processed.")
         await upsert_result(
-            s, loaded.resume_id, loaded.document_id, result_values(analysis, embedding=embedding, duration_ms=duration_ms, embedding_error=embedding_failed)
+            s,
+            loaded.resume_id,
+            loaded.document_id,
+            result_values(
+                analysis, embedding=embedding, duration_ms=duration_ms, embedding_error=embedding_failed
+            ),
         )
-        await s.execute(update(Resume).where(Resume.id == loaded.resume_id).values(status=ResumeStatus.PROCESSED))
+        await s.execute(
+            update(Resume).where(Resume.id == loaded.resume_id).values(status=ResumeStatus.PROCESSED)
+        )
         suggested = await profile_ops.merge_skill_suggestions(s, loaded.candidate_id, suggestions)
         if notify and loaded.candidate_user_id is not None:
             await NotificationService(s).stage(
-                loaded.candidate_user_id, NotificationType.RESUME_PROCESSED, "Résumé processed",
+                loaded.candidate_user_id,
+                NotificationType.RESUME_PROCESSED,
+                "Résumé processed",
                 "Your résumé was analysed. Review the suggested skills and details before applying them to your profile.",
-                resume_id=loaded.resume_id, dedupe_key=f"resume-processed:{loaded.resume_id}:{loaded.document_id}",
+                resume_id=loaded.resume_id,
+                dedupe_key=f"resume-processed:{loaded.resume_id}:{loaded.document_id}",
             )
         await s.commit()
     return suggested
@@ -339,11 +403,16 @@ async def _refresh_index(ctx: TaskContext, loaded: LoadedResume) -> bool:
             candidate = await s.get(CandidateProfile, loaded.candidate_id)
             if candidate is None:
                 return False
-            await profile_ops.refresh_after_change(s, candidate, dispatcher=dispatcher, cache=None, user_id=ctx.created_by_id)
+            await profile_ops.refresh_after_change(
+                s, candidate, dispatcher=dispatcher, cache=None, user_id=ctx.created_by_id
+            )
         await ctx.cache.invalidate(CacheDomain.CANDIDATES, CacheDomain.MATCHES)
         return True
     except Exception as exc:
-        logger.error("candidate index refresh failed", extra={"candidate_id": str(loaded.candidate_id), "error": type(exc).__name__})
+        logger.error(
+            "candidate index refresh failed",
+            extra={"candidate_id": str(loaded.candidate_id), "error": type(exc).__name__},
+        )
         return False
     finally:
         await close()

@@ -952,3 +952,769 @@ class ReportService:
             ],
             matches=MatchTotals(pairs=int(m_pairs), jobs_with_matches=int(m_jobs), candidates_with_matches=int(m_cands), last_generated_at=m_last),
         )
+
+    # ----------------------------------------------------------------------------------------------------------------
+    # analytics: applications by job / by status / funnel
+    # ----------------------------------------------------------------------------------------------------------------
+    async def _abj_items(
+        self, scope: Scope, window: Window, sort: str, order: SortOrder, page: int | None, page_size: int | None
+    ) -> tuple[list[ApplicationsByJobRow], int]:
+        status_cols = {st: _cnt(A.status == st).label(f"n_{st.value.lower()}") for st in ApplicationStatus}
+        n = func.count().label("n")
+        sort_keys: dict[str, Any] = {
+            "applications": n,
+            "title": func.lower(J.title),
+            "shortlisted": status_cols[ApplicationStatus.SHORTLISTED],
+            "hired": status_cols[ApplicationStatus.HIRED],
+            "rejected": status_cols[ApplicationStatus.REJECTED],
+        }
+        key = sort_keys.get(sort, n)
+        stmt = (
+            select(J.id, J.title, J.status, J.department, n, *status_cols.values())
+            .select_from(J)
+            .join(A, A.job_id == J.id)
+            .where(*self._app_conds(scope, window))
+            .group_by(J.id)
+            .order_by(key.asc() if order == "asc" else key.desc(), J.title, J.id)
+        )
+        rows, total = await self._fetch(stmt, page, page_size)
+        items = [
+            ApplicationsByJobRow(
+                job_id=r[0],
+                title=r[1],
+                job_status=r[2],
+                department=r[3],
+                applications=int(r[4]),
+                by_status={st.value: int(r[5 + i]) for i, st in enumerate(ApplicationStatus)},
+            )
+            for r in rows
+        ]
+        return items, total
+
+    async def applications_by_job(
+        self, user: User, *, company_id: uuid.UUID | None, from_date: date | None, to_date: date | None, sort: str, order: SortOrder,
+        page: int, page_size: int,
+    ) -> ApplicationsByJobPage:
+        scope = await self.resolve_scope(user, company_id)
+        window = make_window(from_date, to_date)
+
+        async def compute() -> ApplicationsByJobPage:
+            items, total = await self._abj_items(scope, window, sort, order, page, page_size)
+            out = ApplicationsByJobPage.build(items, page=page, page_size=page_size, total=total)
+            return ApplicationsByJobPage(**out.model_dump(), period=window.period())
+
+        return await self._cached(
+            "applications-by-job",
+            (CacheDomain.JOBS, CacheDomain.APPLICATIONS),
+            {**scope.cache_params(), **window.params(), "sort": sort, "order": order, "page": page, "size": page_size},
+            compute,
+            ApplicationsByJobPage,
+        )
+
+    async def applications_by_job_table(
+        self, user: User, *, company_id: uuid.UUID | None, from_date: date | None, to_date: date | None, sort: str, order: SortOrder
+    ) -> Table:
+        scope = await self.resolve_scope(user, company_id)
+        items, _ = await self._abj_items(scope, make_window(from_date, to_date), sort, order, None, None)
+        return Table(
+            "applications-by-job",
+            ["job_id", "title", "job_status", "department", "applications", *[f"count_{st.value.lower()}" for st in ApplicationStatus]],
+            [[i.job_id, i.title, i.job_status.value, i.department, i.applications, *[i.by_status[st.value] for st in ApplicationStatus]] for i in items],
+        )
+
+    async def applications_by_status(
+        self, user: User, *, company_id: uuid.UUID | None, from_date: date | None, to_date: date | None, job_id: uuid.UUID | None
+    ) -> ApplicationsByStatusOut:
+        scope = await self.resolve_scope(user, company_id)
+        window = make_window(from_date, to_date)
+
+        async def compute() -> ApplicationsByStatusOut:
+            items = await self._status_counts(scope, window, job_id)
+            return ApplicationsByStatusOut(period=window.period(), job_id=job_id, total=sum(i.count for i in items), items=items)
+
+        return await self._cached(
+            "applications-by-status",
+            (CacheDomain.JOBS, CacheDomain.APPLICATIONS),
+            {**scope.cache_params(), **window.params(), "job": str(job_id) if job_id else None},
+            compute,
+            ApplicationsByStatusOut,
+        )
+
+    @staticmethod
+    def applications_by_status_table(out: ApplicationsByStatusOut) -> Table:
+        return Table("applications-by-status", ["status", "count", "percent"], [[i.status.value, i.count, i.percent] for i in out.items])
+
+    async def funnel(
+        self, user: User, *, company_id: uuid.UUID | None, from_date: date | None, to_date: date | None, job_id: uuid.UUID | None
+    ) -> FunnelOut:
+        scope = await self.resolve_scope(user, company_id)
+        window = make_window(from_date, to_date)
+
+        async def compute() -> FunnelOut:
+            applied, stages = await self._funnel(scope, window, job_id)
+            return FunnelOut(period=window.period(), job_id=job_id, applications=applied, stages=stages)
+
+        return await self._cached(
+            "funnel",
+            (CacheDomain.JOBS, CacheDomain.APPLICATIONS),
+            {**scope.cache_params(), **window.params(), "job": str(job_id) if job_id else None},
+            compute,
+            FunnelOut,
+        )
+
+    @staticmethod
+    def funnel_table(out: FunnelOut) -> Table:
+        return Table(
+            "funnel",
+            ["stage", "kind", "count", "pct_of_applied", "pct_of_previous"],
+            [[s.stage.value, "branch" if s.is_branch else "stage", s.count, s.pct_of_applied, s.pct_of_previous] for s in out.stages],
+        )
+
+    # ----------------------------------------------------------------------------------------------------------------
+    # analytics: interview statistics
+    # ----------------------------------------------------------------------------------------------------------------
+    async def interview_statistics(
+        self, user: User, *, company_id: uuid.UUID | None, from_date: date | None, to_date: date | None
+    ) -> InterviewStatisticsOut:
+        scope = await self.resolve_scope(user, company_id)
+        window = make_window(from_date, to_date)
+
+        async def compute() -> InterviewStatisticsOut:
+            s = self.session
+            conds = [*scope.job_conds(), *window.conds(Iv.start_at)]
+            duration = func.avg(extract("epoch", Iv.end_at - Iv.start_at) / 60.0)
+            row = (
+                await s.execute(
+                    select(func.count(), duration, *[_cnt(Iv.status == st) for st in InterviewStatus])
+                    .select_from(Iv)
+                    .join(A, A.id == Iv.application_id)
+                    .join(J, J.id == A.job_id)
+                    .where(*conds)
+                )
+            ).one()
+            by_status = {st.value: int(row[2 + i]) for i, st in enumerate(InterviewStatus)}
+            by_type = _fill(
+                InterviewType,
+                (
+                    await s.execute(
+                        select(Iv.interview_type, func.count())
+                        .select_from(Iv)
+                        .join(A, A.id == Iv.application_id)
+                        .join(J, J.id == A.job_id)
+                        .where(*conds)
+                        .group_by(Iv.interview_type)
+                    )
+                ).all(),
+            )
+            fb = (
+                await s.execute(
+                    select(
+                        func.count(InterviewFeedback.id),
+                        func.count(func.distinct(InterviewFeedback.interview_id)),
+                        func.avg(InterviewFeedback.rating),
+                        *[_cnt(InterviewFeedback.recommendation == r) for r in HireRecommendation],
+                    )
+                    .select_from(InterviewFeedback)
+                    .join(Iv, Iv.id == InterviewFeedback.interview_id)
+                    .join(A, A.id == Iv.application_id)
+                    .join(J, J.id == A.job_id)
+                    .where(*conds)
+                )
+            ).one()
+            total = int(row[0])
+            held = by_status["COMPLETED"] + by_status["NO_SHOW"]
+            return InterviewStatisticsOut(
+                period=window.period(),
+                total=total,
+                by_status=by_status,
+                by_type=by_type,
+                avg_duration_minutes=_round(row[1], 1),
+                held_or_missed=held,
+                no_show_rate=_ratio(by_status["NO_SHOW"], held),
+                cancellation_rate=_ratio(by_status["CANCELLED"], total),
+                feedback=FeedbackStats(
+                    entries=int(fb[0]),
+                    interviews_with_feedback=int(fb[1]),
+                    average_rating=_round(fb[2], 2),
+                    recommendations={r.value: int(fb[3 + i]) for i, r in enumerate(HireRecommendation)},
+                ),
+            )
+
+        return await self._cached(
+            "interview-statistics",
+            (CacheDomain.JOBS, CacheDomain.APPLICATIONS, CacheDomain.INTERVIEWS),
+            {**scope.cache_params(), **window.params()},
+            compute,
+            InterviewStatisticsOut,
+        )
+
+    @staticmethod
+    def interview_statistics_table(out: InterviewStatisticsOut) -> Table:
+        rows: list[list[Any]] = [["interviews", "total", out.total]]
+        rows += [["status", k, v] for k, v in out.by_status.items()]
+        rows += [["type", k, v] for k, v in out.by_type.items()]
+        rows += [
+            ["metric", "avg_duration_minutes", out.avg_duration_minutes],
+            ["metric", "no_show_rate", out.no_show_rate],
+            ["metric", "cancellation_rate", out.cancellation_rate],
+            ["feedback", "entries", out.feedback.entries],
+            ["feedback", "average_rating", out.feedback.average_rating],
+        ]
+        rows += [["recommendation", k, v] for k, v in out.feedback.recommendations.items()]
+        return Table("interview-statistics", ["section", "key", "value"], rows)
+
+    # ----------------------------------------------------------------------------------------------------------------
+    # analytics: job performance
+    # ----------------------------------------------------------------------------------------------------------------
+    async def _perf_items(
+        self, scope: Scope, window: Window, sort: str, order: SortOrder, page: int | None, page_size: int | None
+    ) -> tuple[list[JobPerformanceRow], int]:
+        apps, hist = self._cohort(scope, window)
+        agg = (
+            select(
+                J.id.label("job_id"),
+                J.title.label("title"),
+                J.status.label("job_status"),
+                J.published_at.label("published_at"),
+                func.count(apps.c.id).label("applications"),
+                func.count(apps.c.id).filter(hist.c.shortlisted.is_(True)).label("reached_shortlist"),
+                func.count(apps.c.id).filter(hist.c.hired_at.is_not(None)).label("hires"),
+                func.avg(extract("epoch", hist.c.first_change_at - apps.c.applied_at) / 86400.0).label("d_first"),
+                func.avg(extract("epoch", hist.c.hired_at - apps.c.applied_at) / 86400.0).label("d_hire"),
+                func.avg(Mt.overall_score).label("avg_score"),
+                func.count(Mt.id).label("scored"),
+            )
+            .select_from(J)
+            .join(apps, apps.c.job_id == J.id)
+            .outerjoin(hist, hist.c.application_id == apps.c.id)
+            .outerjoin(Mt, and_(Mt.job_id == apps.c.job_id, Mt.candidate_id == apps.c.candidate_id))
+            .group_by(J.id)
+            .subquery("perf")
+        )
+        sh_rate = cast(agg.c.reached_shortlist, Numeric) / func.nullif(agg.c.applications, 0)
+        hire_rate = cast(agg.c.hires, Numeric) / func.nullif(agg.c.applications, 0)
+        sort_keys: dict[str, Any] = {
+            "applications": agg.c.applications,
+            "title": func.lower(agg.c.title),
+            "shortlist_rate": sh_rate,
+            "hire_rate": hire_rate,
+            "avg_days_to_hire": agg.c.d_hire,
+            "avg_match_score": agg.c.avg_score,
+        }
+        key = sort_keys.get(sort, agg.c.applications)
+        stmt = select(agg, sh_rate.label("sh_rate"), hire_rate.label("hire_rate")).order_by(
+            (key.asc() if order == "asc" else key.desc()).nulls_last(), agg.c.title, agg.c.job_id
+        )
+        rows, total = await self._fetch(stmt, page, page_size)
+        items = [
+            JobPerformanceRow(
+                job_id=r.job_id,
+                title=r.title,
+                job_status=r.job_status,
+                published_at=r.published_at,
+                applications=int(r.applications),
+                reached_shortlist=int(r.reached_shortlist),
+                hires=int(r.hires),
+                shortlist_rate=_round(r.sh_rate, 4),
+                hire_rate=_round(r.hire_rate, 4),
+                avg_days_to_first_status_change=_round(r.d_first, 2),
+                avg_days_to_hire=_round(r.d_hire, 2),
+                avg_match_score=_round(r.avg_score, 4),
+                applicants_scored=int(r.scored),
+            )
+            for r in rows
+        ]
+        return items, total
+
+    async def job_performance(
+        self, user: User, *, company_id: uuid.UUID | None, from_date: date | None, to_date: date | None, sort: str, order: SortOrder,
+        page: int, page_size: int,
+    ) -> JobPerformancePage:
+        scope = await self.resolve_scope(user, company_id)
+        window = make_window(from_date, to_date)
+
+        async def compute() -> JobPerformancePage:
+            items, total = await self._perf_items(scope, window, sort, order, page, page_size)
+            out = JobPerformancePage.build(items, page=page, page_size=page_size, total=total)
+            return JobPerformancePage(**out.model_dump(), period=window.period())
+
+        return await self._cached(
+            "job-performance",
+            (CacheDomain.JOBS, CacheDomain.APPLICATIONS, CacheDomain.MATCHES),
+            {**scope.cache_params(), **window.params(), "sort": sort, "order": order, "page": page, "size": page_size},
+            compute,
+            JobPerformancePage,
+        )
+
+    JOB_PERFORMANCE_HEADERS = (
+        "job_id", "title", "job_status", "published_at", "applications", "reached_shortlist", "hires", "shortlist_rate", "hire_rate",
+        "avg_days_to_first_status_change", "avg_days_to_hire", "avg_match_score", "applicants_scored",
+    )  # fmt: skip
+
+    async def job_performance_table(
+        self, user: User, *, company_id: uuid.UUID | None, from_date: date | None, to_date: date | None, sort: str, order: SortOrder
+    ) -> Table:
+        scope = await self.resolve_scope(user, company_id)
+        items, _ = await self._perf_items(scope, make_window(from_date, to_date), sort, order, None, None)
+        return Table(
+            "job-performance",
+            list(self.JOB_PERFORMANCE_HEADERS),
+            [
+                [
+                    i.job_id, i.title, i.job_status.value, i.published_at, i.applications, i.reached_shortlist, i.hires, i.shortlist_rate,
+                    i.hire_rate, i.avg_days_to_first_status_change, i.avg_days_to_hire, i.avg_match_score, i.applicants_scored,
+                ]
+                for i in items
+            ],
+        )
+
+    # ----------------------------------------------------------------------------------------------------------------
+    # analytics: recruiter activity
+    # ----------------------------------------------------------------------------------------------------------------
+    async def _activity_items(
+        self, scope: Scope, window: Window, sort: str, order: SortOrder, page: int | None, page_size: int | None
+    ) -> tuple[list[RecruiterActivityRow], int]:
+        jc = scope.job_conds()
+        company_audit = [AuditEvent.company_id == scope.company_id] if scope.company_id else []
+        company_iv = [Iv.company_id == scope.company_id] if scope.company_id else []
+        changes = (
+            select(H.actor_id.label("uid"), func.count().label("n"))
+            .select_from(H)
+            .join(A, A.id == H.application_id)
+            .join(J, J.id == A.job_id)
+            .where(H.from_status.is_not(None), H.actor_id.is_not(None), *jc, *window.conds(H.created_at))
+            .group_by(H.actor_id)
+            .subquery("changes")
+        )
+        scheduled = (
+            select(AuditEvent.actor_id.label("uid"), func.count().label("n"))
+            .where(AuditEvent.action == "interview.scheduled", AuditEvent.actor_id.is_not(None), *company_audit, *window.conds(AuditEvent.created_at))
+            .group_by(AuditEvent.actor_id)
+            .subquery("scheduled")
+        )
+        notes = (
+            select(ApplicationNote.author_id.label("uid"), func.count().label("n"))
+            .select_from(ApplicationNote)
+            .join(A, A.id == ApplicationNote.application_id)
+            .join(J, J.id == A.job_id)
+            .where(ApplicationNote.author_id.is_not(None), *jc, *window.conds(ApplicationNote.created_at))
+            .group_by(ApplicationNote.author_id)
+            .subquery("notes")
+        )
+        feedback = (
+            select(InterviewFeedback.author_id.label("uid"), func.count().label("n"))
+            .select_from(InterviewFeedback)
+            .join(Iv, Iv.id == InterviewFeedback.interview_id)
+            .where(*company_iv, *window.conds(InterviewFeedback.submitted_at))
+            .group_by(InterviewFeedback.author_id)
+            .subquery("feedback")
+        )
+        n_changes = func.coalesce(changes.c.n, 0)
+        n_sched = func.coalesce(scheduled.c.n, 0)
+        n_notes = func.coalesce(notes.c.n, 0)
+        n_fb = func.coalesce(feedback.c.n, 0)
+        total = (n_changes + n_sched + n_notes + n_fb).label("total")
+        staff_cond = [User.role.in_(tuple(STAFF_ROLES))]
+        if scope.company_id:
+            staff_cond.append(User.company_id == scope.company_id)
+        full_name = func.lower(User.first_name + " " + User.last_name)
+        sort_keys: dict[str, Any] = {
+            "total": total,
+            "status_changes": n_changes,
+            "interviews_scheduled": n_sched,
+            "notes": n_notes,
+            "feedback": n_fb,
+            "name": full_name,
+        }
+        key = sort_keys.get(sort, total)
+        stmt = (
+            select(
+                User.id, User.first_name, User.last_name, User.role, Company.id, Company.name,
+                n_changes.label("n_changes"), n_sched.label("n_sched"), n_notes.label("n_notes"), n_fb.label("n_fb"), total,
+            )
+            .select_from(User)
+            .join(Company, Company.id == User.company_id)
+            .outerjoin(changes, changes.c.uid == User.id)
+            .outerjoin(scheduled, scheduled.c.uid == User.id)
+            .outerjoin(notes, notes.c.uid == User.id)
+            .outerjoin(feedback, feedback.c.uid == User.id)
+            .where(*staff_cond)
+            .order_by(key.asc() if order == "asc" else key.desc(), full_name, User.id)
+        )  # fmt: skip
+        rows, count = await self._fetch(stmt, page, page_size)
+        items = [
+            RecruiterActivityRow(
+                user_id=r[0],
+                name=f"{r[1]} {r[2]}".strip(),
+                role=r[3].value,
+                company_id=r[4],
+                company_name=r[5],
+                status_changes=int(r[6]),
+                interviews_scheduled=int(r[7]),
+                notes_added=int(r[8]),
+                feedback_submitted=int(r[9]),
+                total_actions=int(r[10]),
+            )
+            for r in rows
+        ]
+        return items, count
+
+    async def recruiter_activity(
+        self, user: User, *, company_id: uuid.UUID | None, from_date: date | None, to_date: date | None, sort: str, order: SortOrder,
+        page: int, page_size: int,
+    ) -> RecruiterActivityPage:
+        scope = await self.resolve_scope(user, company_id, allow_hiring_manager=False)
+        window = make_window(from_date, to_date)
+
+        async def compute() -> RecruiterActivityPage:
+            items, total = await self._activity_items(scope, window, sort, order, page, page_size)
+            out = RecruiterActivityPage.build(items, page=page, page_size=page_size, total=total)
+            return RecruiterActivityPage(**out.model_dump(), period=window.period())
+
+        return await self._cached(
+            "recruiter-activity",
+            (CacheDomain.JOBS, CacheDomain.APPLICATIONS, CacheDomain.INTERVIEWS, CacheDomain.USERS),
+            {**scope.cache_params(), **window.params(), "sort": sort, "order": order, "page": page, "size": page_size},
+            compute,
+            RecruiterActivityPage,
+            ttl=ACTIVITY_TTL,
+        )
+
+    async def recruiter_activity_table(
+        self, user: User, *, company_id: uuid.UUID | None, from_date: date | None, to_date: date | None, sort: str, order: SortOrder
+    ) -> Table:
+        scope = await self.resolve_scope(user, company_id, allow_hiring_manager=False)
+        items, _ = await self._activity_items(scope, make_window(from_date, to_date), sort, order, None, None)
+        return Table(
+            "recruiter-activity",
+            ["user_id", "name", "role", "company", "status_changes", "interviews_scheduled", "notes_added", "feedback_submitted", "total_actions"],
+            [
+                [i.user_id, i.name, i.role, i.company_name, i.status_changes, i.interviews_scheduled, i.notes_added, i.feedback_submitted, i.total_actions]
+                for i in items
+            ],
+        )
+
+    # ----------------------------------------------------------------------------------------------------------------
+    # analytics: source statistics
+    # ----------------------------------------------------------------------------------------------------------------
+    async def _source_items(
+        self, scope: Scope, window: Window, sort: str, order: SortOrder, page: int | None, page_size: int | None
+    ) -> tuple[list[SourceStatRow], int]:
+        apps, hist = self._cohort(scope, window)
+        n = func.count(apps.c.id).label("n")
+        grand = func.sum(func.count(apps.c.id)).over().label("grand")
+        shortlisted = func.count(apps.c.id).filter(hist.c.shortlisted.is_(True)).label("shortlisted")
+        hires = func.count(apps.c.id).filter(hist.c.hired_at.is_not(None)).label("hires")
+        sort_keys: dict[str, Any] = {"applications": n, "source": apps.c.source, "hires": hires, "shortlisted": shortlisted}
+        key = sort_keys.get(sort, n)
+        stmt = (
+            select(apps.c.source, n, grand, shortlisted, hires)
+            .select_from(apps)
+            .outerjoin(hist, hist.c.application_id == apps.c.id)
+            .group_by(apps.c.source)
+            .order_by(key.asc() if order == "asc" else key.desc(), apps.c.source)
+        )
+        rows, total = await self._fetch(stmt, page, page_size)
+        items = [
+            SourceStatRow(
+                source=r[0],
+                applications=int(r[1]),
+                share=round(int(r[1]) / int(r[2]), 4) if r[2] else 0.0,
+                reached_shortlist=int(r[3]),
+                hires=int(r[4]),
+                shortlist_rate=_ratio(int(r[3]), int(r[1])),
+                hire_rate=_ratio(int(r[4]), int(r[1])),
+            )
+            for r in rows
+        ]
+        return items, total
+
+    async def source_statistics(
+        self, user: User, *, company_id: uuid.UUID | None, from_date: date | None, to_date: date | None, sort: str, order: SortOrder,
+        page: int, page_size: int,
+    ) -> SourceStatisticsPage:
+        scope = await self.resolve_scope(user, company_id)
+        window = make_window(from_date, to_date)
+
+        async def compute() -> SourceStatisticsPage:
+            items, total = await self._source_items(scope, window, sort, order, page, page_size)
+            out = SourceStatisticsPage.build(items, page=page, page_size=page_size, total=total)
+            return SourceStatisticsPage(**out.model_dump(), period=window.period())
+
+        return await self._cached(
+            "source-statistics",
+            (CacheDomain.JOBS, CacheDomain.APPLICATIONS),
+            {**scope.cache_params(), **window.params(), "sort": sort, "order": order, "page": page, "size": page_size},
+            compute,
+            SourceStatisticsPage,
+        )
+
+    async def source_statistics_table(
+        self, user: User, *, company_id: uuid.UUID | None, from_date: date | None, to_date: date | None, sort: str, order: SortOrder
+    ) -> Table:
+        scope = await self.resolve_scope(user, company_id)
+        items, _ = await self._source_items(scope, make_window(from_date, to_date), sort, order, None, None)
+        return Table(
+            "source-statistics",
+            ["source", "applications", "share", "reached_shortlist", "hires", "shortlist_rate", "hire_rate"],
+            [[i.source, i.applications, i.share, i.reached_shortlist, i.hires, i.shortlist_rate, i.hire_rate] for i in items],
+        )
+
+    # ----------------------------------------------------------------------------------------------------------------
+    # analytics: matching performance (only what the stored data supports)
+    # ----------------------------------------------------------------------------------------------------------------
+    async def matching_performance(
+        self, user: User, *, company_id: uuid.UUID | None, from_date: date | None, to_date: date | None
+    ) -> MatchingPerformanceOut:
+        scope = await self.resolve_scope(user, company_id)
+        window = make_window(from_date, to_date)
+
+        async def compute() -> MatchingPerformanceOut:
+            s = self.session
+            jc = scope.job_conds()
+            band = band_case(Mt.overall_score)
+
+            def bands(rows: Sequence[tuple[str, int]]) -> list[BandCount]:
+                have = {b: int(n) for b, n in rows}
+                total = sum(have.values())
+                return [BandCount(band=b, count=have.get(b, 0), percent=_pct(have.get(b, 0), total)) for b in BAND_ORDER]
+
+            all_rows = (
+                await s.execute(select(band, func.count()).select_from(Mt).join(J, J.id == Mt.job_id).where(*jc).group_by(band))
+            ).all()
+            app_join = and_(Mt.job_id == A.job_id, Mt.candidate_id == A.candidate_id)
+            app_conds = self._app_conds(scope, window)
+            app_rows = (
+                await s.execute(
+                    select(band, func.count()).select_from(A).join(J, J.id == A.job_id).join(Mt, app_join).where(*app_conds).group_by(band)
+                )
+            ).all()
+            outcome = case(
+                (A.status == ApplicationStatus.HIRED, "HIRED"),
+                (A.status == ApplicationStatus.REJECTED, "REJECTED"),
+                (A.status == ApplicationStatus.WITHDRAWN, "WITHDRAWN"),
+                else_="IN_PROGRESS",
+            )
+            out_rows = (
+                await s.execute(
+                    select(outcome, func.count(), func.avg(Mt.overall_score))
+                    .select_from(A)
+                    .join(J, J.id == A.job_id)
+                    .join(Mt, app_join)
+                    .where(*app_conds)
+                    .group_by(outcome)
+                )
+            ).all()
+            by_outcome = {o: (int(n), _round(avg, 4)) for o, n, avg in out_rows}
+            ranked = (
+                select(
+                    Mt.job_id.label("job_id"),
+                    Mt.candidate_id.label("candidate_id"),
+                    func.rank().over(partition_by=Mt.job_id, order_by=Mt.overall_score.desc()).label("rk"),
+                )
+                .select_from(Mt)
+                .join(J, J.id == Mt.job_id)
+                .where(*jc)
+                .cte("ranked_matches")
+            )
+            top = (
+                await s.execute(
+                    select(func.count(A.id), func.count(ranked.c.job_id), func.count(A.id).filter(ranked.c.rk <= 10))
+                    .select_from(A)
+                    .join(J, J.id == A.job_id)
+                    .outerjoin(ranked, and_(ranked.c.job_id == A.job_id, ranked.c.candidate_id == A.candidate_id))
+                    .where(*app_conds)
+                )
+            ).one()
+            scored_pairs = sum(n for _, n in all_rows)
+
+            outcomes = [
+                OutcomeScore(outcome=o, applications=by_outcome.get(o, (0, None))[0], avg_score=by_outcome.get(o, (0, None))[1])
+                for o in ("HIRED", "REJECTED", "WITHDRAWN", "IN_PROGRESS")
+            ]
+            hired, rejected = by_outcome.get("HIRED", (0, None)), by_outcome.get("REJECTED", (0, None))
+            delta = round(hired[1] - rejected[1], 4) if hired[1] is not None and rejected[1] is not None else None
+            notes = ["Scores rank candidates against a job; they are a relevance aid, not a prediction of hiring success."]
+            if scored_pairs == 0:
+                notes.append("No match scores have been computed yet for these jobs.")
+            if delta is not None and (hired[0] < 10 or rejected[0] < 10):
+                notes.append(
+                    f"The hired-vs-rejected comparison rests on {hired[0]} hired and {rejected[0]} rejected scored applicants; "
+                    "samples this small say little."
+                )
+            elif delta is None and (hired[0] or rejected[0]):
+                notes.append("Hired-vs-rejected needs scored applicants in both groups.")
+            if int(top[0]) > int(top[1]):
+                notes.append(f"{int(top[0]) - int(top[1])} of {int(top[0])} applicants have no stored match score yet.")
+            return MatchingPerformanceOut(
+                period=window.period(),
+                scored_pairs=scored_pairs,
+                all_scored_distribution=bands([(b, int(n)) for b, n in all_rows]),
+                applicant_distribution=bands([(b, int(n)) for b, n in app_rows]),
+                avg_score_by_outcome=outcomes,
+                hired_minus_rejected=delta,
+                top10=TopTenStats(
+                    applicants=int(top[0]),
+                    applicants_with_score=int(top[1]),
+                    applicants_in_top10=int(top[2]),
+                    pct_in_top10=_pct(int(top[2]), int(top[1])) if top[1] else None,
+                ),
+                notes=notes,
+            )
+
+        return await self._cached(
+            "matching-performance",
+            (CacheDomain.JOBS, CacheDomain.APPLICATIONS, CacheDomain.MATCHES),
+            {**scope.cache_params(), **window.params()},
+            compute,
+            MatchingPerformanceOut,
+        )
+
+    @staticmethod
+    def matching_performance_table(out: MatchingPerformanceOut) -> Table:
+        rows: list[list[Any]] = [["all_scored_band", b.band, b.count, b.percent] for b in out.all_scored_distribution]
+        rows += [["applicant_band", b.band, b.count, b.percent] for b in out.applicant_distribution]
+        rows += [["avg_score_by_outcome", o.outcome, o.applications, o.avg_score] for o in out.avg_score_by_outcome]
+        rows += [
+            ["top10", "applicants", out.top10.applicants, None],
+            ["top10", "applicants_with_score", out.top10.applicants_with_score, None],
+            ["top10", "applicants_in_top10", out.top10.applicants_in_top10, out.top10.pct_in_top10],
+        ]
+        return Table("matching-performance", ["section", "key", "count", "value"], rows)
+
+    # ----------------------------------------------------------------------------------------------------------------
+    # analytics: top skills
+    # ----------------------------------------------------------------------------------------------------------------
+    async def top_skills(self, user: User, *, company_id: uuid.UUID | None, limit: int) -> TopSkillsOut:
+        scope = await self.resolve_scope(user, company_id)
+
+        async def compute() -> TopSkillsOut:
+            s = self.session
+            jc = scope.job_conds()
+            live_jobs = [J.status == JobStatus.PUBLISHED, *jc]
+            demand = (
+                await s.execute(
+                    select(
+                        Skill.id,
+                        Skill.name,
+                        func.count(func.distinct(JobSkill.job_id)).label("jobs"),
+                        _cnt(JobSkill.requirement == SkillRequirement.REQUIRED),
+                        _cnt(JobSkill.requirement == SkillRequirement.PREFERRED),
+                    )
+                    .select_from(JobSkill)
+                    .join(Skill, Skill.id == JobSkill.skill_id)
+                    .join(J, J.id == JobSkill.job_id)
+                    .where(*live_jobs)
+                    .group_by(Skill.id)
+                    .order_by(desc("jobs"), Skill.name, Skill.id)
+                    .limit(limit)
+                )
+            ).all()
+            applicants = (
+                select(A.candidate_id)
+                .join(J, J.id == A.job_id)
+                .where(A.status != ApplicationStatus.WITHDRAWN, *jc)
+                .distinct()
+                .subquery("applicants")
+            )
+            supply = (
+                await s.execute(
+                    select(Skill.id, Skill.name, func.count(func.distinct(CandidateSkill.candidate_id)).label("n"))
+                    .select_from(CandidateSkill)
+                    .join(Skill, Skill.id == CandidateSkill.skill_id)
+                    .join(applicants, applicants.c.candidate_id == CandidateSkill.candidate_id)
+                    .where(CandidateSkill.status == SkillStatus.CONFIRMED)
+                    .group_by(Skill.id)
+                    .order_by(desc("n"), Skill.name, Skill.id)
+                    .limit(limit)
+                )
+            ).all()
+            n_jobs = await s.scalar(select(func.count()).select_from(J).where(*live_jobs))
+            n_apps = await s.scalar(select(func.count()).select_from(applicants))
+            return TopSkillsOut(
+                scope=scope.kind,
+                jobs_considered=int(n_jobs or 0),
+                applicants_considered=int(n_apps or 0),
+                requested=[
+                    SkillDemand(skill_id=sid, skill=name, jobs=int(n), required_in_jobs=int(req), preferred_in_jobs=int(pref))
+                    for sid, name, n, req, pref in demand
+                ],
+                available=[SkillSupply(skill_id=sid, skill=name, candidates=int(n)) for sid, name, n in supply],
+            )
+
+        return await self._cached(
+            "top-skills",
+            (CacheDomain.JOBS, CacheDomain.APPLICATIONS, CacheDomain.CANDIDATES, CacheDomain.SKILLS),
+            {**scope.cache_params(), "limit": limit},
+            compute,
+            TopSkillsOut,
+        )
+
+    @staticmethod
+    def top_skills_table(out: TopSkillsOut) -> Table:
+        rows: list[list[Any]] = [["requested", d.skill, d.jobs, d.required_in_jobs, d.preferred_in_jobs] for d in out.requested]
+        rows += [["available", a.skill, a.candidates, None, None] for a in out.available]
+        return Table("top-skills", ["list", "skill", "count", "required_in_jobs", "preferred_in_jobs"], rows)
+
+    # ----------------------------------------------------------------------------------------------------------------
+    # analytics: pipeline summary (a snapshot of the current state)
+    # ----------------------------------------------------------------------------------------------------------------
+    async def pipeline_summary(self, user: User, *, company_id: uuid.UUID | None, job_id: uuid.UUID | None) -> PipelineSummaryOut:
+        scope = await self.resolve_scope(user, company_id)
+
+        async def compute() -> PipelineSummaryOut:
+            age_days = extract("epoch", func.now() - A.status_changed_at) / 86400.0
+            conds = scope.job_conds()
+            if job_id:
+                conds.append(A.job_id == job_id)
+            rows = (
+                await self.session.execute(
+                    select(A.status, func.count(), func.avg(age_days), func.max(age_days), _cnt(age_days > STALE_AFTER_DAYS))
+                    .select_from(A)
+                    .join(J, J.id == A.job_id)
+                    .where(*conds)
+                    .group_by(A.status)
+                )
+            ).all()
+            have = {st: (int(n), avg, mx, int(stale)) for st, n, avg, mx, stale in rows}
+            stages: list[PipelineStageRow] = []
+            for st in ApplicationStatus:
+                n, avg, mx, stale = have.get(st, (0, None, None, 0))
+                live = st in _LIVE
+                stages.append(
+                    PipelineStageRow(
+                        stage=st,
+                        count=n,
+                        avg_days_in_stage=_round(avg, 1) if live else None,
+                        max_days_in_stage=_round(mx, 1) if live else None,
+                        stale=stale if live else 0,
+                    )
+                )
+            total = sum(r.count for r in stages)
+            live_total = sum(r.count for r in stages if r.stage in _LIVE)
+            return PipelineSummaryOut(
+                job_id=job_id,
+                stale_after_days=STALE_AFTER_DAYS,
+                total=total,
+                live=live_total,
+                closed=total - live_total,
+                stale=sum(r.stale for r in stages),
+                stages=stages,
+            )
+
+        return await self._cached(
+            "pipeline-summary",
+            (CacheDomain.JOBS, CacheDomain.APPLICATIONS),
+            {**scope.cache_params(), "job": str(job_id) if job_id else None},
+            compute,
+            PipelineSummaryOut,
+            ttl=30,
+        )
+
+    @staticmethod
+    def pipeline_summary_table(out: PipelineSummaryOut) -> Table:
+        return Table(
+            "pipeline-summary",
+            ["stage", "count", "avg_days_in_stage", "max_days_in_stage", "stale"],
+            [[r.stage.value, r.count, r.avg_days_in_stage, r.max_days_in_stage, r.stale] for r in out.stages],
+        )

@@ -306,7 +306,7 @@ async def receive_upload(
     clean_name = sanitize_filename(filename)
     expected = kind_from_extension(clean_name)
 
-    spool = tempfile.TemporaryFile(mode="w+b")  # unnamed, 0600, removed on close
+    spool = tempfile.TemporaryFile(mode="w+b")  # noqa: SIM115 - unnamed, 0600, closed by ValidatedUpload.close() / the except below
     try:
         digest = hashlib.sha256()
         total = 0

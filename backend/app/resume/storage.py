@@ -142,7 +142,7 @@ class LocalStorage:
         try:
             with os.fdopen(fd, "wb") as out:
                 os.fchmod(out.fileno(), 0o600)
-                async for chunk in data:  # type: ignore[union-attr]
+                async for chunk in data:
                     await asyncio.to_thread(out.write, chunk)
                     size += len(chunk)
                 await asyncio.to_thread(out.flush)

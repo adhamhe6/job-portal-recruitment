@@ -106,8 +106,20 @@ Hiking, photography, reading about React
 """
 
 HEADINGS = {
-    "PROFESSIONAL SUMMARY", "SKILLS", "WORK EXPERIENCE", "EDUCATION", "CERTIFICATIONS", "LANGUAGES", "SUMMARY", "CLINICAL EXPERIENCE",
-    "LICENSES & CERTIFICATIONS", "INTERESTS", "Profile", "Technical Skills", "Experience", "Education",
+    "PROFESSIONAL SUMMARY",
+    "SKILLS",
+    "WORK EXPERIENCE",
+    "EDUCATION",
+    "CERTIFICATIONS",
+    "LANGUAGES",
+    "SUMMARY",
+    "CLINICAL EXPERIENCE",
+    "LICENSES & CERTIFICATIONS",
+    "INTERESTS",
+    "Profile",
+    "Technical Skills",
+    "Experience",
+    "Education",
 }
 
 
@@ -127,7 +139,10 @@ def make_pdf(text: str, *, wrap: int = 98) -> bytes:
             if y < bottom:
                 c.showPage()
                 y = top
-            c.setFont("Helvetica-Bold" if raw.strip() in HEADINGS else "Helvetica", 11 if raw.strip() in HEADINGS else 10)
+            c.setFont(
+                "Helvetica-Bold" if raw.strip() in HEADINGS else "Helvetica",
+                11 if raw.strip() in HEADINGS else 10,
+            )
             if line:
                 c.drawString(left, y, line)
             y -= leading
@@ -213,7 +228,7 @@ def nurse_docx() -> bytes:
 # --- hostile / broken inputs -----------------------------------------------------------------------------------------
 
 
-def encrypted_pdf(password: str = "s3cret-pw")  # noqa: S107 -> bytes:
+def encrypted_pdf(password: str = "s3cret-pw") -> bytes:  # noqa: S107
     """A PDF that needs a password to open (RC4, so no crypto backend is required to create or to reject it)."""
     from pypdf import PdfReader, PdfWriter
 
@@ -225,7 +240,11 @@ def encrypted_pdf(password: str = "s3cret-pw")  # noqa: S107 -> bytes:
 
 
 def malformed_pdf() -> bytes:
-    return b"%PDF-1.7\n1 0 obj\n<< /Type /Catalog /Pages 99 0 R >>\nendobj\n" + b"\x00garbage\xff" * 200 + b"\n%%EOF"
+    return (
+        b"%PDF-1.7\n1 0 obj\n<< /Type /Catalog /Pages 99 0 R >>\nendobj\n"
+        + b"\x00garbage\xff" * 200
+        + b"\n%%EOF"
+    )
 
 
 def truncated_pdf() -> bytes:
@@ -289,16 +308,32 @@ def zip_bytes(members: dict[str, bytes], *, compression: int = zipfile.ZIP_DEFLA
 def zip_bomb_docx(uncompressed_mb: int = 60) -> bytes:
     """A tiny DOCX-shaped archive that expands to ``uncompressed_mb`` megabytes."""
     chunk = b"<w:p>" + b"A" * 1000 + b"</w:p>"
-    body = b'<w:document xmlns:w="x"><w:body>' + chunk * (uncompressed_mb * 1024 * 1024 // len(chunk)) + b"</w:body></w:document>"
+    body = (
+        b'<w:document xmlns:w="x"><w:body>'
+        + chunk * (uncompressed_mb * 1024 * 1024 // len(chunk))
+        + b"</w:body></w:document>"
+    )
     return zip_bytes({"[Content_Types].xml": CONTENT_TYPES_XML, "word/document.xml": body})
 
 
 def traversal_docx() -> bytes:
-    return zip_bytes({"[Content_Types].xml": CONTENT_TYPES_XML, "word/document.xml": b"<w:document/>", "../../evil.txt": b"x"})
+    return zip_bytes(
+        {
+            "[Content_Types].xml": CONTENT_TYPES_XML,
+            "word/document.xml": b"<w:document/>",
+            "../../evil.txt": b"x",
+        }
+    )
 
 
 def macro_docx() -> bytes:
-    return zip_bytes({"[Content_Types].xml": CONTENT_TYPES_XML, "word/document.xml": b"<w:document/>", "word/vbaProject.bin": b"\x00" * 10})
+    return zip_bytes(
+        {
+            "[Content_Types].xml": CONTENT_TYPES_XML,
+            "word/document.xml": b"<w:document/>",
+            "word/vbaProject.bin": b"\x00" * 10,
+        }
+    )
 
 
 def xlsx_like() -> bytes:

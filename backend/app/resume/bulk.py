@@ -83,7 +83,9 @@ def _kind_from_bytes(data: bytes) -> DocumentKind | None:
     return {"pdf": DocumentKind.PDF, "zip": DocumentKind.DOCX}.get(sniffed)
 
 
-async def _find_duplicate(session: AsyncSession, importer: User | None, company_id: uuid.UUID, sha256: str, email: str | None) -> _Outcome | None:
+async def _find_duplicate(
+    session: AsyncSession, importer: User | None, company_id: uuid.UUID, sha256: str, email: str | None
+) -> _Outcome | None:
     row = (
         await session.execute(
             select(Resume.candidate_id, Resume.id)
@@ -98,7 +100,9 @@ async def _find_duplicate(session: AsyncSession, importer: User | None, company_
         )
     ).first()
     if row:
-        return _Outcome(ImportItemStatus.DUPLICATE, E_DUP_FILE, "This exact file was already imported.", row[0], row[1])
+        return _Outcome(
+            ImportItemStatus.DUPLICATE, E_DUP_FILE, "This exact file was already imported.", row[0], row[1]
+        )
     if not email:
         return None
     existing = await session.scalar(
@@ -109,18 +113,33 @@ async def _find_duplicate(session: AsyncSession, importer: User | None, company_
         )
     )
     if existing:
-        primary = await session.scalar(select(Resume.id).where(Resume.candidate_id == existing, Resume.is_primary.is_(True)))
-        return _Outcome(ImportItemStatus.DUPLICATE, E_DUP_CANDIDATE, "A candidate with this e-mail address already exists in your talent pool.", existing, primary)
+        primary = await session.scalar(
+            select(Resume.id).where(Resume.candidate_id == existing, Resume.is_primary.is_(True))
+        )
+        return _Outcome(
+            ImportItemStatus.DUPLICATE,
+            E_DUP_CANDIDATE,
+            "A candidate with this e-mail address already exists in your talent pool.",
+            existing,
+            primary,
+        )
     registered = (
         await session.execute(
-            select(CandidateProfile).join(User, User.id == CandidateProfile.user_id).where(func.lower(User.email) == email)
+            select(CandidateProfile)
+            .join(User, User.id == CandidateProfile.user_id)
+            .where(func.lower(User.email) == email)
         )
     ).scalar_one_or_none()
     if registered is not None:
         # Existence is confirmed, but the profile is only linked when the importer may already see it.
-        visible = importer is not None and await candidate_access_for(session, importer, registered) != CandidateAccess.NONE
+        visible = (
+            importer is not None
+            and await candidate_access_for(session, importer, registered) != CandidateAccess.NONE
+        )
         return _Outcome(
-            ImportItemStatus.DUPLICATE, E_DUP_CANDIDATE, "A candidate with this e-mail address is already registered on the platform.",
+            ImportItemStatus.DUPLICATE,
+            E_DUP_CANDIDATE,
+            "A candidate with this e-mail address is already registered on the platform.",
             registered.id if visible else None,
         )
     return None
@@ -152,9 +171,9 @@ def _add_children(session: AsyncSession, candidate_id: uuid.UUID, parsed: dict[s
     for item in parsed.get("educations") or []:
         edu, _ = profile_ops.build_education(candidate_id, item)
         if edu is not None:
-            key = profile_ops.education_key(edu.institution, edu.degree_level.value)
-            if key not in seen_edu:
-                seen_edu.add(key)
+            edu_key = profile_ops.education_key(edu.institution, edu.degree_level.value)
+            if edu_key not in seen_edu:
+                seen_edu.add(edu_key)
                 session.add(edu)
     seen_cert: set[str] = set()
     for item in parsed.get("certifications") or []:
@@ -200,21 +219,31 @@ async def _create_candidate(
     _fill_profile(cand, parsed)
     session.add(cand)
     await session.flush()
-    resume = Resume(candidate_id=cand.id, uploaded_by_id=user_id, status=ResumeStatus.PROCESSED, is_primary=True)
+    resume = Resume(
+        candidate_id=cand.id, uploaded_by_id=user_id, status=ResumeStatus.PROCESSED, is_primary=True
+    )
     session.add(resume)
     await session.flush()
     doc = ResumeDocument(
-        resume_id=resume.id, storage_key=item.storage_key, original_filename=item.filename, content_type=CONTENT_TYPES[kind],
-        size_bytes=item.size_bytes, sha256=item.sha256,
+        resume_id=resume.id,
+        storage_key=item.storage_key,
+        original_filename=item.filename,
+        content_type=CONTENT_TYPES[kind],
+        size_bytes=item.size_bytes,
+        sha256=item.sha256,
     )
     session.add(doc)
     await session.flush()
-    values = result_values(analysis, embedding=embedding, duration_ms=duration_ms, embedding_error=embedding is None)
-    values.update(started_at=utcnow() , status=ProcessingStatus.COMPLETED)
+    values = result_values(
+        analysis, embedding=embedding, duration_ms=duration_ms, embedding_error=embedding is None
+    )
+    values.update(started_at=utcnow(), status=ProcessingStatus.COMPLETED)
     await upsert_result(session, resume.id, doc.id, values)
     _add_children(session, cand.id, parsed)
     await profile_ops.merge_skill_suggestions(
-        session, cand.id, [(resolved[s.name], s.confidence) for s in analysis.parsed.skills if s.name in resolved]
+        session,
+        cand.id,
+        [(resolved[s.name], s.confidence) for s in analysis.parsed.skills if s.name in resolved],
     )
     return _Outcome(ImportItemStatus.CREATED, None, None, cand.id, resume.id, keep_blob=True)
 
@@ -233,7 +262,9 @@ async def _finish_item(session: AsyncSession, item_id: uuid.UUID, outcome: _Outc
     )
 
 
-async def _import_one(ctx: TaskContext, company_id: uuid.UUID, user_id: uuid.UUID | None, item: _Item) -> _Outcome:
+async def _import_one(
+    ctx: TaskContext, company_id: uuid.UUID, user_id: uuid.UUID | None, item: _Item
+) -> _Outcome:
     settings = get_settings()
     storage = get_storage()
     try:
@@ -260,7 +291,9 @@ async def _import_one(ctx: TaskContext, company_id: uuid.UUID, user_id: uuid.UUI
     email = analysis.parsed.contact.email
     if not (analysis.parsed.contact.name or email):
         return _Outcome(
-            ImportItemStatus.FAILED, E_NO_IDENTITY, "No name or e-mail address could be found in this document; it may not be a résumé."
+            ImportItemStatus.FAILED,
+            E_NO_IDENTITY,
+            "No name or e-mail address could be found in this document; it may not be a résumé.",
         )
 
     async with ctx.sessionmaker() as s:
@@ -278,8 +311,15 @@ async def _import_one(ctx: TaskContext, company_id: uuid.UUID, user_id: uuid.UUI
     async with ctx.sessionmaker() as s:
         try:
             outcome = await _create_candidate(
-                s, company_id=company_id, user_id=user_id, item=item, kind=kind, analysis=analysis, resolved=resolved,
-                embedding=embedding, duration_ms=duration_ms,
+                s,
+                company_id=company_id,
+                user_id=user_id,
+                item=item,
+                kind=kind,
+                analysis=analysis,
+                resolved=resolved,
+                embedding=embedding,
+                duration_ms=duration_ms,
             )
             await _finish_item(s, item.id, outcome)
             await s.commit()
@@ -295,8 +335,13 @@ async def _import_one(ctx: TaskContext, company_id: uuid.UUID, user_id: uuid.UUI
         try:
             async with ctx.sessionmaker() as s:
                 await MatchingService(s).refresh_candidate_index(outcome.candidate_id)
-        except Exception as exc:  # the candidate exists and is searchable by text; the embedding is rebuilt on next change
-            logger.warning("imported candidate embedding failed", extra={"candidate_id": str(outcome.candidate_id), "error": type(exc).__name__})
+        except (
+            Exception
+        ) as exc:  # the candidate exists and is searchable by text; the embedding is rebuilt on next change
+            logger.warning(
+                "imported candidate embedding failed",
+                extra={"candidate_id": str(outcome.candidate_id), "error": type(exc).__name__},
+            )
     return outcome
 
 
@@ -313,12 +358,19 @@ async def run_bulk_import(ctx: TaskContext) -> dict[str, Any]:
             for i in (
                 await s.execute(
                     select(BulkImportItem)
-                    .where(BulkImportItem.batch_id == batch_id, BulkImportItem.status == ImportItemStatus.PENDING)
+                    .where(
+                        BulkImportItem.batch_id == batch_id, BulkImportItem.status == ImportItemStatus.PENDING
+                    )
                     .order_by(BulkImportItem.created_at, BulkImportItem.id)
                 )
             ).scalars()
         ]
-        total = int(await s.scalar(select(func.count()).select_from(BulkImportItem).where(BulkImportItem.batch_id == batch_id)) or 0)
+        total = int(
+            await s.scalar(
+                select(func.count()).select_from(BulkImportItem).where(BulkImportItem.batch_id == batch_id)
+            )
+            or 0
+        )
         already = total - len(items)
 
     storage = get_storage()
@@ -330,8 +382,15 @@ async def run_bulk_import(ctx: TaskContext) -> dict[str, Any]:
                     await _finish_item(s, item.id, outcome)
                     await s.commit()
         except Exception as exc:  # one bad file must never fail the batch
-            logger.error("bulk import item failed", extra={"batch_id": str(batch_id), "item_id": str(item.id), "error": type(exc).__name__})
-            outcome = _Outcome(ImportItemStatus.FAILED, "INTERNAL_ERROR", "An unexpected error occurred while importing this file.")
+            logger.error(
+                "bulk import item failed",
+                extra={"batch_id": str(batch_id), "item_id": str(item.id), "error": type(exc).__name__},
+            )
+            outcome = _Outcome(
+                ImportItemStatus.FAILED,
+                "INTERNAL_ERROR",
+                "An unexpected error occurred while importing this file.",
+            )
             async with ctx.sessionmaker() as s:
                 await _finish_item(s, item.id, outcome)
                 await s.commit()
@@ -340,28 +399,38 @@ async def run_bulk_import(ctx: TaskContext) -> dict[str, Any]:
                 await storage.delete(item.storage_key)
             except StorageError:
                 logger.warning("could not remove rejected import file", extra={"item_id": str(item.id)})
-        await ctx.progress(min(95, int((already + n) * 95 / max(total, 1))), f"importing {already + n}/{total}")
+        await ctx.progress(
+            min(95, int((already + n) * 95 / max(total, 1))), f"importing {already + n}/{total}"
+        )
 
     return await _finalize(ctx, batch_id, company_id, user_id)
 
 
-async def _finalize(ctx: TaskContext, batch_id: uuid.UUID, company_id: uuid.UUID, user_id: uuid.UUID | None) -> dict[str, Any]:
+async def _finalize(
+    ctx: TaskContext, batch_id: uuid.UUID, company_id: uuid.UUID, user_id: uuid.UUID | None
+) -> dict[str, Any]:
     async with ctx.sessionmaker() as s:
         counts = {
             status: int(n)
             for status, n in (
                 await s.execute(
-                    select(BulkImportItem.status, func.count()).where(BulkImportItem.batch_id == batch_id).group_by(BulkImportItem.status)
+                    select(BulkImportItem.status, func.count())
+                    .where(BulkImportItem.batch_id == batch_id)
+                    .group_by(BulkImportItem.status)
                 )
             ).all()
         }
-        await s.execute(update(BulkImportBatch).where(BulkImportBatch.id == batch_id).values(finished_at=utcnow()))
+        await s.execute(
+            update(BulkImportBatch).where(BulkImportBatch.id == batch_id).values(finished_at=utcnow())
+        )
         created = counts.get(ImportItemStatus.CREATED, 0)
         duplicates = counts.get(ImportItemStatus.DUPLICATE, 0)
         failed = counts.get(ImportItemStatus.FAILED, 0)
         if user_id is not None:
             await NotificationService(s).stage(
-                user_id, NotificationType.BULK_IMPORT_COMPLETED, "Résumé import finished",
+                user_id,
+                NotificationType.BULK_IMPORT_COMPLETED,
+                "Résumé import finished",
                 f"{created} candidate{'s' if created != 1 else ''} imported, {duplicates} duplicate{'s' if duplicates != 1 else ''}, {failed} failed.",
                 dedupe_key=f"bulk-import:{batch_id}",
             )
@@ -373,7 +442,16 @@ async def _finalize(ctx: TaskContext, batch_id: uuid.UUID, company_id: uuid.UUID
             async with ctx.sessionmaker() as s:
                 await profile_ops.schedule_company_job_matches(s, dispatcher, company_id, user_id=user_id)
         except Exception as exc:
-            logger.warning("could not queue matching after import", extra={"batch_id": str(batch_id), "error": type(exc).__name__})
+            logger.warning(
+                "could not queue matching after import",
+                extra={"batch_id": str(batch_id), "error": type(exc).__name__},
+            )
         finally:
             await close()
-    return {"batch_id": str(batch_id), "created": created, "duplicates": duplicates, "failed": failed, "total": sum(counts.values())}
+    return {
+        "batch_id": str(batch_id),
+        "created": created,
+        "duplicates": duplicates,
+        "failed": failed,
+        "total": sum(counts.values()),
+    }

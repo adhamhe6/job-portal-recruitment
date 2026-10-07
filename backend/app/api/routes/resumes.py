@@ -8,7 +8,7 @@ authorization on every request. Route handlers stay thin — validation, storage
 from __future__ import annotations
 
 import uuid
-from collections.abc import Callable, Coroutine
+from collections.abc import Awaitable, Callable, Coroutine
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, File, Form, Query, Request, Response, UploadFile, status
@@ -38,7 +38,10 @@ router = APIRouter(prefix="/resumes", tags=["Resumes"], responses=COMMON_ERRORS)
 
 UPLOAD_ERRORS: dict[int | str, dict[str, Any]] = {
     **COMMON_ERRORS,
-    413: {"model": ErrorResponse, "description": "PAYLOAD_TOO_LARGE: the file (or its decompressed size) exceeds the limit"},
+    413: {
+        "model": ErrorResponse,
+        "description": "PAYLOAD_TOO_LARGE: the file (or its decompressed size) exceeds the limit",
+    },
     415: {
         "model": ErrorResponse,
         "description": "UNSUPPORTED_MEDIA_TYPE: only PDF and DOCX are accepted; the content, extension and declared type must agree",
@@ -62,14 +65,14 @@ Svc = Annotated[ResumeService, Depends(_svc)]
 # --- request-body cap ------------------------------------------------------------------------------------------------
 
 
-class _BodyTooLarge(Exception):
+class _BodyTooLargeError(Exception):
     pass
 
 
 class _LimitedReceive:
     """ASGI ``receive`` wrapper that refuses more than ``limit`` body bytes, whatever the client declares."""
 
-    def __init__(self, receive: Callable[[], Coroutine[Any, Any, Any]], limit: int) -> None:
+    def __init__(self, receive: Callable[[], Awaitable[Any]], limit: int) -> None:
         self._receive, self._limit, self._seen = receive, limit, 0
         self.exceeded = False
 
@@ -79,7 +82,7 @@ class _LimitedReceive:
             self._seen += len(message.get("body", b""))
             if self._seen > self._limit:
                 self.exceeded = True
-                raise _BodyTooLarge
+                raise _BodyTooLargeError
         return message
 
 
@@ -101,7 +104,9 @@ def capped_route(limit: Callable[[], int]) -> type[APIRoute]:
                     raise AuthenticationError("Not authenticated")
                 declared = request.headers.get("content-length", "")
                 too_large = PayloadTooLargeError(
-                    "The upload is larger than allowed.", code="PAYLOAD_TOO_LARGE", details={"reason": "REQUEST_TOO_LARGE", "max_bytes": cap}
+                    "The upload is larger than allowed.",
+                    code="PAYLOAD_TOO_LARGE",
+                    details={"reason": "REQUEST_TOO_LARGE", "max_bytes": cap},
                 )
                 if declared.isdigit() and int(declared) > cap:
                     raise too_large
@@ -118,7 +123,9 @@ def capped_route(limit: Callable[[], int]) -> type[APIRoute]:
     return CappedRoute
 
 
-def capped_post(path: str, limit: Callable[[], int], **kwargs: Any) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
+def capped_post(
+    path: str, limit: Callable[[], int], **kwargs: Any
+) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
     """``@router.post`` for multipart endpoints, using :func:`capped_route` (decorators cannot set a route class)."""
 
     def decorator(fn: Callable[..., Any]) -> Callable[..., Any]:
@@ -153,7 +160,13 @@ def capped_post(path: str, limit: Callable[[], int], **kwargs: Any) -> Callable[
                         "batch_id": "3f2b8c0e-5c1a-4f64-9b6e-0d6d1b0a9f10",
                         "task_id": "7a1d2d0e-1f2b-4c33-b1f0-0d3f5f6a7b88",
                         "accepted": 2,
-                        "rejected": [{"filename": "old-cv.doc", "reason": "Legacy Word (.doc) files are not supported.", "code": "UNSUPPORTED_MEDIA_TYPE"}],
+                        "rejected": [
+                            {
+                                "filename": "old-cv.doc",
+                                "reason": "Legacy Word (.doc) files are not supported.",
+                                "code": "UNSUPPORTED_MEDIA_TYPE",
+                            }
+                        ],
                         "message": None,
                     }
                 }
@@ -222,7 +235,13 @@ async def reprocess_bulk_import(batch_id: uuid.UUID, user: Importer, svc: Svc) -
         "explains, and `POST /resumes/{id}/process` retries. Uploading the **identical file again** returns the existing résumé "
         "with **200** (`duplicate = true`) instead of creating another; a previously FAILED one is re-queued."
     ),
-    responses={**UPLOAD_ERRORS, 200: {"model": ResumeUploadOut, "description": "The identical file was already uploaded; the existing résumé is returned"}},
+    responses={
+        **UPLOAD_ERRORS,
+        200: {
+            "model": ResumeUploadOut,
+            "description": "The identical file was already uploaded; the existing résumé is returned",
+        },
+    },
 )
 async def upload_resume(
     user: Uploader,
@@ -230,10 +249,19 @@ async def upload_resume(
     svc: Svc,
     response: Response,
     file: Annotated[UploadFile, File(description="The résumé: PDF (.pdf) or Word (.docx)")],
-    set_primary: Annotated[bool, Form(description="Make this the primary résumé (used for matching and as the default for applications)")] = True,
+    set_primary: Annotated[
+        bool,
+        Form(
+            description="Make this the primary résumé (used for matching and as the default for applications)"
+        ),
+    ] = True,
 ) -> ResumeUploadOut:
     body, status_code = await svc.upload(
-        user, iter_upload(file), filename=file.filename, content_type=file.content_type, set_primary=set_primary
+        user,
+        iter_upload(file),
+        filename=file.filename,
+        content_type=file.content_type,
+        set_primary=set_primary,
     )
     response.status_code = status_code
     return body
@@ -277,12 +305,18 @@ async def get_resume(resume_id: uuid.UUID, user: Viewer, svc: Svc) -> ResumeOut:
     responses={
         200: {
             "description": "The file",
-            "content": {"application/pdf": {}, "application/vnd.openxmlformats-officedocument.wordprocessingml.document": {}},
+            "content": {
+                "application/pdf": {},
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document": {},
+            },
         }
     },
 )
 async def download_resume(
-    resume_id: uuid.UUID, user: Viewer, svc: Svc, inline: Annotated[bool, Query(description="Preview PDFs inline")] = False
+    resume_id: uuid.UUID,
+    user: Viewer,
+    svc: Svc,
+    inline: Annotated[bool, Query(description="Preview PDFs inline")] = False,
 ) -> StreamingResponse:
     dl = await svc.download(user, resume_id, inline=inline)
     return StreamingResponse(dl.chunks, media_type=dl.media_type, headers=dl.headers)
@@ -353,7 +387,9 @@ async def get_extracted(resume_id: uuid.UUID, user: Viewer, svc: Svc) -> Extract
     ),
     responses={409: {"model": ErrorResponse, "description": "RESUME_NOT_PROCESSED"}},
 )
-async def patch_extracted(resume_id: uuid.UUID, data: ExtractedPatch, user: Viewer, svc: Svc) -> ExtractedResume:
+async def patch_extracted(
+    resume_id: uuid.UUID, data: ExtractedPatch, user: Viewer, svc: Svc
+) -> ExtractedResume:
     return await svc.patch_extracted(user, resume_id, data)
 
 

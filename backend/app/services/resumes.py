@@ -100,19 +100,23 @@ class _Loaded:
 def content_disposition(filename: str, *, inline: bool) -> str:
     """RFC 6266 header with an ASCII fallback and the UTF-8 form of the (already sanitised) display name."""
     ascii_name = unicodedata.normalize("NFKD", filename).encode("ascii", "ignore").decode("ascii")
-    ascii_name = re.sub(r'[^A-Za-z0-9._\- ]', "_", ascii_name).strip() or "resume"
+    ascii_name = re.sub(r"[^A-Za-z0-9._\- ]", "_", ascii_name).strip() or "resume"
     return f"{'inline' if inline else 'attachment'}; filename=\"{ascii_name}\"; filename*=UTF-8''{quote(filename, safe='')}"
 
 
 class ResumeService:
-    def __init__(self, session: AsyncSession, dispatcher: Dispatcher | None = None, cache: Cache | None = None) -> None:
+    def __init__(
+        self, session: AsyncSession, dispatcher: Dispatcher | None = None, cache: Cache | None = None
+    ) -> None:
         self.session = session
         self.dispatcher = dispatcher
         self.cache = cache
 
     # --- loading + authorization ---------------------------------------------------------------------------------------------
     async def _own_profile(self, user: User) -> CandidateProfile:
-        profile = (await self.session.execute(select(CandidateProfile).where(CandidateProfile.user_id == user.id))).scalar_one_or_none()
+        profile = (
+            await self.session.execute(select(CandidateProfile).where(CandidateProfile.user_id == user.id))
+        ).scalar_one_or_none()
         if profile is None:
             raise NotFoundError("Candidate profile not found", code="CANDIDATE_NOT_FOUND")
         return profile
@@ -137,7 +141,9 @@ class ResumeService:
                 and candidate.sourced_by_company_id == user.company_id
             )
         else:
-            allowed = is_owner or await candidate_access_for(self.session, user, candidate) == CandidateAccess.FULL
+            allowed = (
+                is_owner or await candidate_access_for(self.session, user, candidate) == CandidateAccess.FULL
+            )
         if not allowed:
             raise not_found
         return _Loaded(resume, candidate, is_owner)
@@ -149,7 +155,11 @@ class ResumeService:
         ids = [r.id for r, _ in loaded]
         docs: dict[uuid.UUID, ResumeDocument] = {}
         for d in (
-            await self.session.execute(select(ResumeDocument).where(ResumeDocument.resume_id.in_(ids)).order_by(ResumeDocument.created_at.desc()))
+            await self.session.execute(
+                select(ResumeDocument)
+                .where(ResumeDocument.resume_id.in_(ids))
+                .order_by(ResumeDocument.created_at.desc())
+            )
         ).scalars():
             docs.setdefault(d.resume_id, d)
         res = ResumeProcessingResult
@@ -158,18 +168,34 @@ class ResumeService:
             for row in (
                 await self.session.execute(
                     select(
-                        res.resume_id, res.status, res.attempts, res.started_at, res.finished_at, res.duration_ms, res.parser_version, res.page_count,
-                        res.text_char_count, res.was_truncated, res.embedding.is_not(None).label("has_embedding"), res.embedding_model,
-                        res.embedding_version, res.error_code, res.error_message,
+                        res.resume_id,
+                        res.status,
+                        res.attempts,
+                        res.started_at,
+                        res.finished_at,
+                        res.duration_ms,
+                        res.parser_version,
+                        res.page_count,
+                        res.text_char_count,
+                        res.was_truncated,
+                        res.embedding.is_not(None).label("has_embedding"),
+                        res.embedding_model,
+                        res.embedding_version,
+                        res.error_code,
+                        res.error_message,
                     ).where(res.resume_id.in_(ids))
                 )
             ).all()
         }
         keys = {f"process-resume:{i}": i for i in ids}
-        stmt = select(BackgroundTask).where(BackgroundTask.type == TaskType.PROCESS_RESUME, BackgroundTask.dedupe_key.in_(list(keys)))
+        stmt = select(BackgroundTask).where(
+            BackgroundTask.type == TaskType.PROCESS_RESUME, BackgroundTask.dedupe_key.in_(list(keys))
+        )
         creators = {c.user_id for _, c in loaded if c.user_id is not None}
         if creators and all(c.user_id is not None for _, c in loaded):
-            stmt = stmt.where(BackgroundTask.created_by_id.in_(creators))  # registered candidates' tasks: use the creator index
+            stmt = stmt.where(
+                BackgroundTask.created_by_id.in_(creators)
+            )  # registered candidates' tasks: use the creator index
         tasks: dict[uuid.UUID, BackgroundTask] = {}
         for t in (await self.session.execute(stmt.order_by(BackgroundTask.created_at.desc()))).scalars():
             tasks.setdefault(keys[t.dedupe_key or ""], t)
@@ -180,9 +206,17 @@ class ResumeService:
             task = tasks.get(resume.id)
             outs.append(
                 ResumeOut(
-                    id=resume.id, candidate_id=resume.candidate_id, status=resume.status.value, is_primary=resume.is_primary,
-                    original_filename=doc.original_filename, content_type=doc.content_type, size_bytes=doc.size_bytes, sha256=doc.sha256,
-                    created_at=resume.created_at, updated_at=resume.updated_at, task_id=task.id if task else None,
+                    id=resume.id,
+                    candidate_id=resume.candidate_id,
+                    status=resume.status.value,
+                    is_primary=resume.is_primary,
+                    original_filename=doc.original_filename,
+                    content_type=doc.content_type,
+                    size_bytes=doc.size_bytes,
+                    sha256=doc.sha256,
+                    created_at=resume.created_at,
+                    updated_at=resume.updated_at,
+                    task_id=task.id if task else None,
                     processing=self._processing(results.get(resume.id), task),
                 )
             )
@@ -192,17 +226,33 @@ class ResumeService:
     def _processing(result: Any, task: BackgroundTask | None) -> ProcessingOut:
         out = ProcessingOut()
         if task is not None:
-            out.task_id, out.task_status, out.stage, out.progress = task.id, task.status.value, task.stage, task.progress
+            out.task_id, out.task_status, out.stage, out.progress = (
+                task.id,
+                task.status.value,
+                task.stage,
+                task.progress,
+            )
             out.started_at, out.finished_at = task.started_at, task.finished_at
             out.attempts = task.attempts
             if task.status == TaskStatus.FAILED:
                 out.error_code, out.error_message = task.error_code, task.error_message
         if result is not None:
             out.attempts = result.attempts
-            out.started_at, out.finished_at = result.started_at or out.started_at, result.finished_at or out.finished_at
-            out.duration_ms, out.parser_version, out.page_count = result.duration_ms, result.parser_version, result.page_count
+            out.started_at, out.finished_at = (
+                result.started_at or out.started_at,
+                result.finished_at or out.finished_at,
+            )
+            out.duration_ms, out.parser_version, out.page_count = (
+                result.duration_ms,
+                result.parser_version,
+                result.page_count,
+            )
             out.text_char_count, out.was_truncated = result.text_char_count, bool(result.was_truncated)
-            out.has_embedding, out.embedding_model, out.embedding_version = bool(result.has_embedding), result.embedding_model, result.embedding_version
+            out.has_embedding, out.embedding_model, out.embedding_version = (
+                bool(result.has_embedding),
+                result.embedding_model,
+                result.embedding_version,
+            )
             if result.error_code or result.status == ProcessingStatus.FAILED:
                 out.error_code, out.error_message = result.error_code, result.error_message
         return out
@@ -212,7 +262,13 @@ class ResumeService:
 
     # --- upload ---------------------------------------------------------------------------------------------------------------------------
     async def upload(
-        self, user: User, chunks: AsyncIterator[bytes], *, filename: str | None, content_type: str | None, set_primary: bool = True
+        self,
+        user: User,
+        chunks: AsyncIterator[bytes],
+        *,
+        filename: str | None,
+        content_type: str | None,
+        set_primary: bool = True,
     ) -> tuple[ResumeUploadOut, int]:
         """Validate while streaming, store, create the rows and queue processing. Returns ``(body, http_status)``:
         202 for a new upload, 200 when the identical file already exists for this candidate."""
@@ -233,10 +289,13 @@ class ResumeService:
             if existing is not None:
                 return await self._duplicate(user, candidate, existing, set_primary)
 
-            count = await self.session.scalar(select(func.count()).select_from(Resume).where(Resume.candidate_id == candidate.id))
+            count = await self.session.scalar(
+                select(func.count()).select_from(Resume).where(Resume.candidate_id == candidate.id)
+            )
             if (count or 0) >= MAX_RESUMES_PER_CANDIDATE:
                 raise ConflictError(
-                    f"You can keep at most {MAX_RESUMES_PER_CANDIDATE} résumés. Delete one you no longer need first.", code="RESUME_LIMIT_REACHED"
+                    f"You can keep at most {MAX_RESUMES_PER_CANDIDATE} résumés. Delete one you no longer need first.",
+                    code="RESUME_LIMIT_REACHED",
                 )
             key = new_resume_key()
             await storage.put(key, upload.file)
@@ -254,25 +313,46 @@ class ResumeService:
         out = await self._out(resume, candidate)
         return ResumeUploadOut(**out.model_dump(), message=message, duplicate=False), 202
 
-    async def _create_rows(self, user: User, candidate: CandidateProfile, key: str, upload: Any, set_primary: bool) -> Resume:
-        await self.session.execute(select(CandidateProfile.id).where(CandidateProfile.id == candidate.id).with_for_update())  # serialise per candidate
-        has_primary = await self.session.scalar(select(exists().where(Resume.candidate_id == candidate.id, Resume.is_primary.is_(True))))
+    async def _create_rows(
+        self, user: User, candidate: CandidateProfile, key: str, upload: Any, set_primary: bool
+    ) -> Resume:
+        await self.session.execute(
+            select(CandidateProfile.id).where(CandidateProfile.id == candidate.id).with_for_update()
+        )  # serialise per candidate
+        has_primary = await self.session.scalar(
+            select(exists().where(Resume.candidate_id == candidate.id, Resume.is_primary.is_(True)))
+        )
         make_primary = set_primary or not has_primary
         if make_primary:
-            await self.session.execute(update(Resume).where(Resume.candidate_id == candidate.id, Resume.is_primary.is_(True)).values(is_primary=False))
-        resume = Resume(candidate_id=candidate.id, uploaded_by_id=user.id, status=ResumeStatus.UPLOADED, is_primary=make_primary)
+            await self.session.execute(
+                update(Resume)
+                .where(Resume.candidate_id == candidate.id, Resume.is_primary.is_(True))
+                .values(is_primary=False)
+            )
+        resume = Resume(
+            candidate_id=candidate.id,
+            uploaded_by_id=user.id,
+            status=ResumeStatus.UPLOADED,
+            is_primary=make_primary,
+        )
         self.session.add(resume)
         await self.session.flush()
         self.session.add(
             ResumeDocument(
-                resume_id=resume.id, storage_key=key, original_filename=upload.filename, content_type=upload.content_type,
-                size_bytes=upload.size, sha256=upload.sha256,
+                resume_id=resume.id,
+                storage_key=key,
+                original_filename=upload.filename,
+                content_type=upload.content_type,
+                size_bytes=upload.size,
+                sha256=upload.sha256,
             )
         )
         await self.session.commit()
         return resume
 
-    async def _duplicate(self, user: User, candidate: CandidateProfile, existing: Resume, set_primary: bool) -> tuple[ResumeUploadOut, int]:
+    async def _duplicate(
+        self, user: User, candidate: CandidateProfile, existing: Resume, set_primary: bool
+    ) -> tuple[ResumeUploadOut, int]:
         """The identical file was uploaded before: no second copy. A FAILED one is retried; a processed one is returned as is."""
         if set_primary and not existing.is_primary:
             await self._make_primary(candidate, existing)
@@ -291,18 +371,27 @@ class ResumeService:
             return None, QUEUE_DOWN_MESSAGE
         try:
             task, _ = await TaskService(self.session).submit(
-                TaskType.PROCESS_RESUME, {"resume_id": str(resume.id)}, self.dispatcher, created_by_id=user.id,
+                TaskType.PROCESS_RESUME,
+                {"resume_id": str(resume.id)},
+                self.dispatcher,
+                created_by_id=user.id,
                 dedupe_key=f"process-resume:{resume.id}",
             )
         except ServiceUnavailableError:
-            logger.warning("résumé processing not queued (queue unavailable)", extra={"resume_id": str(resume.id)})
+            logger.warning(
+                "résumé processing not queued (queue unavailable)", extra={"resume_id": str(resume.id)}
+            )
             return None, QUEUE_DOWN_MESSAGE
         return task.id, None
 
     # --- reads ---------------------------------------------------------------------------------------------------------------------------------
     async def list_mine(self, user: User, *, page: int, page_size: int) -> tuple[list[ResumeOut], int]:
         candidate = await self._own_profile(user)
-        stmt = select(Resume).where(Resume.candidate_id == candidate.id).order_by(Resume.is_primary.desc(), Resume.created_at.desc(), Resume.id)
+        stmt = (
+            select(Resume)
+            .where(Resume.candidate_id == candidate.id)
+            .order_by(Resume.is_primary.desc(), Resume.created_at.desc(), Resume.id)
+        )
         rows, total = await paginate(self.session, stmt, page=page, page_size=page_size)
         return await self._outs([(r, candidate) for r in rows]), total
 
@@ -314,7 +403,10 @@ class ResumeService:
         loaded = await self._load(user, resume_id, mode="view")
         doc = (
             await self.session.execute(
-                select(ResumeDocument).where(ResumeDocument.resume_id == resume_id).order_by(ResumeDocument.created_at.desc()).limit(1)
+                select(ResumeDocument)
+                .where(ResumeDocument.resume_id == resume_id)
+                .order_by(ResumeDocument.created_at.desc())
+                .limit(1)
             )
         ).scalar_one_or_none()
         if doc is None:
@@ -325,10 +417,17 @@ class ResumeService:
             raise NotFoundError("Résumé file not found", code="RESUME_FILE_NOT_FOUND") from exc
         if not loaded.is_owner:  # releasing a candidate's file to staff is an auditable event
             record_audit(
-                self.session, actor_id=user.id, action="resume.downloaded", entity_type="resume", entity_id=resume_id, company_id=user.company_id
+                self.session,
+                actor_id=user.id,
+                action="resume.downloaded",
+                entity_type="resume",
+                entity_id=resume_id,
+                company_id=user.company_id,
             )
             await self.session.commit()
-        as_inline = inline and doc.content_type == "application/pdf"  # only PDFs are ever previewed in the browser
+        as_inline = (
+            inline and doc.content_type == "application/pdf"
+        )  # only PDFs are ever previewed in the browser
         headers = {
             "Content-Disposition": content_disposition(doc.original_filename, inline=as_inline),
             "Content-Length": str(doc.size_bytes),
@@ -339,8 +438,14 @@ class ResumeService:
 
     # --- owner operations ----------------------------------------------------------------------------------------------------------------------------
     async def _make_primary(self, candidate: CandidateProfile, resume: Resume) -> None:
-        await self.session.execute(select(CandidateProfile.id).where(CandidateProfile.id == candidate.id).with_for_update())
-        await self.session.execute(update(Resume).where(Resume.candidate_id == candidate.id, Resume.is_primary.is_(True)).values(is_primary=False))
+        await self.session.execute(
+            select(CandidateProfile.id).where(CandidateProfile.id == candidate.id).with_for_update()
+        )
+        await self.session.execute(
+            update(Resume)
+            .where(Resume.candidate_id == candidate.id, Resume.is_primary.is_(True))
+            .values(is_primary=False)
+        )
         await self.session.execute(update(Resume).where(Resume.id == resume.id).values(is_primary=True))
         await self.session.commit()
         await self.session.refresh(resume)
@@ -348,7 +453,11 @@ class ResumeService:
 
     async def _after_change(self, candidate: CandidateProfile, user: User | None = None) -> None:
         await profile_ops.refresh_after_change(
-            self.session, candidate, dispatcher=self.dispatcher, cache=self.cache, user_id=user.id if user else None
+            self.session,
+            candidate,
+            dispatcher=self.dispatcher,
+            cache=self.cache,
+            user_id=user.id if user else None,
         )
 
     async def set_primary(self, user: User, resume_id: uuid.UUID) -> ResumeOut:
@@ -360,8 +469,12 @@ class ResumeService:
     async def reprocess(self, user: User, resume_id: uuid.UUID) -> TaskRef:
         loaded = await self._load(user, resume_id, mode="edit")
         task, _ = await TaskService(self.session).submit(
-            TaskType.PROCESS_RESUME, {"resume_id": str(resume_id)}, self._require_dispatcher(), created_by_id=user.id,
-            company_id=user.company_id if not loaded.is_owner else None, dedupe_key=f"process-resume:{resume_id}",
+            TaskType.PROCESS_RESUME,
+            {"resume_id": str(resume_id)},
+            self._require_dispatcher(),
+            created_by_id=user.id,
+            company_id=user.company_id if not loaded.is_owner else None,
+            dedupe_key=f"process-resume:{resume_id}",
         )
         return TaskRef(task_id=str(task.id), status=task.status.value)
 
@@ -376,24 +489,43 @@ class ResumeService:
         in_use = await self.session.scalar(select(exists().where(Application.resume_id == resume_id)))
         if in_use:
             raise ConflictError(
-                "This résumé is attached to one or more applications and cannot be deleted.", code="RESUME_IN_USE"
+                "This résumé is attached to one or more applications and cannot be deleted.",
+                code="RESUME_IN_USE",
             )
-        keys = list((await self.session.execute(select(ResumeDocument.storage_key).where(ResumeDocument.resume_id == resume_id))).scalars())
+        keys = list(
+            (
+                await self.session.execute(
+                    select(ResumeDocument.storage_key).where(ResumeDocument.resume_id == resume_id)
+                )
+            ).scalars()
+        )
         was_primary = resume.is_primary
         try:
-            await self.session.execute(select(CandidateProfile.id).where(CandidateProfile.id == candidate.id).with_for_update())
-            await self.session.execute(delete(Resume).where(Resume.id == resume_id))  # documents + result cascade in the database
+            await self.session.execute(
+                select(CandidateProfile.id).where(CandidateProfile.id == candidate.id).with_for_update()
+            )
+            await self.session.execute(
+                delete(Resume).where(Resume.id == resume_id)
+            )  # documents + result cascade in the database
             if was_primary:
                 newest = await self.session.scalar(
-                    select(Resume.id).where(Resume.candidate_id == candidate.id).order_by(Resume.created_at.desc(), Resume.id).limit(1)
+                    select(Resume.id)
+                    .where(Resume.candidate_id == candidate.id)
+                    .order_by(Resume.created_at.desc(), Resume.id)
+                    .limit(1)
                 )
                 if newest is not None:
-                    await self.session.execute(update(Resume).where(Resume.id == newest).values(is_primary=True))
+                    await self.session.execute(
+                        update(Resume).where(Resume.id == newest).values(is_primary=True)
+                    )
             await self.session.commit()
-        except IntegrityError as exc:  # an application referenced it between the check and the delete (FK is RESTRICT)
+        except (
+            IntegrityError
+        ) as exc:  # an application referenced it between the check and the delete (FK is RESTRICT)
             await self.session.rollback()
             raise ConflictError(
-                "This résumé is attached to one or more applications and cannot be deleted.", code="RESUME_IN_USE"
+                "This résumé is attached to one or more applications and cannot be deleted.",
+                code="RESUME_IN_USE",
             ) from exc
         storage = get_storage()
         for key in keys:
@@ -406,7 +538,9 @@ class ResumeService:
     # --- extracted data -------------------------------------------------------------------------------------------------------------------------------
     async def _processed(self, loaded: _Loaded) -> ResumeProcessingResult:
         result = (
-            await self.session.execute(select(ResumeProcessingResult).where(ResumeProcessingResult.resume_id == loaded.resume.id))
+            await self.session.execute(
+                select(ResumeProcessingResult).where(ResumeProcessingResult.resume_id == loaded.resume.id)
+            )
         ).scalar_one_or_none()
         if result is None or result.parsed_data is None or loaded.resume.status != ResumeStatus.PROCESSED:
             raise ConflictError("This résumé has not been processed yet.", code="RESUME_NOT_PROCESSED")
@@ -416,27 +550,45 @@ class ResumeService:
         loaded = await self._load(user, resume_id, mode="edit")
         result = await self._processed(loaded)
         assert result.parsed_data is not None
-        return await review.build_extracted(self.session, resume_id=resume_id, candidate_id=loaded.candidate.id, parsed=result.parsed_data)
+        return await review.build_extracted(
+            self.session, resume_id=resume_id, candidate_id=loaded.candidate.id, parsed=result.parsed_data
+        )
 
-    async def patch_extracted(self, user: User, resume_id: uuid.UUID, patch: ExtractedPatch) -> ExtractedResume:
+    async def patch_extracted(
+        self, user: User, resume_id: uuid.UUID, patch: ExtractedPatch
+    ) -> ExtractedResume:
         loaded = await self._load(user, resume_id, mode="edit")
         result = await self._processed(loaded)
         assert result.parsed_data is not None
         result.parsed_data = await review.apply_patch(self.session, result.parsed_data, patch)
         record_audit(
-            self.session, actor_id=user.id, action="resume.extracted_corrected", entity_type="resume", entity_id=resume_id, company_id=user.company_id
+            self.session,
+            actor_id=user.id,
+            action="resume.extracted_corrected",
+            entity_type="resume",
+            entity_id=resume_id,
+            company_id=user.company_id,
         )
         await self.session.commit()
-        return await review.build_extracted(self.session, resume_id=resume_id, candidate_id=loaded.candidate.id, parsed=result.parsed_data)
+        return await review.build_extracted(
+            self.session, resume_id=resume_id, candidate_id=loaded.candidate.id, parsed=result.parsed_data
+        )
 
     async def apply_extracted(self, user: User, resume_id: uuid.UUID, request: ApplyRequest) -> ApplyResult:
         loaded = await self._load(user, resume_id, mode="edit")
         result = await self._processed(loaded)
         assert result.parsed_data is not None
-        outcome = await review.apply_extracted(self.session, candidate=loaded.candidate, parsed=result.parsed_data, request=request)
+        outcome = await review.apply_extracted(
+            self.session, candidate=loaded.candidate, parsed=result.parsed_data, request=request
+        )
         record_audit(
-            self.session, actor_id=user.id, action="resume.extracted_applied", entity_type="resume", entity_id=resume_id,
-            company_id=user.company_id, meta={"applied": outcome.applied, "fields": outcome.fields_applied},
+            self.session,
+            actor_id=user.id,
+            action="resume.extracted_applied",
+            entity_type="resume",
+            entity_id=resume_id,
+            company_id=user.company_id,
+            meta={"applied": outcome.applied, "fields": outcome.fields_applied},
         )
         await self.session.commit()
         await self._after_change(loaded.candidate, user)
@@ -450,7 +602,8 @@ class ResumeService:
             raise ValidationFailure("Attach at least one file in the `files` field.", code="NO_FILES")
         if len(uploads) > settings.max_bulk_import_files:
             raise ValidationFailure(
-                f"At most {settings.max_bulk_import_files} files can be imported at once.", code="TOO_MANY_FILES",
+                f"At most {settings.max_bulk_import_files} files can be imported at once.",
+                code="TOO_MANY_FILES",
                 details={"max_files": settings.max_bulk_import_files, "received": len(uploads)},
             )
         storage = get_storage()
@@ -461,7 +614,9 @@ class ResumeService:
             for up in uploads:  # one file at a time: spooled to disk, validated, stored — never all in memory
                 display = sanitize_filename(up.filename)
                 try:
-                    valid = await receive_upload(iter_upload(up), filename=up.filename, declared_content_type=up.content_type)
+                    valid = await receive_upload(
+                        iter_upload(up), filename=up.filename, declared_content_type=up.content_type
+                    )
                 except AppError as exc:
                     rejected.append(RejectedFile(filename=display, reason=exc.message, code=exc.code))
                     continue
@@ -469,15 +624,25 @@ class ResumeService:
                     key = new_resume_key()
                     await storage.put(key, valid.file)
                     stored.append(key)
-                    items.append(BulkImportItem(filename=valid.filename, sha256=valid.sha256, size_bytes=valid.size, storage_key=key))
+                    items.append(
+                        BulkImportItem(
+                            filename=valid.filename,
+                            sha256=valid.sha256,
+                            size_bytes=valid.size,
+                            storage_key=key,
+                        )
+                    )
                 finally:
                     valid.close()
             if not items:
                 raise ValidationFailure(
-                    "None of the files could be accepted.", code="NO_VALID_FILES",
+                    "None of the files could be accepted.",
+                    code="NO_VALID_FILES",
                     details={"rejected": [r.model_dump() for r in rejected]},
                 )
-            batch = BulkImportBatch(company_id=company_id, created_by_id=user.id, total_files=len(items), items=items)
+            batch = BulkImportBatch(
+                company_id=company_id, created_by_id=user.id, total_files=len(items), items=items
+            )
             self.session.add(batch)
             await self.session.commit()
         except BaseException:
@@ -489,7 +654,10 @@ class ResumeService:
         message: str | None = None
         tasks = TaskService(self.session)
         task, _ = await tasks.create(
-            TaskType.BULK_RESUME_IMPORT, {"batch_id": str(batch.id)}, created_by_id=user.id, company_id=company_id,
+            TaskType.BULK_RESUME_IMPORT,
+            {"batch_id": str(batch.id)},
+            created_by_id=user.id,
+            company_id=company_id,
             dedupe_key=f"bulk-import:{batch.id}",
         )
         batch.task_id = task.id
@@ -500,11 +668,15 @@ class ResumeService:
         except ServiceUnavailableError:
             task_id = None
             message = "The files were saved, but the import could not be queued right now. Retry with POST /resumes/bulk-imports/{id}/process."
-        return BulkImportAccepted(batch_id=batch.id, task_id=task_id, accepted=len(items), rejected=rejected, message=message), 202
+        return BulkImportAccepted(
+            batch_id=batch.id, task_id=task_id, accepted=len(items), rejected=rejected, message=message
+        ), 202
 
     async def _load_batch(self, user: User, batch_id: uuid.UUID) -> BulkImportBatch:
         batch = await self.session.get(BulkImportBatch, batch_id)
-        if batch is None or not (is_admin(user) or (user.company_id is not None and batch.company_id == user.company_id)):
+        if batch is None or not (
+            is_admin(user) or (user.company_id is not None and batch.company_id == user.company_id)
+        ):
             raise NotFoundError("Import batch not found", code="BATCH_NOT_FOUND")
         return batch
 
@@ -513,14 +685,25 @@ class ResumeService:
             return []
         ids = [b.id for b in batches]
         counts: dict[uuid.UUID, dict[ImportItemStatus, int]] = defaultdict(dict)
-        for bid, status, n in (
+        for bid, item_status, n in (
             await self.session.execute(
-                select(BulkImportItem.batch_id, BulkImportItem.status, func.count()).where(BulkImportItem.batch_id.in_(ids)).group_by(BulkImportItem.batch_id, BulkImportItem.status)
+                select(BulkImportItem.batch_id, BulkImportItem.status, func.count())
+                .where(BulkImportItem.batch_id.in_(ids))
+                .group_by(BulkImportItem.batch_id, BulkImportItem.status)
             )
         ).all():
-            counts[bid][status] = int(n)
+            counts[bid][item_status] = int(n)
         task_ids = [b.task_id for b in batches if b.task_id]
-        tasks = {t.id: t for t in (await self.session.execute(select(BackgroundTask).where(BackgroundTask.id.in_(task_ids)))).scalars()} if task_ids else {}
+        tasks = (
+            {
+                t.id: t
+                for t in (
+                    await self.session.execute(select(BackgroundTask).where(BackgroundTask.id.in_(task_ids)))
+                ).scalars()
+            }
+            if task_ids
+            else {}
+        )
         outs: list[BulkImportBatchOut] = []
         for b in batches:
             c = counts[b.id]
@@ -535,18 +718,27 @@ class ResumeService:
                 status = "PENDING"
             outs.append(
                 BulkImportBatchOut(
-                    id=b.id, status=status, total_files=b.total_files,
+                    id=b.id,
+                    status=status,
+                    total_files=b.total_files,
                     counts=BulkImportCounts(
-                        pending=c.get(ImportItemStatus.PENDING, 0), created=c.get(ImportItemStatus.CREATED, 0),
-                        duplicate=c.get(ImportItemStatus.DUPLICATE, 0), failed=c.get(ImportItemStatus.FAILED, 0),
+                        pending=c.get(ImportItemStatus.PENDING, 0),
+                        created=c.get(ImportItemStatus.CREATED, 0),
+                        duplicate=c.get(ImportItemStatus.DUPLICATE, 0),
+                        failed=c.get(ImportItemStatus.FAILED, 0),
                     ),
-                    task_id=b.task_id, progress=task.progress if task else None, created_by_id=b.created_by_id, created_at=b.created_at,
+                    task_id=b.task_id,
+                    progress=task.progress if task else None,
+                    created_by_id=b.created_by_id,
+                    created_at=b.created_at,
                     finished_at=b.finished_at,
                 )
             )
         return outs
 
-    async def bulk_list(self, user: User, *, page: int, page_size: int) -> tuple[list[BulkImportBatchOut], int]:
+    async def bulk_list(
+        self, user: User, *, page: int, page_size: int
+    ) -> tuple[list[BulkImportBatchOut], int]:
         stmt = select(BulkImportBatch).order_by(BulkImportBatch.created_at.desc(), BulkImportBatch.id)
         if not is_admin(user):
             stmt = stmt.where(BulkImportBatch.company_id == require_company(user))
@@ -557,14 +749,24 @@ class ResumeService:
         batch = await self._load_batch(user, batch_id)
         (base,) = await self._batch_outs([batch])
         items = (
-            await self.session.execute(select(BulkImportItem).where(BulkImportItem.batch_id == batch_id).order_by(BulkImportItem.created_at, BulkImportItem.id))
+            await self.session.execute(
+                select(BulkImportItem)
+                .where(BulkImportItem.batch_id == batch_id)
+                .order_by(BulkImportItem.created_at, BulkImportItem.id)
+            )
         ).scalars()
         return BulkImportBatchDetail(
             **base.model_dump(),
             items=[
                 BulkImportItemOut(
-                    id=i.id, filename=i.filename, size_bytes=i.size_bytes, status=i.status, candidate_id=i.candidate_id, resume_id=i.resume_id,
-                    error_code=i.error_code, error_message=i.error_message,
+                    id=i.id,
+                    filename=i.filename,
+                    size_bytes=i.size_bytes,
+                    status=i.status,
+                    candidate_id=i.candidate_id,
+                    resume_id=i.resume_id,
+                    error_code=i.error_code,
+                    error_message=i.error_message,
                 )
                 for i in items
             ],
@@ -576,7 +778,10 @@ class ResumeService:
             raise ConflictError("This import has already finished.", code="BATCH_ALREADY_COMPLETED")
         tasks = TaskService(self.session)
         task, created = await tasks.create(
-            TaskType.BULK_RESUME_IMPORT, {"batch_id": str(batch.id)}, created_by_id=user.id, company_id=batch.company_id,
+            TaskType.BULK_RESUME_IMPORT,
+            {"batch_id": str(batch.id)},
+            created_by_id=user.id,
+            company_id=batch.company_id,
             dedupe_key=f"bulk-import:{batch.id}",
         )
         if created:

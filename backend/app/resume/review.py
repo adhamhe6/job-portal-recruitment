@@ -62,49 +62,91 @@ async def build_extracted(
         row = snap.skills.get(skill.id) if skill else None
         skills.append(
             ExtractedSkill(
-                index=i, name=s["name"], skill_id=skill.id if skill else None, confidence=float(s.get("confidence", 0)),
-                listed=bool(s.get("listed")), already_on_profile=bool(row and row[0] == SkillStatus.CONFIRMED),
-                status=row[0] if row else None, corrected=bool(s.get("corrected")),
+                index=i,
+                name=s["name"],
+                skill_id=skill.id if skill else None,
+                confidence=float(s.get("confidence", 0)),
+                listed=bool(s.get("listed")),
+                already_on_profile=bool(row and row[0] == SkillStatus.CONFIRMED),
+                status=row[0] if row else None,
+                corrected=bool(s.get("corrected")),
             )
         )
 
     experiences: list[ExtractedExperience] = []
     for i, e in _live(parsed.get("experiences") or []):
-        missing = [f for f, v in (("title", e.get("title")), ("company", e.get("company")), ("start_date", e.get("start_date"))) if not v]
+        missing = [
+            f
+            for f, v in (
+                ("title", e.get("title")),
+                ("company", e.get("company")),
+                ("start_date", e.get("start_date")),
+            )
+            if not v
+        ]
         experiences.append(
             ExtractedExperience(
-                index=i, title=e.get("title"), company=e.get("company"), location=e.get("location"), start_date=ops.as_date(e.get("start_date")),
-                end_date=ops.as_date(e.get("end_date")), is_current=bool(e.get("is_current")), description=e.get("description"),
+                index=i,
+                title=e.get("title"),
+                company=e.get("company"),
+                location=e.get("location"),
+                start_date=ops.as_date(e.get("start_date")),
+                end_date=ops.as_date(e.get("end_date")),
+                is_current=bool(e.get("is_current")),
+                description=e.get("description"),
                 confidence=float(e.get("confidence", 0)),
-                already_on_profile=ops.experience_key(e.get("title"), e.get("company"), e.get("start_date")) in snap.experiences,
-                corrected=bool(e.get("corrected")), missing_for_apply=missing,
+                already_on_profile=ops.experience_key(e.get("title"), e.get("company"), e.get("start_date"))
+                in snap.experiences,
+                corrected=bool(e.get("corrected")),
+                missing_for_apply=missing,
             )
         )
 
     educations: list[ExtractedEducation] = []
     for i, e in _live(parsed.get("educations") or []):
-        missing = [f for f, v in (("institution", e.get("institution")), ("degree_level", e.get("degree_level"))) if not v]
+        missing = [
+            f
+            for f, v in (("institution", e.get("institution")), ("degree_level", e.get("degree_level")))
+            if not v
+        ]
         educations.append(
             ExtractedEducation(
-                index=i, institution=e.get("institution"), degree=e.get("degree"), degree_level=e.get("degree_level"),
-                field_of_study=e.get("field_of_study"), start_year=e.get("start_year"), end_year=e.get("end_year"),
+                index=i,
+                institution=e.get("institution"),
+                degree=e.get("degree"),
+                degree_level=e.get("degree_level"),
+                field_of_study=e.get("field_of_study"),
+                start_year=e.get("start_year"),
+                end_year=e.get("end_year"),
                 confidence=float(e.get("confidence", 0)),
-                already_on_profile=ops.education_key(e.get("institution"), e.get("degree_level")) in snap.educations,
-                corrected=bool(e.get("corrected")), missing_for_apply=missing,
+                already_on_profile=ops.education_key(e.get("institution"), e.get("degree_level"))
+                in snap.educations,
+                corrected=bool(e.get("corrected")),
+                missing_for_apply=missing,
             )
         )
 
     certifications = [
         ExtractedCertification(
-            index=i, name=c["name"], issuer=c.get("issuer"), issued_on=ops.as_date(c.get("issued_on")), issued_year=c.get("issued_year"),
-            confidence=float(c.get("confidence", 0)), already_on_profile=ops.norm(c["name"]) in snap.certifications, corrected=bool(c.get("corrected")),
+            index=i,
+            name=c["name"],
+            issuer=c.get("issuer"),
+            issued_on=ops.as_date(c.get("issued_on")),
+            issued_year=c.get("issued_year"),
+            confidence=float(c.get("confidence", 0)),
+            already_on_profile=ops.norm(c["name"]) in snap.certifications,
+            corrected=bool(c.get("corrected")),
         )
         for i, c in _live(parsed.get("certifications") or [])
     ]
     languages = [
         ExtractedLanguage(
-            index=i, language=lang["language"], proficiency=lang.get("proficiency"), confidence=float(lang.get("confidence", 0)),
-            already_on_profile=ops.norm(lang["language"]) in snap.languages, corrected=bool(lang.get("corrected")),
+            index=i,
+            language=lang["language"],
+            proficiency=lang.get("proficiency"),
+            confidence=float(lang.get("confidence", 0)),
+            already_on_profile=ops.norm(lang["language"]) in snap.languages,
+            corrected=bool(lang.get("corrected")),
             missing_for_apply=[] if lang.get("proficiency") else ["proficiency"],
         )
         for i, lang in _live(parsed.get("languages") or [])
@@ -115,10 +157,16 @@ async def build_extracted(
         candidate_id=candidate_id,
         parser_version=str(parsed.get("parser_version") or ""),
         has_corrections=bool(parsed.get("has_corrections")),
-        contact=ExtractedContact(**{k: (parsed.get("contact") or {}).get(k) for k in ExtractedContact.model_fields}),
+        contact=ExtractedContact(
+            **{k: (parsed.get("contact") or {}).get(k) for k in ExtractedContact.model_fields}
+        ),
         headline=parsed.get("headline"),
         summary=parsed.get("summary"),
-        years_of_experience=ExtractedYears(value=yoe.get("value"), basis=yoe.get("basis"), stated=yoe.get("stated")) if isinstance(yoe, Mapping) else None,
+        years_of_experience=ExtractedYears(
+            value=yoe.get("value"), basis=yoe.get("basis"), stated=yoe.get("stated")
+        )
+        if isinstance(yoe, Mapping)
+        else None,
         skills=skills,
         experiences=experiences,
         educations=educations,
@@ -137,7 +185,8 @@ def _patch_items(parsed: dict[str, Any], section: str, patches: Sequence[Any]) -
     for p in patches:
         if p.index >= len(items):
             raise ValidationFailure(
-                f"No {section[:-1] if section.endswith('s') else section} suggestion with index {p.index}", code="INVALID_INDEX",
+                f"No {section[:-1] if section.endswith('s') else section} suggestion with index {p.index}",
+                code="INVALID_INDEX",
                 details={"section": section, "index": p.index, "count": len(items)},
             )
         item = items[p.index]
@@ -145,14 +194,20 @@ def _patch_items(parsed: dict[str, Any], section: str, patches: Sequence[Any]) -
             item["removed"] = bool(p.remove)
         for field in p.model_fields_set - {"index", "remove"}:
             value = getattr(p, field)
-            item[field] = value.isoformat() if isinstance(value, date) else (value.value if hasattr(value, "value") else value)
+            item[field] = (
+                value.isoformat()
+                if isinstance(value, date)
+                else (value.value if hasattr(value, "value") else value)
+            )
         if p.model_fields_set - {"index", "remove"}:
             item["corrected"] = True
         if item.get("is_current"):
             item["end_date"] = None
 
 
-async def apply_patch(session: AsyncSession, parsed: Mapping[str, Any], patch: ExtractedPatch) -> dict[str, Any]:
+async def apply_patch(
+    session: AsyncSession, parsed: Mapping[str, Any], patch: ExtractedPatch
+) -> dict[str, Any]:
     """Return a corrected deep copy of ``parsed`` (the caller stores it). Raises ``ValidationFailure`` on a bad index."""
     out: dict[str, Any] = copy.deepcopy(dict(parsed))
     touched = False
@@ -167,7 +222,11 @@ async def apply_patch(session: AsyncSession, parsed: Mapping[str, Any], patch: E
             touched = True
     if "years_of_experience" in patch.model_fields_set:
         value = patch.years_of_experience
-        out["years_of_experience"] = None if value is None else {"value": float(value), "basis": "corrected", "computed": None, "stated": None}
+        out["years_of_experience"] = (
+            None
+            if value is None
+            else {"value": float(value), "basis": "corrected", "computed": None, "stated": None}
+        )
         touched = True
 
     # Skill renames are re-resolved against the taxonomy so the canonical spelling is stored when one exists.
@@ -202,7 +261,12 @@ def _blank(value: Any) -> bool:
 
 
 async def apply_extracted(
-    session: AsyncSession, *, candidate: CandidateProfile, parsed: Mapping[str, Any], request: ApplyRequest, today: date | None = None
+    session: AsyncSession,
+    *,
+    candidate: CandidateProfile,
+    parsed: Mapping[str, Any],
+    request: ApplyRequest,
+    today: date | None = None,
 ) -> ApplyResult:
     """Copy the selected suggestions into the structured profile (caller commits)."""
     today = today or date.today()
@@ -230,7 +294,10 @@ async def apply_extracted(
     if resolved:
         for row in (
             await session.execute(
-                select(CandidateSkill).where(CandidateSkill.candidate_id == candidate.id, CandidateSkill.skill_id.in_([s.id for s in resolved.values()]))
+                select(CandidateSkill).where(
+                    CandidateSkill.candidate_id == candidate.id,
+                    CandidateSkill.skill_id.in_([s.id for s in resolved.values()]),
+                )
             )
         ).scalars():
             existing_rows[row.skill_id] = row
@@ -240,23 +307,32 @@ async def apply_extracted(
         if skill is None:
             skipped.append(SkippedItem(section="skills", index=i, reason="UNKNOWN_SKILL"))
             continue
-        row = existing_rows.get(skill.id)
-        if (row is not None and row.status == SkillStatus.CONFIRMED) or skill.id in new_skill_ids:
+        current = existing_rows.get(skill.id)
+        if (current is not None and current.status == SkillStatus.CONFIRMED) or skill.id in new_skill_ids:
             skipped.append(SkippedItem(section="skills", index=i, reason="ALREADY_ON_PROFILE"))
             continue
-        if row is not None:  # a suggestion (or one the user dismissed earlier, now explicitly chosen again)
-            row.status = SkillStatus.CONFIRMED
+        if current is not None:  # a suggestion (or one the user dismissed earlier, now explicitly chosen again)
+            current.status = SkillStatus.CONFIRMED
         else:
             session.add(
                 CandidateSkill(
-                    candidate_id=candidate.id, skill_id=skill.id, source=DataSource.RESUME, status=SkillStatus.CONFIRMED,
+                    candidate_id=candidate.id,
+                    skill_id=skill.id,
+                    source=DataSource.RESUME,
+                    status=SkillStatus.CONFIRMED,
                     confidence=Decimal(str(round(min(float(item.get("confidence", 0.5)), 0.99), 2))),
                 )
             )
             new_skill_ids.add(skill.id)
         applied["skills"] += 1
 
-    def add_rows(section: str, selection: list[int] | str, build: Callable[[Mapping[str, Any]], tuple[Any, str | None]], key: Callable[[Any], Any], seen: set[Any]) -> None:
+    def add_rows(
+        section: str,
+        selection: list[int] | str,
+        build: Callable[[Mapping[str, Any]], tuple[Any, str | None]],
+        key: Callable[[Any], Any],
+        seen: set[Any],
+    ) -> None:
         for i, item in pick(section, selection):
             row, reason = build(item)
             if row is None:
@@ -270,21 +346,45 @@ async def apply_extracted(
             session.add(row)
             applied[section] += 1
 
-    add_rows("experiences", request.experiences, lambda it: ops.build_experience(candidate.id, it, today),
-             lambda r: ops.experience_key(r.title, r.company_name, r.start_date), snap.experiences)
-    add_rows("educations", request.educations, lambda it: ops.build_education(candidate.id, it),
-             lambda r: ops.education_key(r.institution, r.degree_level.value), snap.educations)
-    add_rows("certifications", request.certifications, lambda it: ops.build_certification(candidate.id, it),
-             lambda r: ops.norm(r.name), snap.certifications)
-    add_rows("languages", request.languages, lambda it: ops.build_language(candidate.id, it),
-             lambda r: ops.norm(r.language), snap.languages)
+    add_rows(
+        "experiences",
+        request.experiences,
+        lambda it: ops.build_experience(candidate.id, it, today),
+        lambda r: ops.experience_key(r.title, r.company_name, r.start_date),
+        snap.experiences,
+    )
+    add_rows(
+        "educations",
+        request.educations,
+        lambda it: ops.build_education(candidate.id, it),
+        lambda r: ops.education_key(r.institution, r.degree_level.value),
+        snap.educations,
+    )
+    add_rows(
+        "certifications",
+        request.certifications,
+        lambda it: ops.build_certification(candidate.id, it),
+        lambda r: ops.norm(r.name),
+        snap.certifications,
+    )
+    add_rows(
+        "languages",
+        request.languages,
+        lambda it: ops.build_language(candidate.id, it),
+        lambda r: ops.norm(r.language),
+        snap.languages,
+    )
 
     fields_applied = await _apply_fields(session, candidate, parsed, request, skipped)
     return ApplyResult(applied=dict(applied), fields_applied=fields_applied, skipped=skipped)
 
 
 async def _apply_fields(
-    session: AsyncSession, candidate: CandidateProfile, parsed: Mapping[str, Any], request: ApplyRequest, skipped: list[SkippedItem]
+    session: AsyncSession,
+    candidate: CandidateProfile,
+    parsed: Mapping[str, Any],
+    request: ApplyRequest,
+    skipped: list[SkippedItem],
 ) -> list[str]:
     contact = parsed.get("contact") or {}
     user: User | None = await session.get(User, candidate.user_id) if candidate.user_id else None
@@ -304,13 +404,19 @@ async def _apply_fields(
         if _blank(suggestion):
             skipped.append(SkippedItem(section=section, reason="NO_SUGGESTION"))
             continue
-        current = (user.phone if user else candidate.contact_phone) if field == "phone" else getattr(candidate, field)
+        current = (
+            (user.phone if user else candidate.contact_phone)
+            if field == "phone"
+            else getattr(candidate, field)
+        )
         if not _blank(current) and field not in request.overwrite:
             skipped.append(SkippedItem(section=section, reason="FIELD_NOT_EMPTY"))
             continue
         value: Any = suggestion
         if field in ("linkedin_url", "github_url", "portfolio_url"):
-            if not (isinstance(value, str) and value.startswith(("http://", "https://")) and len(value) <= 500):
+            if not (
+                isinstance(value, str) and value.startswith(("http://", "https://")) and len(value) <= 500
+            ):
                 skipped.append(SkippedItem(section=section, reason="INVALID_URL"))
                 continue
         elif field == "headline":
@@ -330,4 +436,3 @@ async def _apply_fields(
             setattr(candidate, field, value)
         done.append(field)
     return done
-

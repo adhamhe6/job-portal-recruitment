@@ -122,7 +122,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Browser E2E (Playwright: UI → API → PostgreSQL/Redis/worker → UI)
+      - name: "Browser E2E (Playwright, UI to API to PostgreSQL/Redis/worker and back)"
         working-directory: e2e
         env:
           E2E_BASE_URL: http://localhost:8080

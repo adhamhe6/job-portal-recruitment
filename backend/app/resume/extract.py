@@ -91,6 +91,7 @@ def _pdf_links(page: Any) -> Iterator[str]:
             action = ref.get_object().get("/A")
             uri = action.get_object().get("/URI") if action is not None else None
         except Exception:
+            logger.debug("unreadable link annotation skipped")
             continue
         if isinstance(uri, str) and uri:
             yield uri.strip()
@@ -249,13 +250,13 @@ async def extract_document(
     *,
     max_chars: int,
     max_pages: int = MAX_PDF_PAGES,
-    timeout: float = EXTRACTION_TIMEOUT_SECONDS,
+    timeout_seconds: float = EXTRACTION_TIMEOUT_SECONDS,
 ) -> ExtractedText:
     """Extract text off the event loop with a timeout. Never raises anything but :class:`ExtractionError`."""
     try:
         return await asyncio.wait_for(
             asyncio.to_thread(extract_sync, data, kind, max_chars=max_chars, max_pages=max_pages),
-            timeout=timeout,
+            timeout=timeout_seconds,
         )
     except ExtractionError:
         raise

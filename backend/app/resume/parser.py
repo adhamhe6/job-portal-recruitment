@@ -1037,7 +1037,7 @@ _MONTH_YEAR = re.compile(rf"({_MONTH})[ \t]*,?[ \t]*({_YEAR})", re.IGNORECASE)
 
 def _cert_from_line(line: str) -> ParsedCertification | None:
     text = strip_bullet(line)
-    if not text or len(text) > 160 or text.endswith(".") and len(text.split()) > 12:
+    if not text or len(text) > 160 or (text.endswith(".") and len(text.split()) > 12):
         return None
     issued_on: date | None = None
     issued_year: int | None = None

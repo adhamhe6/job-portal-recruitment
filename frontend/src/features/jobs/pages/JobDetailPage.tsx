@@ -1,5 +1,5 @@
 import { Building2, CalendarClock, ExternalLink, GraduationCap, MapPin, Timer, Wallet } from 'lucide-react'
-import type { ReactNode } from 'react'
+import { lazy, Suspense, type ReactNode } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { CopyButton } from '@/components/common/CopyButton'
 import { PageHeader } from '@/components/common/PageHeader'
@@ -25,10 +25,12 @@ import { isStaffView, useJob, useJobStats, type JobView } from '../api/jobs'
 import { ApplyCta } from '../components/ApplyCta'
 import { CompanyLogo } from '../components/CompanyLogo'
 import { JobBadges } from '../components/JobBadges'
-import { JobOverview } from '../components/JobOverview'
 import { MatchCard } from '../components/MatchCard'
 import { SaveJobButton } from '../components/SaveJobButton'
 import { StaffJobPanel } from '../components/StaffJobPanel'
+
+// Recharts (~370 KB) is only needed by staff: keep it out of the public job page bundle.
+const JobOverview = lazy(() => import('../components/JobOverview').then((m) => ({ default: m.JobOverview })))
 
 function Fact({ icon, label, children }: { icon: ReactNode; label: string; children: ReactNode }) {
   return (
@@ -276,7 +278,13 @@ export default function JobDetailPage() {
               )}
             </CardContent>
           </Card>
-          {staff && <JobOverview jobId={j.id} />}
+          {staff && (
+            <Suspense
+              fallback={<Skeleton className="h-80 rounded-xl" role="status" aria-label="Loading overview" />}
+            >
+              <JobOverview jobId={j.id} />
+            </Suspense>
+          )}
         </div>
 
         <aside className="space-y-4 lg:sticky lg:top-24" aria-label="Job summary">

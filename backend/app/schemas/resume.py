@@ -187,6 +187,59 @@ class ExtractedResume(BaseModel):
     """Everything the parser suggests for the profile, with confidence scores. Nothing here is applied automatically
     except skills (as unconfirmed suggestions); raw text is never returned."""
 
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "resume_id": "5b0f4c1e-0d0a-4c6a-9d77-6a1f3f6f9a11",
+                    "candidate_id": "0c7d5a8e-3a2b-4f11-8a53-2c9d1f9a7b10",
+                    "parser_version": "v1",
+                    "has_corrections": False,
+                    "contact": {
+                        "name": "Jane Doe",
+                        "email": "jane@example.com",
+                        "phone": "+49 151 2345 6789",
+                        "location": "Berlin, Germany",
+                    },
+                    "headline": "Senior Backend Engineer",
+                    "summary": "Backend engineer with 8+ years of experience…",
+                    "years_of_experience": 7.8,
+                    "years_basis": "employment_history",
+                    "skills": [
+                        {
+                            "index": 0,
+                            "name": "Python",
+                            "skill_id": "16a72775-41c8-441d-a38f-b14383e768e8",
+                            "confidence": 0.95,
+                            "listed": True,
+                            "already_on_profile": False,
+                            "status": "SUGGESTED",
+                            "corrected": False,
+                        }
+                    ],
+                    "experiences": [
+                        {
+                            "index": 0,
+                            "title": "Senior Backend Engineer",
+                            "company": "Acme Corp",
+                            "start_date": "2020-01-01",
+                            "end_date": None,
+                            "is_current": True,
+                            "confidence": 0.9,
+                            "already_on_profile": False,
+                            "missing_for_apply": [],
+                        }
+                    ],
+                    "educations": [],
+                    "certifications": [],
+                    "languages": [],
+                    "sections_detected": ["summary", "skills", "experience"],
+                    "warnings": [],
+                }
+            ]
+        }
+    )
+
     resume_id: uuid.UUID
     candidate_id: uuid.UUID
     parser_version: str
@@ -198,7 +251,8 @@ class ExtractedResume(BaseModel):
         default=None, description="Total years: the union of dated jobs, or an explicit claim in the résumé"
     )
     years_basis: str | None = Field(
-        default=None, description="employment_history (union of dated jobs) | stated (explicit claim) | corrected"
+        default=None,
+        description="employment_history (union of dated jobs) | stated (explicit claim) | corrected",
     )
     skills: list[ExtractedSkill]
     experiences: list[ExtractedExperience]
@@ -320,7 +374,14 @@ class ExtractedPatch(BaseModel):
 
 Selection = Annotated[list[int] | Literal["all"], Field(description="Suggestion indices to copy, or `all`")]
 _PROFILE_FIELDS = (
-    "summary", "headline", "location", "years_experience", "linkedin_url", "github_url", "portfolio_url", "phone",
+    "summary",
+    "headline",
+    "location",
+    "years_experience",
+    "linkedin_url",
+    "github_url",
+    "portfolio_url",
+    "phone",
 )
 ProfileField = Literal[
     "summary",

@@ -179,7 +179,14 @@ async def bulk_import(
     _: RateLimit,
     svc: Svc,
     files: Annotated[list[UploadFile] | None, File(description="Résumé files (PDF or DOCX)")] = None,
-    files_brackets: Annotated[list[UploadFile] | None, File(alias="files[]", include_in_schema=False)] = None,
+    files_brackets: Annotated[
+        list[UploadFile] | None,
+        File(
+            alias="files[]",
+            description="Alias of `files` (PHP/jQuery-style repeated field name)",
+            include_in_schema=False,
+        ),
+    ] = None,
 ) -> BulkImportAccepted:
     body, _code = await svc.bulk_create(user, [*(files or []), *(files_brackets or [])])
     return body

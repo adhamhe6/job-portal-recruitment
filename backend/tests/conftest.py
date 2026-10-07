@@ -60,12 +60,22 @@ def migrated_db() -> None:
         pool.submit(_run_migrations).result()
 
 
+@pytest.fixture(scope="session")
+async def seeded_ontology(migrated_db: None) -> None:
+    from app.services.skills import seed_ontology
+
+    async with get_sessionmaker()() as s:
+        await seed_ontology(s)
+
+
 @pytest.fixture
-async def db(migrated_db: None) -> AsyncIterator[None]:
+async def db(migrated_db: None, seeded_ontology: None) -> AsyncIterator[None]:
     """Clean database + Redis for every test that touches infrastructure."""
-    tables = ", ".join(f'"{t.name}"' for t in Base.metadata.sorted_tables)
+    keep = {"skills", "skill_aliases"}  # the built-in ontology is seeded once per session
+    tables = ", ".join(f'"{t.name}"' for t in Base.metadata.sorted_tables if t.name not in keep)
     async with get_engine().begin() as conn:
         await conn.execute(text(f"TRUNCATE {tables} RESTART IDENTITY CASCADE"))
+        await conn.execute(text("DELETE FROM skills WHERE NOT is_verified"))  # user-created skills from a previous test
     await get_redis().flushdb()
     get_cache()._down_until = 0.0  # reset circuit breaker between tests
     yield

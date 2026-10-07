@@ -40,6 +40,7 @@ from app.db.models import (
 )
 from app.matching.scoring import overall_band
 from app.schemas.candidate import CandidateListItem
+from app.search.jobs import has_exclusion
 from app.services.common import escape_like, paginate
 
 EDU_RANK = {lvl: i for i, lvl in enumerate(EducationLevel)}
@@ -100,7 +101,8 @@ def build_candidate_query(user: User, f: CandidateFilters) -> Select[Any]:
     if f.q and f.q.strip():
         q = f.q.strip()[:200]
         tsq = func.websearch_to_tsquery("english", q)
-        stmt = stmt.where(or_(CandidateProfile.search_tsv.op("@@")(tsq), CandidateProfile.display_name.op("%")(q)))
+        fuzzy = [] if has_exclusion(q) else [CandidateProfile.display_name.op("%")(q)]  # see app.search.jobs.has_exclusion
+        stmt = stmt.where(or_(CandidateProfile.search_tsv.op("@@")(tsq), *fuzzy))
         rank = func.ts_rank_cd(CandidateProfile.search_tsv, tsq) + 0.5 * func.similarity(CandidateProfile.display_name, q)
     if f.skill_ids:
         def has(sid: uuid.UUID) -> Any:

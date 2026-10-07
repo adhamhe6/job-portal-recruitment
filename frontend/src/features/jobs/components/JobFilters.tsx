@@ -64,12 +64,14 @@ export function JobFilters({
   onClear,
   companyName,
   allowSkillCreate = false,
+  hideTitle = false,
 }: {
   state: JobSearchState
   update: (patch: Partial<JobSearchState>) => void
   onClear: () => void
   companyName?: string | null
   allowSkillCreate?: boolean
+  hideTitle?: boolean
 }) {
   const uid = useId()
   const active = countActiveFilters(state)
@@ -83,7 +85,7 @@ export function JobFilters({
         e.preventDefault()
       }}
     >
-      <div className="flex items-center justify-between">
+      <div className={cn('flex items-center justify-between', hideTitle && 'hidden')}>
         <h2 className="text-sm font-semibold">
           Filters{active > 0 && <span className="ml-1.5 text-muted-foreground tabular">({active})</span>}
         </h2>

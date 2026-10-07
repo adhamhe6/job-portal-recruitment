@@ -28,7 +28,7 @@ export function NotificationBell() {
             <span
               data-testid="unread-badge"
               aria-hidden
-              className="absolute top-1 right-1 flex min-w-4.5 items-center justify-center rounded-full bg-destructive px-1 text-[10px] leading-4.5 font-bold text-destructive-foreground ring-2 ring-background"
+              className="absolute -top-0.5 -right-0.5 flex min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] leading-4 font-bold text-destructive-foreground ring-2 ring-background"
             >
               {count > 99 ? '99+' : count}
             </span>

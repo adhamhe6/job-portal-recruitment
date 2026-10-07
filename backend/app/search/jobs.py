@@ -11,6 +11,7 @@ All filtering, ranking, sorting and pagination happen in the database; nothing i
 from __future__ import annotations
 
 import enum
+import re
 import uuid
 from dataclasses import dataclass, field
 from datetime import timedelta
@@ -70,6 +71,14 @@ class JobFilters:
     only_saved: bool = False
 
 
+_EXCLUSION = re.compile(r"(^|\s)-\S")
+
+
+def has_exclusion(q: str) -> bool:
+    """True when a ``websearch_to_tsquery`` query contains a negated term such as ``-java``."""
+    return bool(_EXCLUSION.search(q))
+
+
 def _tsquery(q: str) -> Any:
     return func.websearch_to_tsquery("english", q)
 
@@ -98,7 +107,10 @@ def build_job_query(
     if f.q and f.q.strip():
         q = f.q.strip()[:200]
         tsq = _tsquery(q)
-        stmt = stmt.where(or_(Job.search_tsv.op("@@")(tsq), Job.title.op("%")(q)))
+        # Typo tolerance (trigram similarity of the title) is skipped when the query excludes terms ("engineer -java"):
+        # a fuzzy title match would otherwise bring back exactly the postings the user asked to leave out.
+        fuzzy = [] if has_exclusion(q) else [Job.title.op("%")(q)]
+        stmt = stmt.where(or_(Job.search_tsv.op("@@")(tsq), *fuzzy))
         rank_expr = func.ts_rank_cd(Job.search_tsv, tsq) + 0.4 * func.similarity(Job.title, q)
     if f.skill_ids:
         if f.skills_mode == "all":

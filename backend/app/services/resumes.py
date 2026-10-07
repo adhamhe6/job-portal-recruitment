@@ -91,6 +91,12 @@ class Download:
     chunks: AsyncIterator[bytes]
 
 
+class _DuplicateUploadError(Exception):
+    def __init__(self, existing: Resume) -> None:
+        super().__init__("identical file already uploaded")
+        self.existing = existing
+
+
 @dataclass(slots=True)
 class _Loaded:
     resume: Resume
@@ -285,15 +291,7 @@ class ResumeService:
         storage = get_storage()
         key: str | None = None
         try:
-            existing = (
-                await self.session.execute(
-                    select(Resume)
-                    .join(ResumeDocument, ResumeDocument.resume_id == Resume.id)
-                    .where(Resume.candidate_id == candidate.id, ResumeDocument.sha256 == upload.sha256)
-                    .order_by(Resume.created_at.desc())
-                    .limit(1)
-                )
-            ).scalar_one_or_none()
+            existing = await self._find_duplicate(candidate.id, upload.sha256)
             if existing is not None:
                 return await self._duplicate(user, candidate, existing, set_primary)
 
@@ -309,6 +307,10 @@ class ResumeService:
             await storage.put(key, upload.file)
             try:
                 resume = await self._create_rows(user, candidate, key, upload, set_primary)
+            except _DuplicateUploadError as dup:  # a concurrent identical upload won the race: keep one copy
+                await self.session.rollback()
+                await storage.delete(key)
+                return await self._duplicate(user, candidate, dup.existing, set_primary)
             except BaseException:
                 await self.session.rollback()
                 await storage.delete(key)
@@ -321,12 +323,26 @@ class ResumeService:
         out = await self._out(resume, candidate)
         return ResumeUploadOut(**out.model_dump(), message=message, duplicate=False), 202
 
+    async def _find_duplicate(self, candidate_id: uuid.UUID, sha256: str) -> Resume | None:
+        return (
+            await self.session.execute(
+                select(Resume)
+                .join(ResumeDocument, ResumeDocument.resume_id == Resume.id)
+                .where(Resume.candidate_id == candidate_id, ResumeDocument.sha256 == sha256)
+                .order_by(Resume.created_at.desc())
+                .limit(1)
+            )
+        ).scalar_one_or_none()
+
     async def _create_rows(
         self, user: User, candidate: CandidateProfile, key: str, upload: Any, set_primary: bool
     ) -> Resume:
         await self.session.execute(
             select(CandidateProfile.id).where(CandidateProfile.id == candidate.id).with_for_update()
         )  # serialise per candidate
+        raced = await self._find_duplicate(candidate.id, upload.sha256)
+        if raced is not None:
+            raise _DuplicateUploadError(raced)
         has_primary = await self.session.scalar(
             select(exists().where(Resume.candidate_id == candidate.id, Resume.is_primary.is_(True)))
         )

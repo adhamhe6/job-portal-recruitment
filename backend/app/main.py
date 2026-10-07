@@ -159,6 +159,15 @@ def create_app() -> FastAPI:
 
     @app.exception_handler(DBAPIError)
     async def db_error_handler(_: Request, exc: DBAPIError) -> JSONResponse:
+        # SQLSTATE class 22 = "data exception": the *client* sent something PostgreSQL cannot store (NUL characters, values out of
+        # range, malformed literals). That is a validation problem, not a server fault.
+        cause = getattr(exc.orig, "__cause__", None)
+        sqlstate = str(getattr(cause, "sqlstate", None) or getattr(exc.orig, "sqlstate", None) or "")
+        if sqlstate.startswith("22"):
+            logger.warning("rejected unstorable input", extra={"sqlstate": sqlstate})
+            return _error_response(
+                422, "VALIDATION_ERROR", "A submitted value cannot be stored (for example it contains NUL characters or is out of range)"
+            )
         logger.error("database error", extra={"error": type(exc.orig).__name__ if exc.orig else "DBAPIError"})
         return _error_response(500, "INTERNAL_ERROR", "An unexpected error occurred")
 

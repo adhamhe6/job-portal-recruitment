@@ -150,7 +150,13 @@ export default function JobSearchPage() {
   ]
 
   const filters = (
-    <JobFilters state={state} update={(p) => update(p)} onClear={clearFilters} companyName={companyName} />
+    <JobFilters
+      state={state}
+      update={(p) => update(p)}
+      onClear={clearFilters}
+      companyName={companyName}
+      hideTitle={!isDesktop}
+    />
   )
 
   return (
@@ -179,7 +185,7 @@ export default function JobSearchPage() {
               <div className="flex items-center gap-2">
                 <label
                   htmlFor="job-sort"
-                  className="sr-only sm:not-sr-only sm:text-sm whitespace-nowrap sm:text-muted-foreground"
+                  className="sr-only sm:not-sr-only sm:text-sm sm:whitespace-nowrap sm:text-muted-foreground"
                 >
                   Sort by
                 </label>

@@ -17,6 +17,7 @@ import logging
 import time
 import uuid
 from dataclasses import dataclass
+from collections.abc import Awaitable, Callable
 from typing import Any
 
 from sqlalchemy import select, update
@@ -90,10 +91,15 @@ def kind_for_content_type(content_type: str) -> DocumentKind:
 # --- CPU-bound steps ---------------------------------------------------------------------------------------------------
 
 
-async def analyze(data: bytes, kind: DocumentKind) -> Analysis:
-    """Extract text (thread + timeout) and parse it. Raises :class:`ExtractionError` with a safe code / message."""
+async def analyze(data: bytes, kind: DocumentKind, on_stage: Callable[[str], Awaitable[None]] | None = None) -> Analysis:
+    """Extract text (thread + timeout) and parse it. ``on_stage`` is told when each step starts. Raises
+    :class:`ExtractionError` with a safe code / message."""
     settings = get_settings()
+    if on_stage:
+        await on_stage("extracting text")
     extracted = await extract_document(data, kind, max_chars=settings.max_resume_text_chars)
+    if on_stage:
+        await on_stage("parsing")
     parsed = await asyncio.to_thread(parse_resume, extracted.text, links=extracted.links)
     return Analysis(extracted=extracted, parsed=parsed)
 
@@ -289,10 +295,13 @@ async def run_process_resume(ctx: TaskContext) -> dict[str, Any]:
         except OSError as exc:
             raise RetryableError("storage temporarily unavailable") from exc
 
-        await ctx.progress(20, "extracting text")
-        await ctx.progress(45, "parsing")
+        stages = {"extracting text": 20, "parsing": 45}
+
+        async def on_stage(stage: str) -> None:
+            await ctx.progress(stages[stage], stage)
+
         try:
-            analysis = await analyze(data, loaded.kind)
+            analysis = await analyze(data, loaded.kind, on_stage)
         except ExtractionError as exc:
             raise TaskFailure(exc.code, exc.message) from exc
 

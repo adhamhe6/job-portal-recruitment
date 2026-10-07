@@ -14,9 +14,10 @@ from app.matching.embedder import EmbeddingError
 from app.resume.storage import get_storage
 from tests import fixtures_resumes as fx
 from tests.helpers import register_candidate, register_employer
+from tests.resume_helpers import clean_storage  # noqa: F401  (fixture)
 from tests.resume_helpers import DOCX, PDF, upload, upload_ok
 
-pytestmark = pytest.mark.e2e
+pytestmark = [pytest.mark.e2e, pytest.mark.usefixtures("clean_storage")]
 
 
 def storage_files() -> list[str]:

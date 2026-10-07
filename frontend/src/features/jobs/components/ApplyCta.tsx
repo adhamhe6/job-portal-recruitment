@@ -7,6 +7,7 @@ import { useAuth } from '@/features/auth/hooks/useAuth'
 import type { JobDetail, JobPublic } from '@/lib/api'
 import { APPLICATION_STATUS_LABELS } from '@/lib/enums'
 import type { ApplicationStatus } from '@/lib/api'
+import { cn } from '@/lib/utils'
 import { loginUrl, paths } from '@/routes/paths'
 import { ApplyDialog } from './ApplyDialog'
 
@@ -33,7 +34,7 @@ export function ApplyCta({
 
   if (status !== 'authenticated') {
     return (
-      <Button asChild size="lg" className={className}>
+      <Button asChild size="lg" className={cn('w-full', className)}>
         <Link to={loginUrl(location.pathname + location.search)}>
           <LogIn /> Sign in to apply
         </Link>
@@ -47,7 +48,7 @@ export function ApplyCta({
       APPLICATION_STATUS_LABELS[(job.my_application_status ?? 'APPLIED') as ApplicationStatus] ??
       job.my_application_status
     return compact ? (
-      <Button asChild variant="soft" size="lg" className={className}>
+      <Button asChild variant="soft" size="lg" className={cn('w-full', className)}>
         <Link to={paths.application(job.my_application_id)}>
           <CheckCircle2 /> Applied · {label}
         </Link>

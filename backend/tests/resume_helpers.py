@@ -2,9 +2,14 @@
 
 from __future__ import annotations
 
+import shutil
+from collections.abc import Iterator
 from typing import Any
 
+import pytest
 from httpx import AsyncClient, Response
+
+from app.resume.storage import get_storage
 
 PDF = "application/pdf"
 DOCX = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
@@ -43,3 +48,12 @@ async def task_of(client: AsyncClient, who: dict[str, Any], task_id: str) -> dic
     r = await client.get(f"/api/v1/tasks/{task_id}", headers=who["h"])
     assert r.status_code == 200, r.text
     return r.json()  # type: ignore[no-any-return]
+
+
+@pytest.fixture
+def clean_storage() -> Iterator[None]:
+    """The tests share one storage directory for the whole session: start each test that counts files from empty."""
+    root = get_storage().root  # type: ignore[attr-defined]
+    for child in root.glob("resumes/*"):
+        shutil.rmtree(child, ignore_errors=True)
+    yield

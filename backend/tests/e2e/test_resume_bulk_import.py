@@ -28,9 +28,10 @@ from app.services.tasks import TaskStore
 from app.workers.tasks import TaskContext
 from tests import fixtures_resumes as fx
 from tests.helpers import add_staff, create_job, register_candidate, register_employer
+from tests.resume_helpers import clean_storage  # noqa: F401  (fixture)
 from tests.resume_helpers import DOCX, PDF, bulk_upload, task_of
 
-pytestmark = pytest.mark.e2e
+pytestmark = [pytest.mark.e2e, pytest.mark.usefixtures("clean_storage")]
 
 BACKEND = ("jane.pdf", fx.backend_pdf(), PDF)
 FRONTEND = ("alex.docx", fx.frontend_docx(), DOCX)

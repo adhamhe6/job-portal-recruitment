@@ -179,7 +179,7 @@ export default function JobSearchPage() {
               <div className="flex items-center gap-2">
                 <label
                   htmlFor="job-sort"
-                  className="sr-only sm:not-sr-only sm:text-sm sm:text-muted-foreground"
+                  className="sr-only sm:not-sr-only sm:text-sm whitespace-nowrap sm:text-muted-foreground"
                 >
                   Sort by
                 </label>

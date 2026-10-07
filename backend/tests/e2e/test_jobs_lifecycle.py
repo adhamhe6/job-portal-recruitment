@@ -131,34 +131,34 @@ async def test_renaming_into_a_duplicate_is_rejected(client: AsyncClient) -> Non
 # --- validation matrix --------------------------------------------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize(
-    ("overrides", "field"),
-    [
-        ({"salary_min": 100000, "salary_max": 90000}, "__root__"),
-        ({"min_experience_years": 8, "max_experience_years": 5}, "__root__"),
-        ({"application_deadline": (date.today() - timedelta(days=1)).isoformat()}, "application_deadline"),
-        ({"title": "ab"}, "title"),
-        ({"title": "      "}, "title"),
-        ({"description": "too short"}, "description"),
-        ({"employment_type": "SLAVE"}, "employment_type"),
-        ({"workplace_type": "ORBIT"}, "workplace_type"),
-        ({"experience_level": "WIZARD"}, "experience_level"),
-        ({"min_education_level": "PHD"}, "min_education_level"),
-        ({"salary_min": -5}, "salary_min"),
-        ({"min_experience_years": 71}, "min_experience_years"),
-        ({"salary_currency": "DOLLARS"}, "salary_currency"),
-        ({"skills": [{"name": f"Skill {i}"} for i in range(41)]}, "skills"),
-        ({"skills": [{"requirement": "REQUIRED"}]}, "skills"),
-        ({"skills": [{"name": "Python", "requirement": "MAYBE"}]}, "skills"),
-        ({"hiring_manager_id": "xyz"}, "hiring_manager_id"),
-    ],
-)
-async def test_create_validation_matrix(client: AsyncClient, overrides: dict[str, Any], field: str) -> None:
+VALIDATION_CASES: list[tuple[dict[str, Any], str]] = [
+    ({"salary_min": 100000, "salary_max": 90000}, "__root__"),
+    ({"min_experience_years": 8, "max_experience_years": 5}, "__root__"),
+    ({"application_deadline": (date.today() - timedelta(days=1)).isoformat()}, "application_deadline"),
+    ({"title": "ab"}, "title"),
+    ({"title": "      "}, "title"),
+    ({"description": "too short"}, "description"),
+    ({"employment_type": "SLAVE"}, "employment_type"),
+    ({"workplace_type": "ORBIT"}, "workplace_type"),
+    ({"experience_level": "WIZARD"}, "experience_level"),
+    ({"min_education_level": "PHD"}, "min_education_level"),
+    ({"salary_min": -5}, "salary_min"),
+    ({"min_experience_years": 71}, "min_experience_years"),
+    ({"salary_currency": "DOLLARS"}, "salary_currency"),
+    ({"skills": [{"name": f"Skill {i}"} for i in range(41)]}, "skills"),
+    ({"skills": [{"requirement": "REQUIRED"}]}, "skills"),
+    ({"skills": [{"name": "Python", "requirement": "MAYBE"}]}, "skills"),
+    ({"hiring_manager_id": "xyz"}, "hiring_manager_id"),
+]
+
+
+async def test_create_validation_matrix(client: AsyncClient) -> None:
     rec = await register_employer(client)
-    err = assert_error(await post_job(client, rec, **overrides), 422, "VALIDATION_ERROR")
-    assert err["details"], err
-    if field != "__root__":
-        assert field in {d["field"].split(".")[0] for d in err["details"]}
+    for overrides, field in VALIDATION_CASES:
+        err = assert_error(await post_job(client, rec, **overrides), 422, "VALIDATION_ERROR")
+        assert err["details"], err
+        if field != "__root__":
+            assert field in {d["field"].split(".")[0] for d in err["details"]}, (overrides, err)
     assert await scalar("SELECT count(*) FROM jobs") == 0
 
 

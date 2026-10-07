@@ -51,7 +51,7 @@ async function newSession(label, { dark = false } = {}) {
 async function login(page, email) {
   await page.goto(`${BASE}/login`)
   await page.getByLabel('Email').fill(email)
-  await page.getByLabel('Password', { exact: true }).fill(PASSWORD)
+  await page.locator('input[autocomplete="current-password"]').fill(PASSWORD)
   await page.getByRole('button', { name: 'Sign in', exact: true }).click()
   await page.waitForURL('**/dashboard')
 }

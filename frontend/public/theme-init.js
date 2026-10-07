@@ -8,7 +8,7 @@
       ((pref === null || pref === 'system') && window.matchMedia('(prefers-color-scheme: dark)').matches)
     document.documentElement.classList.toggle('dark', dark)
     document.documentElement.style.colorScheme = dark ? 'dark' : 'light'
-  } catch (e) {
+  } catch {
     /* storage blocked: fall back to the light theme */
   }
 })()

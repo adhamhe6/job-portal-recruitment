@@ -216,18 +216,25 @@ class ResumeService:
                     sha256=doc.sha256,
                     created_at=resume.created_at,
                     updated_at=resume.updated_at,
-                    task_id=task.id if task else None,
+                    task_id=self._queued_id(task),
                     processing=self._processing(results.get(resume.id), task),
                 )
             )
         return outs
 
     @staticmethod
-    def _processing(result: Any, task: BackgroundTask | None) -> ProcessingOut:
+    def _queued_id(task: BackgroundTask | None) -> uuid.UUID | None:
+        """A task that never reached the queue cannot be polled to completion, so it is not offered as ``task_id``."""
+        if task is None or (task.status == TaskStatus.FAILED and task.error_code == "QUEUE_UNAVAILABLE"):
+            return None
+        return task.id
+
+    @classmethod
+    def _processing(cls, result: Any, task: BackgroundTask | None) -> ProcessingOut:
         out = ProcessingOut()
         if task is not None:
             out.task_id, out.task_status, out.stage, out.progress = (
-                task.id,
+                cls._queued_id(task),
                 task.status.value,
                 task.stage,
                 task.progress,

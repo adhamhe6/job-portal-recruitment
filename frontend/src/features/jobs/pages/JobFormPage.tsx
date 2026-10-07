@@ -137,8 +137,8 @@ function JobForm({ job }: { job?: JobDetail }) {
   }
 
   // --- submit --------------------------------------------------------------------------------------------------------------
-  const run = (mode: Mode) =>
-    handleSubmit(async (values) => {
+  const submitAs = async (mode: Mode, values: JobFormValues) => {
+    {
       setFormError(null)
       setProblems([])
       if (mode === 'publish') {

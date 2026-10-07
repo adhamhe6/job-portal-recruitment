@@ -129,7 +129,7 @@ def make_pdf(text: str, *, wrap: int = 98) -> bytes:
     from reportlab.pdfgen import canvas
 
     buf = io.BytesIO()
-    c = canvas.Canvas(buf, pagesize=A4)
+    c = canvas.Canvas(buf, pagesize=A4, invariant=1)
     _, height = A4
     left, top, bottom, leading = 50, height - 60, 55, 14
     y = top
@@ -264,7 +264,7 @@ def scanned_pdf() -> bytes:
         for y in range(40, 60):
             img.putpixel((x, y), (0, 0, 0))
     buf = io.BytesIO()
-    c = canvas.Canvas(buf, pagesize=A4)
+    c = canvas.Canvas(buf, pagesize=A4, invariant=1)
     c.drawImage(ImageReader(img), 50, 400, width=400, height=300)
     c.save()
     return buf.getvalue()
@@ -275,7 +275,7 @@ def blank_pdf() -> bytes:
     from reportlab.pdfgen import canvas
 
     buf = io.BytesIO()
-    c = canvas.Canvas(buf, pagesize=A4)
+    c = canvas.Canvas(buf, pagesize=A4, invariant=1)
     c.showPage()
     c.save()
     return buf.getvalue()

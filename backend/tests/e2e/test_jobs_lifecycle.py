@@ -341,7 +341,7 @@ async def test_update_semantics(client: AsyncClient) -> None:
     assert body["salary_min"] is None and body["salary_max"] is None and body["benefits"] is None
     assert body["title"] == "Renamed Role" and body["employment_type"] == "CONTRACT"
     assert (await client.patch(url, headers=rec["h"], json={})).status_code == 200
-    assert await scalar("SELECT count(*) FROM audit_events WHERE action = 'job.updated'") == 4
+    assert await scalar("SELECT count(*) FROM audit_events WHERE action = 'job.updated'") == 3  # rejected updates are not audited
 
 
 async def test_editing_a_live_job_requeues_matching_and_other_edits_do_not(client: AsyncClient) -> None:

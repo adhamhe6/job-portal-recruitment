@@ -68,7 +68,7 @@ async def set_job_status(job_id: str, status: str) -> None:
 
 async def expire_deadline(job_id: str, days_ago: int = 1) -> None:
     await sql(
-        "UPDATE jobs SET application_deadline = current_date - :d WHERE id = :id", d=days_ago, id=U(job_id)
+        "UPDATE jobs SET application_deadline = current_date - CAST(:d AS integer) WHERE id = :id", d=days_ago, id=U(job_id)
     )
 
 

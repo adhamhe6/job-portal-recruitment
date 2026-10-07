@@ -15,6 +15,7 @@ from __future__ import annotations
 import csv
 import io
 import logging
+import math
 import uuid
 from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass
@@ -114,6 +115,7 @@ from app.services.notifications import NotificationService
 logger = logging.getLogger(__name__)
 
 M = TypeVar("M", bound=BaseModel)
+P = TypeVar("P", bound=Any)
 Granularity = Literal["day", "week", "month"]
 SortOrder = Literal["asc", "desc"]
 
@@ -363,6 +365,12 @@ def render_csv(table: Table) -> str:
     for row in table.rows:
         writer.writerow([csv_cell(c) for c in row])
     return buf.getvalue()
+
+
+def build_page(cls: type[P], items: list[Any], *, page: int, page_size: int, total: int, period: Period) -> P:
+    return cls(
+        items=items, page=page, page_size=page_size, total=total, pages=math.ceil(total / page_size) if total else 0, period=period
+    )
 
 
 def csv_filename(name: str) -> str:
@@ -1001,8 +1009,7 @@ class ReportService:
 
         async def compute() -> ApplicationsByJobPage:
             items, total = await self._abj_items(scope, window, sort, order, page, page_size)
-            out = ApplicationsByJobPage.build(items, page=page, page_size=page_size, total=total)
-            return ApplicationsByJobPage(**out.model_dump(), period=window.period())
+            return build_page(ApplicationsByJobPage, items, page=page, page_size=page_size, total=total, period=window.period())
 
         return await self._cached(
             "applications-by-job",
@@ -1236,8 +1243,7 @@ class ReportService:
 
         async def compute() -> JobPerformancePage:
             items, total = await self._perf_items(scope, window, sort, order, page, page_size)
-            out = JobPerformancePage.build(items, page=page, page_size=page_size, total=total)
-            return JobPerformancePage(**out.model_dump(), period=window.period())
+            return build_page(JobPerformancePage, items, page=page, page_size=page_size, total=total, period=window.period())
 
         return await self._cached(
             "job-performance",
@@ -1369,8 +1375,7 @@ class ReportService:
 
         async def compute() -> RecruiterActivityPage:
             items, total = await self._activity_items(scope, window, sort, order, page, page_size)
-            out = RecruiterActivityPage.build(items, page=page, page_size=page_size, total=total)
-            return RecruiterActivityPage(**out.model_dump(), period=window.period())
+            return build_page(RecruiterActivityPage, items, page=page, page_size=page_size, total=total, period=window.period())
 
         return await self._cached(
             "recruiter-activity",
@@ -1439,8 +1444,7 @@ class ReportService:
 
         async def compute() -> SourceStatisticsPage:
             items, total = await self._source_items(scope, window, sort, order, page, page_size)
-            out = SourceStatisticsPage.build(items, page=page, page_size=page_size, total=total)
-            return SourceStatisticsPage(**out.model_dump(), period=window.period())
+            return build_page(SourceStatisticsPage, items, page=page, page_size=page_size, total=total, period=window.period())
 
         return await self._cached(
             "source-statistics",

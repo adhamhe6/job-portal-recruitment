@@ -26,6 +26,7 @@ from app.db.models import (
     ApplicationStatus,
     CandidateJobMatch,
     Company,
+    CompanyStatus,
     EmploymentType,
     ExperienceLevel,
     Job,
@@ -80,7 +81,11 @@ def build_job_query(
     cols: list[Any] = [Job]
     stmt = select(Job).join(Company, Company.id == Job.company_id)
     if public:
-        stmt = stmt.where(Job.status == JobStatus.PUBLISHED, or_(Job.application_deadline.is_(None), Job.application_deadline >= func.current_date()))
+        stmt = stmt.where(
+            Job.status == JobStatus.PUBLISHED,
+            Company.status == CompanyStatus.ACTIVE,  # a suspended employer's postings are taken off the public site
+            or_(Job.application_deadline.is_(None), Job.application_deadline >= func.current_date()),
+        )
     if company_id is not None:
         stmt = stmt.where(Job.company_id == company_id)
     if hiring_manager_id is not None:

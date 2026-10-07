@@ -270,7 +270,7 @@ class JobService:
         """Anonymous/candidate callers see PUBLISHED jobs only (404 otherwise); the owning company's staff see everything."""
         job = await self._load(job_id)
         staff_view = viewer is not None and can_view_job_internal(viewer, job)
-        if not staff_view and job.status != JobStatus.PUBLISHED:
+        if not staff_view and (job.status != JobStatus.PUBLISHED or job.company.status != CompanyStatus.ACTIVE):
             raise NotFoundError("Job not found", code="JOB_NOT_FOUND")
         base = {
             **{f: getattr(job, f) for f in JobPublic.model_fields if hasattr(job, f) and f not in ("company", "skills")},
@@ -350,6 +350,8 @@ class JobService:
         cid = await self._candidate_id(user)
         job = await self.session.get(Job, job_id)
         if job is None or job.status != JobStatus.PUBLISHED:
+            raise NotFoundError("Job not found", code="JOB_NOT_FOUND")
+        if await self.session.scalar(select(Company.status).where(Company.id == job.company_id)) != CompanyStatus.ACTIVE:
             raise NotFoundError("Job not found", code="JOB_NOT_FOUND")
         if not await self.session.scalar(select(SavedJob.job_id).where(SavedJob.candidate_id == cid, SavedJob.job_id == job_id)):
             self.session.add(SavedJob(candidate_id=cid, job_id=job_id))

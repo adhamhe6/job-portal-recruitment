@@ -27,6 +27,7 @@ from app.db.models import (
     CandidateJobMatch,
     CandidateProfile,
     Company,
+    CompanyStatus,
     ACTIVE_INTERVIEW_STATUSES,
     Interview,
     Job,
@@ -117,6 +118,8 @@ class ApplicationService:
             raise NotFoundError("Job not found", code="JOB_NOT_FOUND")
         if job.status.value in ("DRAFT", "ARCHIVED"):
             raise NotFoundError("Job not found", code="JOB_NOT_FOUND")  # not publicly visible
+        if await self.session.scalar(select(Company.status).where(Company.id == job.company_id)) != CompanyStatus.ACTIVE:
+            raise NotFoundError("Job not found", code="JOB_NOT_FOUND")  # a suspended employer's postings are off the public site
         open_, reason = is_open_for_applications(job)
         if not open_:
             raise BusinessRuleError(reason or "This job is not accepting applications", code="JOB_NOT_ACCEPTING_APPLICATIONS")

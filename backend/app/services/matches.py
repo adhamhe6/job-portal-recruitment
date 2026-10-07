@@ -20,6 +20,8 @@ from app.db.models import (
     CandidateJobMatch,
     CandidateProfile,
     CandidateSkill,
+    Company,
+    CompanyStatus,
     Job,
     JobSkill,
     JobStatus,
@@ -193,6 +195,8 @@ class MatchQueryService:
         job = await self.session.get(Job, job_id)
         if cand is None or job is None or job.status != JobStatus.PUBLISHED:
             raise NotFoundError("Job not found", code="JOB_NOT_FOUND")
+        if await self.session.scalar(select(Company.status).where(Company.id == job.company_id)) != CompanyStatus.ACTIVE:
+            raise NotFoundError("Job not found", code="JOB_NOT_FOUND")
         return candidate_facing(await MatchingService(self.session).get_or_compute(job, cand))
 
     async def recommendations(
@@ -215,9 +219,11 @@ class MatchQueryService:
         stmt = (
             select(CandidateJobMatch, Job)
             .join(Job, Job.id == CandidateJobMatch.job_id)
+            .join(Company, Company.id == Job.company_id)
             .where(
                 CandidateJobMatch.candidate_id == cand.id,
                 Job.status == JobStatus.PUBLISHED,  # never recommend draft/paused/closed/archived jobs
+                Company.status == CompanyStatus.ACTIVE,  # ... nor those of a suspended employer
                 or_(Job.application_deadline.is_(None), Job.application_deadline >= func.current_date()),  # nor ones no longer open
                 Job.id.not_in(applied),
                 CandidateJobMatch.overall_score >= min_score,

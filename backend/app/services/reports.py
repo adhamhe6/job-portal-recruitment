@@ -314,7 +314,7 @@ def pick_granularity(window: Window, requested: Granularity | None) -> Granulari
 
 def _bucket_expr(col: Any, gran: Granularity) -> Any:
     """``date_trunc(gran, col AT TIME ZONE 'UTC')::date`` with the unit inlined (a closed set, never user text)."""
-    unit = {"day": literal_column("'day'"), "week": literal_column("'week'"), "month": literal_column("'month'")}[gran]
+    unit: dict[str, Any] = {"day": literal_column("'day'"), "week": literal_column("'week'"), "month": literal_column("'month'")}[gran]
     return cast(func.date_trunc(unit, func.timezone("UTC", col)), Date)
 
 
@@ -1314,7 +1314,7 @@ class ReportService:
         n_notes = func.coalesce(notes.c.n, 0)
         n_fb = func.coalesce(feedback.c.n, 0)
         total = (n_changes + n_sched + n_notes + n_fb).label("total")
-        staff_cond = [User.role.in_(tuple(STAFF_ROLES))]
+        staff_cond: list[ColumnElement[bool]] = [User.role.in_(tuple(STAFF_ROLES))]
         if scope.company_id:
             staff_cond.append(User.company_id == scope.company_id)
         full_name = func.lower(User.first_name + " " + User.last_name)

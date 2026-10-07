@@ -92,6 +92,7 @@ await step('theme menu is keyboard operable and persists', async () => {
 })
 await step('"/" focuses the global search; Enter submits to the job search', async () => {
   await page.goto(`${BASE}/dashboard`)
+  await page.locator('form[role="search"] input').waitFor()
   await page.keyboard.press('/')
   assert((await focusedName(page)) === 'Search jobs', 'search input should be focused')
   await page.keyboard.type('devops')
@@ -162,7 +163,8 @@ await step('row action menu + confirmation dialog are keyboard operable', async 
   await rec.getByRole('menuitem', { name: 'Close' }).focus()
   await rec.keyboard.press('Enter')
   await rec.getByRole('alertdialog').waitFor()
-  assert(await insideDialog(rec), 'focus should be inside the confirmation')
+  await rec.waitForTimeout(300)
+  assert(await insideDialog(rec), `focus should be inside the confirmation (was "${await focusedName(rec)}")`)
   await rec.keyboard.press('Escape')
   await rec.getByRole('alertdialog').waitFor({ state: 'detached' })
   assert(

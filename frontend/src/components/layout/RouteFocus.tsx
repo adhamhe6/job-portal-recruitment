@@ -7,12 +7,11 @@ import { useLocation } from 'react-router-dom'
  */
 export function useFocusMainOnNavigate() {
   const { pathname } = useLocation()
-  const first = useRef(true)
+  // Compare with the previous pathname (not a "first run" flag): StrictMode runs effects twice in development.
+  const previous = useRef(pathname)
   useEffect(() => {
-    if (first.current) {
-      first.current = false
-      return
-    }
+    if (previous.current === pathname) return
+    previous.current = pathname
     document.getElementById('main-content')?.focus({ preventScroll: true })
   }, [pathname])
 }

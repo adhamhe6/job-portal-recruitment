@@ -49,9 +49,11 @@ OPENAPI_TAGS = [
 ]
 
 
-def _error_response(status_code: int, code: str, message: str, details: Any = None) -> JSONResponse:
+def _error_response(
+    status_code: int, code: str, message: str, details: Any = None, headers: dict[str, str] | None = None
+) -> JSONResponse:
     body = {"error": {"code": code, "message": message, "details": details, "request_id": request_id_ctx.get()}}
-    return JSONResponse(status_code=status_code, content=body)
+    return JSONResponse(status_code=status_code, content=body, headers=headers)
 
 
 def create_app() -> FastAPI:
@@ -149,8 +151,14 @@ def create_app() -> FastAPI:
 
     @app.exception_handler(StarletteHTTPException)
     async def http_exception_handler(_: Request, exc: StarletteHTTPException) -> JSONResponse:
-        codes = {404: "NOT_FOUND", 405: "METHOD_NOT_ALLOWED", 401: "UNAUTHORIZED", 403: "FORBIDDEN"}
-        return _error_response(exc.status_code, codes.get(exc.status_code, "HTTP_ERROR"), str(exc.detail))
+        codes = {
+            400: "BAD_REQUEST", 401: "UNAUTHORIZED", 403: "FORBIDDEN", 404: "NOT_FOUND", 405: "METHOD_NOT_ALLOWED",
+            413: "PAYLOAD_TOO_LARGE", 415: "UNSUPPORTED_MEDIA_TYPE", 429: "RATE_LIMITED",
+        }
+        # Keep protocol headers such as ``Allow`` (405) and ``WWW-Authenticate`` (401) that the framework attached.
+        return _error_response(
+            exc.status_code, codes.get(exc.status_code, "HTTP_ERROR"), str(exc.detail), headers=dict(exc.headers) if exc.headers else None
+        )
 
     @app.exception_handler(OperationalError)
     async def db_unavailable_handler(_: Request, exc: OperationalError) -> JSONResponse:

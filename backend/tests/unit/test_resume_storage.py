@@ -6,6 +6,7 @@ import io
 import os
 import re
 import stat
+import time
 from collections.abc import AsyncIterator
 from pathlib import Path
 
@@ -181,3 +182,14 @@ def test_root_is_created_private(tmp_path):
     target = tmp_path / "a" / "b"
     s = LocalStorage(target)
     assert stat.S_IMODE(os.stat(s.root).st_mode) == 0o700
+
+
+def test_stale_temp_files_from_crashed_writes_are_swept_on_startup(tmp_path):
+    first = LocalStorage(tmp_path / "store")
+    old, fresh = first._tmp / "put-old", first._tmp / "put-fresh"
+    old.write_bytes(b"partial")
+    fresh.write_bytes(b"in flight")
+    long_ago = time.time() - 3 * 24 * 3600
+    os.utime(old, (long_ago, long_ago))
+    LocalStorage(tmp_path / "store")  # a new process starts
+    assert not old.exists() and fresh.exists()

@@ -150,9 +150,7 @@ async def test_review_apply_and_match_scores_change(client, session):
 
     ex = await extracted(client, cand, body["id"])
     assert ex["parser_version"] == "v1" and ex["contact"]["email"] == "jane.doe@example.com"
-    assert (
-        ex["years_basis"] == "employment_history" and ex["years_of_experience"] > 10
-    )
+    assert ex["years_basis"] == "employment_history" and ex["years_of_experience"] > 10
     assert [e["title"] for e in ex["experiences"]] == [
         "Senior Backend Engineer",
         "Backend Developer",
@@ -643,11 +641,27 @@ async def test_apply_accepts_boolean_shorthands(client):
     r = await client.post(
         f"/api/v1/resumes/{body['id']}/extracted/apply",
         headers=cand["h"],
-        json={"skills": True, "experiences": [0], "summary": True, "headline": True, "overwrite": {"summary": True}},
+        json={
+            "skills": True,
+            "experiences": [0],
+            "summary": True,
+            "headline": True,
+            "overwrite": {"summary": True},
+        },
     )
     assert r.status_code == 200, r.text
     res = r.json()
-    assert res["applied"]["skills"] >= 10 and res["applied"]["experiences"] == 1 and set(res["fields_applied"]) == {"summary", "headline"}
+    assert (
+        res["applied"]["skills"] >= 10
+        and res["applied"]["experiences"] == 1
+        and set(res["fields_applied"]) == {"summary", "headline"}
+    )
     # empty body is a valid no-op; unknown keys are rejected rather than silently ignored
-    assert (await client.post(f"/api/v1/resumes/{body['id']}/extracted/apply", headers=cand["h"], json={})).json() == {"applied": {}, "fields_applied": [], "skipped": []}
-    assert (await client.post(f"/api/v1/resumes/{body['id']}/extracted/apply", headers=cand["h"], json={"everything": True})).status_code == 422
+    assert (
+        await client.post(f"/api/v1/resumes/{body['id']}/extracted/apply", headers=cand["h"], json={})
+    ).json() == {"applied": {}, "fields_applied": [], "skipped": []}
+    assert (
+        await client.post(
+            f"/api/v1/resumes/{body['id']}/extracted/apply", headers=cand["h"], json={"everything": True}
+        )
+    ).status_code == 422

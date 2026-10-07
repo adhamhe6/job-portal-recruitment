@@ -19,6 +19,7 @@ import os
 import re
 import shutil
 import tempfile
+import time
 import uuid
 from collections.abc import AsyncIterator
 from functools import lru_cache
@@ -32,6 +33,7 @@ logger = logging.getLogger(__name__)
 CHUNK_SIZE = 64 * 1024
 _SEGMENT = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.\-]{0,127}$")
 MAX_KEY_LENGTH = 255
+STALE_TEMP_SECONDS = 24 * 3600
 
 
 class StorageError(Exception):
@@ -90,6 +92,15 @@ class LocalStorage:
         self._tmp = self.root / ".tmp"
         self._ensure_dir(self.root)
         self._ensure_dir(self._tmp)
+        self._sweep_stale_temp_files()
+
+    def _sweep_stale_temp_files(self, max_age_seconds: float = STALE_TEMP_SECONDS) -> None:
+        """Drop temp files left behind by a process that died mid-write (they are never visible under a real key)."""
+        cutoff = time.time() - max_age_seconds
+        for path in self._tmp.glob("put-*"):
+            with contextlib.suppress(OSError):
+                if path.stat().st_mtime < cutoff:
+                    path.unlink()
 
     @staticmethod
     def _ensure_dir(path: Path) -> None:

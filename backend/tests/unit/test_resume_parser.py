@@ -9,6 +9,7 @@ from datetime import date
 import pytest
 
 from app.db.models import EducationLevel, LanguageProficiency
+from app.resume.lexicon import PROTECTED_LABELS
 from app.resume.parser import (
     PARSER_VERSION,
     extract_contact,
@@ -181,11 +182,18 @@ Gender: Female
 Marital Status: Married
 Nationality: German
 Age: 34
+Religion: None
+Photo: attached
+
+Personal Details
+Date of Birth: 12 March 1990
+Passport: C01X00T47
 
 Skills
 Python, Django, SQL
 """
-    payload = json.dumps(parse_resume(text, today=TODAY).to_dict()).lower()
+    parsed = parse_resume(text, today=TODAY).to_dict()
+    payload = json.dumps(parsed).lower()
     for token in (
         "1990",
         "female",
@@ -196,8 +204,26 @@ Python, Django, SQL
         "nationality",
         "gender",
         "age: 34",
+        "passport",
+        "c01x00t47",
+        "religion",
+        "photo",
     ):
         assert token not in payload
+    # nor does the output schema have a place for them
+    keys = set()
+
+    def walk(node):
+        if isinstance(node, dict):
+            for k, v in node.items():
+                keys.add(k.lower())
+                walk(v)
+        elif isinstance(node, list):
+            for v in node:
+                walk(v)
+
+    walk(parsed)
+    assert not keys & {label.replace(" ", "_") for label in PROTECTED_LABELS}
 
 
 # --- dates -------------------------------------------------------------------------------------------------------

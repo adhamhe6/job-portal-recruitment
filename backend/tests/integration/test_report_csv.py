@@ -217,8 +217,9 @@ async def test_export_task_truncates_large_results(client):
     company = uuid.UUID(rec["company_id"])
     # many jobs with an application each, inserted directly (the cap is about the task result size)
     await sql(
-        "INSERT INTO jobs (id, company_id, title, description, status, published_at) "
-        "SELECT gen_random_uuid(), :c, 'Bulk job ' || g, 'A description that is long enough', 'PUBLISHED', now() FROM generate_series(1, 1005) g",
+        "INSERT INTO jobs (id, company_id, title, description, status, published_at, employment_type, workplace_type) "
+        "SELECT gen_random_uuid(), :c, 'Bulk job ' || g, 'A description that is long enough', 'PUBLISHED', now(), 'FULL_TIME', 'ONSITE' "
+        "FROM generate_series(1, 1005) g",
         c=company,
     )
     await sql(

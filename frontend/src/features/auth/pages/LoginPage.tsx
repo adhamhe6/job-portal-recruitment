@@ -111,7 +111,7 @@ export default function LoginPage() {
               One click
             </Badge>
           </div>
-          <ul className="grid gap-2">
+          <ul className="flex flex-col gap-2">
             {demo.accounts.map((a) => (
               <li key={a.email}>
                 <button

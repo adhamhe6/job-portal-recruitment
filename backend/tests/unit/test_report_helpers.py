@@ -64,8 +64,9 @@ def test_make_window_validation_and_defaults():
     with pytest.raises(ValidationFailure) as e2:
         make_window(date(2010, 1, 1), date(2026, 1, 1))
     assert e2.value.code == "DATE_RANGE_TOO_LARGE"
-    with pytest.raises(ValidationFailure):
-        make_window(date(2026, 3, 31), None, default_days=30) if False else make_window(date(2030, 1, 1), date(2026, 1, 1), default_days=5)
+    with pytest.raises(ValidationFailure) as e3:
+        make_window(date(2030, 1, 1), date(2026, 1, 1), default_days=5)
+    assert e3.value.code == "INVALID_DATE_RANGE"
 
 
 def test_bucket_starts():

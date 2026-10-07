@@ -188,7 +188,8 @@ async def test_sourcing_recruiter_can_review_and_apply_for_imported_candidates(c
     assert ap.json()["applied"].get("experiences", 0) == 0  # already imported: no duplicates
     cand2 = (await client.get(f"/api/v1/candidates/{cid}", headers=rec["h"])).json()
     assert cand2["headline"] == "ICU Nurse" and len(cand2["experiences"]) == 2
-    assert all(s["status"] == "CONFIRMED" for s in cand2["skills"] if s["source"] == "RESUME")
+    statuses = [s["status"] for s in cand2["skills"] if s["source"] == "RESUME"]
+    assert statuses.count("SUGGESTED") == 1 and statuses.count("CONFIRMED") == len(statuses) - 1  # the removed suggestion stays unconfirmed
     # reprocessing keeps the profile intact (the structured import happens once, at creation)
     assert (await client.post(f"/api/v1/resumes/{rid}/process", headers=rec["h"])).status_code == 202
     cand3 = (await client.get(f"/api/v1/candidates/{cid}", headers=rec["h"])).json()

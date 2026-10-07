@@ -13,6 +13,7 @@ import uuid
 from collections import defaultdict
 from collections.abc import AsyncIterator, Sequence
 from dataclasses import dataclass
+from datetime import timedelta
 from typing import Any, Literal, Protocol
 from urllib.parse import quote
 
@@ -62,7 +63,7 @@ from app.schemas.resume import (
     ResumeUploadOut,
 )
 from app.services.access import CandidateAccess, candidate_access_for, is_admin, require_company
-from app.services.common import paginate, record_audit
+from app.services.common import paginate, record_audit, utcnow
 from app.services.tasks import Dispatcher, TaskService
 
 logger = logging.getLogger(__name__)
@@ -614,6 +615,7 @@ class ResumeService:
                 details={"max_files": settings.max_bulk_import_files, "received": len(uploads)},
             )
         storage = get_storage()
+        started = utcnow()
         rejected: list[RejectedFile] = []
         items: list[BulkImportItem] = []
         stored: list[str] = []
@@ -637,6 +639,8 @@ class ResumeService:
                             sha256=valid.sha256,
                             size_bytes=valid.size,
                             storage_key=key,
+                            # one transaction = one server-side now(): stamp explicitly so processing follows upload order
+                            created_at=started + timedelta(microseconds=len(items)),
                         )
                     )
                 finally:

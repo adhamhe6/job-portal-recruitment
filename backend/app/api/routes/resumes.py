@@ -332,13 +332,13 @@ async def download_resume(
     ),
     responses={409: {"model": ErrorResponse, "description": "RESUME_IN_USE"}},
 )
-async def delete_resume(resume_id: uuid.UUID, user: Uploader, svc: Svc) -> Response:
+async def delete_resume(resume_id: uuid.UUID, user: Viewer, svc: Svc) -> Response:
     await svc.delete(user, resume_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.post("/{resume_id}/primary", response_model=ResumeOut, summary="Make this my primary résumé (owner)")
-async def make_primary(resume_id: uuid.UUID, user: Uploader, svc: Svc) -> ResumeOut:
+async def make_primary(resume_id: uuid.UUID, user: Viewer, svc: Svc) -> ResumeOut:
     return await svc.set_primary(user, resume_id)
 
 

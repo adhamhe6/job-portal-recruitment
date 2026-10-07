@@ -73,7 +73,7 @@ async def search_jobs(
     sort: JobSort = JobSort.RELEVANCE,
 ) -> Page[JobListItem]:
     ids, unresolved = await _resolve_skills(session, skill_id, skill)
-    if unresolved and skills_mode == "all":
+    if unresolved and (skills_mode == "all" or not ids):  # ANY of only-unknown skills matches nothing; it must not drop the filter
         return Page.build([], page=p.page, page_size=p.page_size, total=0)
     if salary_min is not None and salary_max is not None and salary_min > salary_max:
         from app.core.errors import ValidationFailure
@@ -132,7 +132,7 @@ async def search_candidates(
 
         await load_job_for_staff(session, user, job_id)
     ids, unresolved = await _resolve_skills(session, skill_id, skill)
-    if unresolved and skills_mode == "all":
+    if unresolved and (skills_mode == "all" or not ids):
         return Page.build([], page=p.page, page_size=p.page_size, total=0)
     if min_experience is not None and max_experience is not None and min_experience > max_experience:
         from app.core.errors import ValidationFailure

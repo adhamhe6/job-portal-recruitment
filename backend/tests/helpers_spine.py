@@ -226,5 +226,42 @@ async def insert_imported_candidate(
 __all__ = [
     "API", "PASSWORD", "U", "apply_job", "assert_error", "backend_world", "client_from", "company_team", "expire_deadline", "fast_argon",
     "future", "insert_imported_candidate", "login", "nurse_profile", "publish", "refresh", "refresh_cookie", "scalar", "set_application_status",
-    "set_cookie_headers", "set_job_status", "sql", "tasks", "walk",
+    "seed_search_corpus", "set_cookie_headers", "set_job_status", "sql", "tasks", "walk",
 ]
+
+
+async def seed_search_corpus(client: AsyncClient) -> dict[str, Any]:
+    """Eight published jobs across two companies with deliberately varied attributes. Returns ``{key: job}`` + the recruiters."""
+    from tests.helpers import job_payload
+
+    rec1 = await register_employer(client, "Alpine Software")
+    rec2 = await register_employer(client, "Boreal Health")
+
+    specs: list[tuple[str, dict[str, Any], dict[str, Any]]] = [
+        ("python", rec1, {"title": "Python Developer", "location": "Berlin, Germany", "workplace_type": "REMOTE", "employment_type": "FULL_TIME", "experience_level": "MID",
+                          "salary_min": 60000, "salary_max": 80000, "min_experience_years": 2, "department": "Engineering",
+                          "skills": [{"name": "Python"}, {"name": "Django"}, {"name": "PostgreSQL", "requirement": "PREFERRED"}]}),
+        ("java", rec1, {"title": "Senior Java Engineer", "location": "Munich, Germany", "workplace_type": "HYBRID", "employment_type": "FULL_TIME", "experience_level": "SENIOR",
+                        "salary_min": 90000, "salary_max": 120000, "min_experience_years": 6, "skills": [{"name": "Java"}, {"name": "Spring Boot"}]}),
+        ("frontend", rec1, {"title": "Junior Frontend Developer", "location": "Hamburg, Germany", "workplace_type": "ONSITE", "employment_type": "PART_TIME", "experience_level": "JUNIOR",
+                            "salary_min": 30000, "salary_max": 40000, "min_experience_years": 0, "skills": [{"name": "React"}, {"name": "CSS"}]}),
+        ("analyst", rec1, {"title": "Data Analyst Intern", "location": "Berlin, Germany", "workplace_type": "ONSITE", "employment_type": "INTERNSHIP", "experience_level": "ENTRY",
+                           "salary_min": None, "salary_max": None, "min_experience_years": 0, "skills": [{"name": "SQL"}, {"name": "Excel"}]}),
+        ("office", rec2, {"title": "Office Manager", "location": "Paris, France", "workplace_type": "ONSITE", "employment_type": "CONTRACT", "experience_level": "MID",
+                          "salary_min": 50000, "salary_max": 60000, "min_experience_years": 3,
+                          "description": "Coordinate the office, vendors and travel. Some Python scripting, Python reports and Python automation are a plus, Python Python Python.",
+                          "skills": [{"name": "Project Management"}]}),
+        ("nurse", rec2, {"title": "ICU Nurse", "location": "Hamburg, Germany", "workplace_type": "ONSITE", "employment_type": "FULL_TIME", "experience_level": "MID",
+                         "salary_min": 45000, "salary_max": None, "min_experience_years": 2, "skills": [{"name": "Critical Care"}, {"name": "BLS"}]}),
+        ("devops", rec2, {"title": "DevOps Engineer", "location": "Remote - Europe", "workplace_type": "REMOTE", "employment_type": "CONTRACT", "experience_level": "SENIOR",
+                          "salary_min": None, "salary_max": 100000, "min_experience_years": 5, "skills": [{"name": "Kubernetes"}, {"name": "Docker"}, {"name": "Python", "requirement": "PREFERRED"}]}),
+        ("pct", rec2, {"title": "Sales Representative 100% Commission", "location": "100% Remote_Work", "workplace_type": "REMOTE", "employment_type": "FULL_TIME", "experience_level": "ENTRY",
+                       "salary_min": 20000, "salary_max": 30000, "min_experience_years": 0, "skills": [{"name": "Negotiation"}]}),
+    ]
+    out: dict[str, Any] = {"rec1": rec1, "rec2": rec2}
+    for key, rec, over in specs:
+        payload = job_payload(**over)
+        r = await client.post(f"{API}/jobs", headers=rec["h"], json=payload)
+        assert r.status_code == 201, r.text
+        out[key] = await publish(client, rec, r.json()["id"])
+    return out

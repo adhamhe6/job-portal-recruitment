@@ -138,84 +138,86 @@ function JobForm({ job }: { job?: JobDetail }) {
 
   // --- submit --------------------------------------------------------------------------------------------------------------
   const submitAs = async (mode: Mode, values: JobFormValues) => {
-    {
-      setFormError(null)
-      setProblems([])
-      if (mode === 'publish') {
-        const missing = publishProblems(values)
-        if (missing.length) {
-          missing.forEach((p, i) =>
-            setError(p.field, { type: 'publish', message: p.message }, { shouldFocus: i === 0 }),
-          )
-          setProblems(missing.map((p) => p.message))
-          focusFirstError()
-          return
-        }
-      }
-      setBusy(mode)
-      const payload = formValuesToPayload(values)
-      let jobId = job?.id
-      try {
-        if (job) {
-          await update.mutateAsync(payload)
-        } else {
-          const created = await create.mutateAsync({ body: payload })
-          jobId = created.id
-        }
-      } catch (e) {
-        setBusy(null)
-        setFormError(
-          applyApiErrors(e, setError, {
-            fields: JOB_FORM_FIELDS,
-            codeFields: JOB_ERROR_CODE_FIELDS,
-            inferField: inferJobField,
-          }),
+    setFormError(null)
+    setProblems([])
+    if (mode === 'publish') {
+      const missing = publishProblems(values)
+      if (missing.length) {
+        missing.forEach((p, i) =>
+          setError(p.field, { type: 'publish', message: p.message }, { shouldFocus: i === 0 }),
         )
+        setProblems(missing.map((p) => p.message))
         focusFirstError()
         return
       }
-      if (!jobId) return
+    }
+    setBusy(mode)
+    const payload = formValuesToPayload(values)
+    let jobId = job?.id
+    try {
+      if (job) {
+        await update.mutateAsync(payload)
+      } else {
+        const created = await create.mutateAsync({ body: payload })
+        jobId = created.id
+      }
+    } catch (e) {
+      setBusy(null)
+      setFormError(
+        applyApiErrors(e, setError, {
+          fields: JOB_FORM_FIELDS,
+          codeFields: JOB_ERROR_CODE_FIELDS,
+          inferField: inferJobField,
+        }),
+      )
+      focusFirstError()
+      return
+    }
+    if (!jobId) return
 
-      if (mode === 'publish' && status === 'DRAFT') {
-        try {
-          await transition.mutateAsync({ id: jobId, action: 'publish' })
-        } catch (e) {
-          // The content is saved; only the publish gate failed. Keep the user on the (now existing) draft with the reasons.
-          setBusy(null)
-          const d = describeLifecycleError(e)
-          const list = d.problems?.length ? d.problems : [d.message]
-          reset(values)
-          toast.warning('Saved as a draft — but it can’t be published yet')
-          if (!job) leaveTo(paths.manageJobEdit(jobId), { publishProblems: list })
-          else {
-            setFormError(null)
-            setProblems(list)
-          }
-          return
-        }
-        toast.success('Job published', { description: values.title })
+    if (mode === 'publish' && status === 'DRAFT') {
+      try {
+        await transition.mutateAsync({ id: jobId, action: 'publish' })
+      } catch (e) {
+        // The content is saved; only the publish gate failed. Keep the user on the (now existing) draft with the reasons.
+        setBusy(null)
+        const d = describeLifecycleError(e)
+        const list = d.problems?.length ? d.problems : [d.message]
         reset(values)
-        leaveTo(paths.job(jobId))
+        toast.warning('Saved as a draft — but it can’t be published yet')
+        if (!job) leaveTo(paths.manageJobEdit(jobId), { publishProblems: list })
+        else {
+          setFormError(null)
+          setProblems(list)
+        }
         return
       }
-
-      setBusy(null)
+      toast.success('Job published', { description: values.title })
       reset(values)
-      if (!job) {
-        toast.success('Draft saved')
-        leaveTo(paths.manageJobEdit(jobId))
-      } else {
-        toast.success(isLive ? 'Changes saved' : 'Draft saved', {
-          description:
-            status === 'PUBLISHED' ? 'Candidate matches will refresh in the background.' : undefined,
-        })
-      }
-    }, onInvalid)
+      leaveTo(paths.job(jobId))
+      return
+    }
+
+    setBusy(null)
+    reset(values)
+    if (!job) {
+      toast.success('Draft saved')
+      leaveTo(paths.manageJobEdit(jobId))
+    } else {
+      toast.success(isLive ? 'Changes saved' : 'Draft saved', {
+        description: status === 'PUBLISHED' ? 'Candidate matches will refresh in the background.' : undefined,
+      })
+    }
+  }
 
   const onInvalid: SubmitErrorHandler<JobFormValues> = () => {
     setFormError('Some fields need your attention. They are highlighted below.')
     focusFirstError()
   }
+
+  /** Validates with zod, then runs the save / publish flow for `mode`. Called from event handlers only. */
+  const submit = (mode: Mode, e?: React.BaseSyntheticEvent) =>
+    handleSubmit((values) => submitAs(mode, values), onInvalid)(e)
 
   // --- options ---------------------------------------------------------------------------------------------------------------
   const managerOptions = (members.data ?? []).filter(
@@ -272,7 +274,7 @@ function JobForm({ job }: { job?: JobDetail }) {
       />
 
       <form
-        onSubmit={run(isLive ? 'save' : 'draft')}
+        onSubmit={(e) => void submit(isLive ? 'save' : 'draft', e)}
         noValidate
         className="mx-auto grid max-w-4xl gap-6"
         aria-label={editing ? 'Edit job' : 'Create job'}
@@ -514,7 +516,7 @@ function JobForm({ job }: { job?: JobDetail }) {
               </Button>
               <Button
                 type="button"
-                onClick={run('publish')}
+                onClick={() => void submit('publish')}
                 loading={busy === 'publish'}
                 disabled={busy !== null && busy !== 'publish'}
               >

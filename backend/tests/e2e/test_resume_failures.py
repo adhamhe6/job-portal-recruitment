@@ -435,7 +435,6 @@ async def test_logs_never_contain_resume_content_or_filenames(client, caplog):
         [("bulk-private-alex.docx", fx.frontend_docx(), DOCX), ("bulk-bad.pdf", fx.malformed_pdf(), PDF)],
     )
     text = caplog.text
-    assert "Created" not in text or True
     for token in (
         "jane.doe@example.com",
         "Jane Doe",

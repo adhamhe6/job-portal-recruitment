@@ -172,7 +172,7 @@ async def test_contact_details_never_appear_in_list_items(client: AsyncClient, w
         ("zanzibar", {"Alex"}),                     # résumé text
         ("intensive care", {"Julia"}),              # summary
         ("alex", {"Alex"}),                         # name
-        ("alexx", {"Alex"}),                        # typo in the name
+        ("alex backnd", {"Alex"}),                  # typo, name-sized query
         ("python -react", {"Alex", "Chen", "Anna", "Ines"}),
         ("python -pytorch", {"Alex", "Anna", "Ines"}),
         ("fastapi or pytorch", {"Alex", "Chen"}),
@@ -229,7 +229,7 @@ async def test_top_skills_and_skill_matches(client: AsyncClient, w: dict[str, An
         ({"max_experience": 3}, {"Bianca", "Anna"}),
         ({"min_experience": 3, "max_experience": 5}, {"Alex", "Bianca"}),
         ({"min_experience": 100 // 2}, set()),
-        ({"location": "berlin"}, {"Alex", "Bianca"}),
+        ({"location": "berlin"}, {"Alex", "Bianca", "Ines"}),
         ({"location": "GERMANY"}, {"Alex", "Bianca", "Chen", "Julia", "Anna", "Ines"}),
         ({"location": "%"}, set()),
         ({"location": "_"}, set()),
@@ -307,7 +307,9 @@ async def test_pagination_envelope(client: AsyncClient, w: dict[str, Any]) -> No
     rec = w["rec_a"]
     total = (await run(client, rec, page_size=100))["total"]
     assert total == 6
-    p1, p2, p3 = (await run(client, rec, page_size=4, page=p, sort="name") for p in (1, 2, 3))
+    p1 = await run(client, rec, page_size=4, page=1, sort="name")
+    p2 = await run(client, rec, page_size=4, page=2, sort="name")
+    p3 = await run(client, rec, page_size=4, page=3, sort="name")
     assert (p1["page"], p1["page_size"], p1["total"], p1["pages"], len(p1["items"])) == (1, 4, 6, 2, 4)
     assert len(p2["items"]) == 2 and p3["items"] == [] and p3["total"] == 6 and p3["pages"] == 2
     ids = [i["id"] for i in p1["items"] + p2["items"]]

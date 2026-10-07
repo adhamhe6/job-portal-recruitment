@@ -2,7 +2,7 @@ import { http, HttpResponse } from 'msw'
 import { describe, expect, it, vi } from 'vitest'
 import { errorBody } from '@/test/fixtures'
 import { server } from '@/test/server'
-import { api, ApiError, buildQuery, onSessionExpired, refreshSession, tokenStore } from '.'
+import { api, ApiError, buildQuery, onSessionExpired, refreshSession, tokenStore, upload } from '.'
 
 describe('buildQuery', () => {
   it('repeats array params and drops empty values', () => {
@@ -193,5 +193,46 @@ describe('authentication', () => {
 
   it('refreshSession resolves null when there is no valid session', async () => {
     await expect(refreshSession()).resolves.toBeNull()
+  })
+})
+
+describe('upload (multipart with progress)', () => {
+  it('posts FormData with the bearer token and reports completion', async () => {
+    tokenStore.set('tok-up')
+    let auth: string | null = null
+    let name = ''
+    server.use(
+      http.post('/api/v1/resumes', async ({ request }) => {
+        auth = request.headers.get('authorization')
+        const form = await request.formData()
+        name = (form.get('file') as File).name
+        return HttpResponse.json({ id: 'r1' }, { status: 201 })
+      }),
+    )
+    const progress: number[] = []
+    const form = new FormData()
+    form.append('file', new File(['hello'], 'cv.pdf', { type: 'application/pdf' }))
+    const res = await upload<{ id: string }>('/resumes', form, { onProgress: (f) => progress.push(f) })
+    expect(res).toEqual({ id: 'r1' })
+    expect(auth).toBe('Bearer tok-up')
+    expect(name).toBe('cv.pdf')
+    expect(progress[progress.length - 1]).toBe(1)
+  })
+
+  it('normalises upload errors and retries once after a silent refresh', async () => {
+    tokenStore.set('old')
+    let attempts = 0
+    server.use(
+      http.post('/api/v1/resumes', ({ request }) => {
+        attempts++
+        return request.headers.get('authorization') === 'Bearer fresh'
+          ? HttpResponse.json(errorBody('UNSUPPORTED_MEDIA_TYPE', 'Only PDF and DOCX files are accepted'), { status: 415 })
+          : HttpResponse.json(errorBody('TOKEN_EXPIRED', 'expired'), { status: 401 })
+      }),
+      http.post('/api/v1/auth/refresh', () => HttpResponse.json({ access_token: 'fresh', token_type: 'bearer', expires_in: 900, user: {} })),
+    )
+    const err = (await upload('/resumes', new FormData()).catch((e: unknown) => e)) as ApiError
+    expect(attempts).toBe(2)
+    expect(err).toMatchObject({ status: 415, code: 'UNSUPPORTED_MEDIA_TYPE', message: 'Only PDF and DOCX files are accepted' })
   })
 })

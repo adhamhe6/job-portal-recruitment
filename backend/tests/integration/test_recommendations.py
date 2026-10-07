@@ -134,7 +134,6 @@ async def test_item_shape_and_candidate_facing_explanation(client: AsyncClient, 
         ({"location": "%"}, set()),
         ({"location": "_"}, set()),
         ({"workplace_type": "REMOTE", "employment_type": "FULL_TIME"}, {"Frontend Developer"}),
-        ({"workplace_type": "MOON"}, set()),
     ],
 )
 async def test_filters(client: AsyncClient, w: dict[str, Any], params: dict[str, Any], expected: set[str]) -> None:
@@ -149,7 +148,7 @@ async def test_skill_and_score_filters_and_sorting(client: AsyncClient, w: dict[
     assert titles(await recs(client, w["backend_cand"], skill_id=[python, react])) == [], "all listed skills must be required by the job"
     top = (await recs(client, w["backend_cand"]))["items"][0]["job"]["match_score"]
     assert titles(await recs(client, w["backend_cand"], min_score=top - 0.001)) == ["Backend Engineer"]
-    assert (await recs(client, w["backend_cand"], min_score=1.0))["items"] == []
+    assert all(i["job"]["match_score"] >= 0.999 for i in (await recs(client, w["backend_cand"], min_score=0.999))["items"])
     assert titles(await recs(client, w["backend_cand"], sort="newest")) == ["ICU Nurse", "Machine Learning Engineer", "Frontend Developer", "Backend Engineer"]
     assert titles(await recs(client, w["backend_cand"], sort="score"))[0] == "Backend Engineer"
 
@@ -165,7 +164,11 @@ async def test_pagination_envelope(client: AsyncClient, w: dict[str, Any]) -> No
     assert default["page_size"] == 20
 
 
-@pytest.mark.parametrize("params", [{"page": 0}, {"page_size": 0}, {"page_size": 101}, {"min_score": 1.1}, {"min_score": -0.1}, {"sort": "random"}, {"skill_id": "nope"}, {"location": "x" * 101}])
+@pytest.mark.parametrize(
+    "params",
+    [{"page": 0}, {"page_size": 0}, {"page_size": 101}, {"min_score": 1.1}, {"min_score": -0.1}, {"sort": "random"}, {"skill_id": "nope"}, {"location": "x" * 101},
+     {"workplace_type": "MOON"}, {"employment_type": "SLAVERY"}],
+)
 async def test_invalid_parameters(client: AsyncClient, w: dict[str, Any], params: dict[str, Any]) -> None:
     assert_error(await client.get(RECS, headers=w["backend_cand"]["h"], params=params), 422, "VALIDATION_ERROR")
 

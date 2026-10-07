@@ -12,7 +12,7 @@ from pydantic import BaseModel
 from app.api.dependencies import CacheDep, DispatcherDep, Pagination, SessionDep, expensive_limit, require
 from app.cache.redis_cache import CacheDomain
 from app.core.security import Permission
-from app.db.models import Availability, User
+from app.db.models import Availability, EmploymentType, User, WorkplaceType
 from app.schemas.common import COMMON_ERRORS, Page, TaskRef
 from app.schemas.match import (
     CandidateFacingMatch,
@@ -96,8 +96,8 @@ async def my_job_match(job_id: uuid.UUID, user: Cand, svc: Svc) -> CandidateFaci
 async def recommended_jobs(
     user: Cand, svc: Svc, cache: CacheDep, p: Pagination,
     min_score: Annotated[float, Query(ge=0, le=1)] = 0.0,
-    workplace_type: Annotated[list[str] | None, Query()] = None,
-    employment_type: Annotated[list[str] | None, Query()] = None,
+    workplace_type: Annotated[list[WorkplaceType] | None, Query()] = None,
+    employment_type: Annotated[list[EmploymentType] | None, Query()] = None,
     location: Annotated[str | None, Query(max_length=100)] = None,
     skill_id: Annotated[list[uuid.UUID] | None, Query()] = None,
     sort: Annotated[str, Query(pattern="^(score|newest)$")] = "score",

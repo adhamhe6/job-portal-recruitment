@@ -7,7 +7,9 @@ import { useUrlState } from '../useUrlState'
 const DEFAULTS = { q: '', sort: 'newest', page: 1, skill: [] as string[] }
 
 function setup(url = '/') {
-  const wrapper = ({ children }: { children: ReactNode }) => <MemoryRouter initialEntries={[url]}>{children}</MemoryRouter>
+  const wrapper = ({ children }: { children: ReactNode }) => (
+    <MemoryRouter initialEntries={[url]}>{children}</MemoryRouter>
+  )
   return renderHook(
     () => {
       const [state, update, reset] = useUrlState(DEFAULTS)

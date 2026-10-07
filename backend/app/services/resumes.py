@@ -313,13 +313,8 @@ class ResumeService:
             try:
                 resume = await self._create_rows(user, candidate, key, upload, set_primary)
             except _DuplicateUploadError as dup:  # a concurrent identical upload won the race: keep one copy
-                existing_id = dup.existing.id
-                await self.session.rollback()  # expires every loaded object: fetch the winner afresh
                 await storage.delete(key)
-                winner = await self.session.get(Resume, existing_id)
-                if winner is None:  # deleted in the meantime: report it rather than guess
-                    raise ConflictError("Please retry the upload.", code="UPLOAD_CONFLICT") from None
-                return await self._duplicate(user, candidate, winner, set_primary)
+                return await self._duplicate(user, candidate, dup.existing, set_primary)
             except BaseException:
                 await self.session.rollback()
                 await storage.delete(key)
@@ -361,6 +356,9 @@ class ResumeService:
         )  # serialise per candidate
         raced = await self._find_duplicate(candidate.id, upload.sha256)
         if raced is not None:
+            # Nothing was written: commit (not rollback — a rollback would expire every loaded object, and lazy
+            # reloads are illegal in async code) just to release the row lock.
+            await self.session.commit()
             raise _DuplicateUploadError(raced)
         has_primary = await self.session.scalar(
             select(exists().where(Resume.candidate_id == candidate.id, Resume.is_primary.is_(True)))

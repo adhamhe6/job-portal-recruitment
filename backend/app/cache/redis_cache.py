@@ -132,9 +132,16 @@ class Cache:
             key = f"{_KEY_PREFIX}:{name}:{versions}:{self._param_hash(params)}"
             raw = await self._redis.get(key)
             if raw is not None:
-                self.hits += 1
-                logger.debug("cache hit", extra={"cache_key": name})
-                return deserialize(json.loads(raw))
+                try:
+                    value = deserialize(json.loads(raw))
+                except (ValueError, TypeError, KeyError):
+                    # Unreadable entry (corrupt, or written before a schema change shipped): a cache must never turn into an
+                    # outage, so treat it as a miss and let the recomputed value overwrite it.
+                    logger.warning("discarding unreadable cache entry", extra={"cache_key": name})
+                else:
+                    self.hits += 1
+                    logger.debug("cache hit", extra={"cache_key": name})
+                    return value
         except RedisError as exc:
             self._trip(exc, "get")
             return await compute()

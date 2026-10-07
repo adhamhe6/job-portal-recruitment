@@ -8,7 +8,11 @@ import { existsSync, mkdirSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 
 const require = createRequire(import.meta.url)
-const candidates = [process.env.PLAYWRIGHT_MODULE, 'playwright', '/opt/node-tools/node_modules/playwright'].filter(Boolean)
+const candidates = [
+  process.env.PLAYWRIGHT_MODULE,
+  'playwright',
+  '/opt/node-tools/node_modules/playwright',
+].filter(Boolean)
 let chromium
 for (const c of candidates) {
   try {
@@ -39,11 +43,16 @@ const browser = await chromium.launch({ executablePath: chromePath(), args: ['--
 const problems = []
 
 async function newSession(label, { dark = false } = {}) {
-  const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, colorScheme: dark ? 'dark' : 'light', reducedMotion: 'reduce' })
+  const context = await browser.newContext({
+    viewport: { width: 1440, height: 900 },
+    colorScheme: dark ? 'dark' : 'light',
+    reducedMotion: 'reduce',
+  })
   const page = await context.newPage()
   page.on('pageerror', (e) => problems.push(`[${label}] pageerror: ${e.message}`))
   page.on('console', (m) => {
-    if (m.type() === 'error' && !/Failed to load resource/.test(m.text())) problems.push(`[${label}] console: ${m.text().slice(0, 300)}`)
+    if (m.type() === 'error' && !/Failed to load resource/.test(m.text()))
+      problems.push(`[${label}] console: ${m.text().slice(0, 300)}`)
   })
   return { context, page }
 }
@@ -60,7 +69,9 @@ async function shot(page, name, { full = true } = {}) {
   for (const w of WIDTHS) {
     await page.setViewportSize({ width: w, height: w < 500 ? 844 : 900 })
     await page.waitForTimeout(350)
-    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)
+    const overflow = await page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    )
     if (overflow > 1) problems.push(`[${name}@${w}] horizontal page overflow ${overflow}px`)
     await page.screenshot({ path: join(OUT, `${name}-${w}.png`), fullPage: full })
   }
@@ -104,7 +115,20 @@ if (want('anon') || want('home') || want('login') || want('register') || want('j
     await page.goto(`${BASE}/jobs?q=zzzzqqq`)
     await settle(page)
     await shot(page, 'jobs-empty', { full: false })
-    await page.route('**/api/v1/search/jobs*', (r) => r.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ error: { code: 'INTERNAL_ERROR', message: 'An unexpected error occurred', details: null, request_id: 'req-demo-123' } }) }))
+    await page.route('**/api/v1/search/jobs*', (r) =>
+      r.fulfill({
+        status: 500,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          error: {
+            code: 'INTERNAL_ERROR',
+            message: 'An unexpected error occurred',
+            details: null,
+            request_id: 'req-demo-123',
+          },
+        }),
+      }),
+    )
     await page.goto(`${BASE}/jobs`)
     await page.waitForTimeout(2500)
     await shot(page, 'jobs-error', { full: false })
@@ -195,7 +219,10 @@ if (want('rec')) {
   await shot(page, 'rec-job-new-errors', { full: false })
   await page.goto(`${BASE}/manage/jobs?status=PUBLISHED`)
   await settle(page)
-  await page.getByRole('button', { name: /^Actions for/ }).first().click()
+  await page
+    .getByRole('button', { name: /^Actions for/ })
+    .first()
+    .click()
   await page.waitForTimeout(300)
   await shot(page, 'rec-row-menu', { full: false })
   await context.close()
@@ -229,5 +256,9 @@ if (want('dark')) {
 }
 
 await browser.close()
-console.log(problems.length ? `PROBLEMS (${problems.length}):\n${[...new Set(problems)].join('\n')}` : 'No console errors or page overflow detected.')
+console.log(
+  problems.length
+    ? `PROBLEMS (${problems.length}):\n${[...new Set(problems)].join('\n')}`
+    : 'No console errors or page overflow detected.',
+)
 console.log(`Screenshots in ${OUT}`)

@@ -39,7 +39,7 @@ export default tseslint.config(
   },
   {
     files: ['scripts/**/*.{js,mjs,ts}', 'vite.config.ts', '*.config.{js,ts}'],
-    languageOptions: { globals: { ...globals.node } },
+    languageOptions: { globals: { ...globals.node, ...globals.browser } },
     rules: { 'no-console': 'off' },
   },
   prettier,

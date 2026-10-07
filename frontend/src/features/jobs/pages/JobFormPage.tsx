@@ -109,7 +109,6 @@ function JobForm({ job }: { job?: JobDetail }) {
     setError,
     reset,
     control,
-    control,
     formState: { errors, isDirty },
   } = form
 

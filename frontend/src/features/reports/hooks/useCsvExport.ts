@@ -7,7 +7,7 @@ import { exportErrorMessage, isAbort, runExportTask, saveTextFile } from '../lib
 export type ExportState =
   | { status: 'idle' }
   | { status: 'running'; def: ExportDef; progress: number | null; stage: string | null }
-  | { status: 'done'; def: ExportDef; filename: string; note: string | null }
+  | { status: 'done'; def: ExportDef; filename: string | null; note: string | null }
   | { status: 'error'; def: ExportDef; message: string }
 
 /**
@@ -48,7 +48,7 @@ export function useCsvExport(filters: ReportFilters, sort?: { sort: string; orde
           })
         } else {
           await downloadFile(def.path, { ...params, format: 'csv' }, `${def.id}.csv`)
-          setState({ status: 'done', def, filename: `${def.id}.csv`, note: null })
+          setState({ status: 'done', def, filename: null, note: null })
         }
       } catch (e) {
         if (isAbort(e) || controller.signal.aborted) return

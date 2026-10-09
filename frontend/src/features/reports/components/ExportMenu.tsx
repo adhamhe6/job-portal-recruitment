@@ -105,7 +105,16 @@ export function ExportStatus({
     >
       <CheckCircle2 className="size-4.5 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden />
       <p className="min-w-0 flex-1">
-        Saved <strong>{state.filename}</strong>.{state.note ? ` ${state.note}` : ''}
+        {state.filename ? (
+          <>
+            Saved <strong>{state.filename}</strong>.
+          </>
+        ) : (
+          <>
+            Downloaded <strong>{state.def.label}</strong> as CSV.
+          </>
+        )}
+        {state.note ? ` ${state.note}` : ''}
       </p>
       <Button size="icon-sm" variant="ghost" onClick={onDismiss} aria-label="Dismiss export message">
         <X />

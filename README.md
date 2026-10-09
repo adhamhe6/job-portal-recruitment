@@ -33,7 +33,7 @@ docker compose up --build
 | ReDoc / OpenAPI JSON | http://localhost:8000/redoc · http://localhost:8000/openapi.json |
 | Health | http://localhost:8000/health · readiness `/health/ready` (DB, pgvector, Redis) |
 
-On first start the one-shot **`migrate`** service runs `alembic upgrade head`, seeds the skill taxonomy, creates the first admin (`FIRST_ADMIN_EMAIL`/`FIRST_ADMIN_PASSWORD`) and — with `SEED_DEMO_DATA=true` (the default in `.env.example`) — builds the demo dataset through the real API (~1 minute). `api` and `worker` start only after it succeeds; every service has a health check.
+On first start the one-shot **`migrate`** service runs `alembic upgrade head`, seeds the skill taxonomy, creates the first admin (`FIRST_ADMIN_EMAIL`/`FIRST_ADMIN_PASSWORD`) and — with `SEED_DEMO_DATA=true` (the default in `.env.example`) — builds the demo dataset through the real API (about 25–30 seconds: 4 companies, 16 candidates with generated PDF résumés processed by the real pipeline, 14 jobs, 20 applications, interviews with feedback). `api` and `worker` start only after it succeeds; every service has a health check.
 
 ### Demo accounts (development only — password `DemoPass123!`)
 
@@ -50,8 +50,8 @@ The login page offers one-click demo logins only when the server reports demo mo
 
 ### Suggested 5-minute demo
 
-1. Sign in as the **recruiter** → *Dashboard* (funnel, KPIs, top matches — all real aggregates) → *Candidate Matching* → pick **Senior Backend Engineer**: Alex Rivera ranks first (≈97 %) with the explanation “covers 5 of 5 required skills, 5.5 years vs 4+ required”; open a lower-ranked candidate to see *related* skills (MySQL ≈ PostgreSQL) and *missing* ones.
-2. Sign in as a **new candidate** (Register) → fill the profile → upload a PDF/DOCX résumé → watch *Uploaded → Processing → Extracting skills → Generating semantic profile → Ready* (a real background job) → review & apply the extracted skills.
+1. Sign in as the **recruiter** → *Dashboard* (funnel, KPIs, top matches — all real aggregates) → *Candidate Matching* → pick **Senior Backend Engineer**: on the freshly seeded data Alex Rivera ranks first (≈97 %) with the explanation “covers 5 of 5 required skills, 5.5 years vs 4+ required”; open a lower-ranked candidate to see *related* skills (MySQL ≈ PostgreSQL) and *missing* ones.
+2. Sign in as a **new candidate** (Register) → fill the profile → upload a PDF/DOCX résumé → watch the résumé go from *Processing* to *Processed* (a real background job whose progress the page polls) → review & apply the extracted skills.
 3. *Recommended Jobs* shows jobs ranked from the same matching system (closed/paused/unpublished jobs never appear) → open one → *Apply*.
 4. Back as the recruiter: the application is in *Applications* (pipeline), already ranked → shortlist → **schedule an interview** (try double-booking: the database refuses) → the candidate receives a notification and sees the interview → record feedback → advance the application.
 
@@ -161,8 +161,11 @@ cd frontend
 npm run lint && npm run format:check && npm run typecheck && npm test && npm run build
 
 # browser end-to-end against the running docker stack (UI → API → PostgreSQL/Redis/worker → UI)
+# The suite signs in and registers throwaway accounts far faster than the production-style rate limits allow,
+# so raise them for the stack under test (CI does the same):
+printf 'LOGIN_RATE_LIMIT_ATTEMPTS=1000\nREGISTER_RATE_LIMIT_ATTEMPTS=1000\n' >> .env
 docker compose up -d --build --wait
-cd e2e && npm ci && npx playwright test
+cd e2e && npm ci && npx playwright install chromium && npx playwright test
 ```
 
 Current results and the exact commands that produced them are recorded in [`docs/verification.md`](docs/verification.md).

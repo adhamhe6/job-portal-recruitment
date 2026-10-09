@@ -225,7 +225,7 @@ idempotent.
 
 **Changing the model:** (1) set `EMBEDDING_MODEL_NAME/EMBEDDING_VERSION` (or backend); (2) if the dimension differs, add a migration
 altering the three `vector(N)` columns and rebuild the HNSW indexes (the column is `vector(256)` — `EMBEDDING_DIM` is validated against it);
-(3) run **Admin → Embeddings → Refresh** (`REFRESH_EMBEDDINGS` task). Until a pair is re-scored its match row is *stale* (model/version/
+(3) run **Admin → System monitoring → Models and matching → Re-embed stale items** (`REFRESH_EMBEDDINGS` task). Until a pair is re-scored its match row is *stale* (model/version/
 hash mismatch) and is recomputed on read or by the nightly sweep — incompatible vectors are never mixed in one comparison.
 
 ### Score

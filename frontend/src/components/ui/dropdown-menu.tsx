@@ -2,6 +2,7 @@ import * as DropdownMenuPrimitive from '@radix-ui/react-dropdown-menu'
 import { Check } from 'lucide-react'
 import type * as React from 'react'
 import { cn } from '@/lib/utils'
+import { setFocusFallback } from './use-restore-focus'
 
 export const DropdownMenu = DropdownMenuPrimitive.Root
 export const DropdownMenuTrigger = DropdownMenuPrimitive.Trigger
@@ -12,6 +13,7 @@ export function DropdownMenuContent({
   className,
   sideOffset = 6,
   align = 'end',
+  onCloseAutoFocus,
   ...props
 }: React.ComponentProps<typeof DropdownMenuPrimitive.Content>) {
   return (
@@ -23,6 +25,17 @@ export function DropdownMenuContent({
           'z-50 min-w-48 overflow-hidden rounded-xl border bg-popover p-1 text-popover-foreground shadow-lg data-[state=closed]:animate-fade-out data-[state=open]:animate-fade-in',
           className,
         )}
+        onCloseAutoFocus={(event) => {
+          onCloseAutoFocus?.(event)
+          if (event.defaultPrevented) return
+          // A menu item opened a modal dialog: do not pull focus back to the menu button underneath it. Hand the button
+          // to the dialog instead, so focus returns there when the dialog closes.
+          if (document.querySelector('[role="alertdialog"], [role="dialog"]')) {
+            const labelledBy = (event.target as HTMLElement | null)?.getAttribute('aria-labelledby')
+            setFocusFallback(labelledBy ? document.getElementById(labelledBy) : null)
+            event.preventDefault()
+          }
+        }}
         {...props}
       />
     </DropdownMenuPrimitive.Portal>

@@ -19,7 +19,7 @@ from datetime import date
 from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -149,6 +149,31 @@ async def merge_skill_suggestions(
         where=(CandidateSkill.source == DataSource.RESUME) & (CandidateSkill.status == SkillStatus.SUGGESTED),
     ).returning(CandidateSkill.id)
     return len((await session.execute(upsert)).all())
+
+
+async def dismiss_skill_suggestions(
+    session: AsyncSession, candidate_id: uuid.UUID, names: Iterable[str]
+) -> int:
+    """Mark still-unconfirmed ``RESUME`` skill suggestions with these names as ``REJECTED``.
+
+    Used when the candidate removes a skill in the résumé review, so the profile's "suggested from your résumé" list and
+    the review agree. Confirmed or user-entered skills are never touched. Returns the number of rows dismissed.
+    """
+    resolved = await resolve_skills(session, [n for n in names if n])
+    if not resolved:
+        return 0
+    rows = await session.execute(
+        update(CandidateSkill)
+        .where(
+            CandidateSkill.candidate_id == candidate_id,
+            CandidateSkill.skill_id.in_([s.id for s in resolved.values()]),
+            CandidateSkill.source == DataSource.RESUME,
+            CandidateSkill.status == SkillStatus.SUGGESTED,
+        )
+        .values(status=SkillStatus.REJECTED)
+        .returning(CandidateSkill.id)
+    )
+    return len(rows.all())
 
 
 # --- structured rows created from suggestions (apply endpoint + bulk import) -------------------------------------------

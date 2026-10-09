@@ -665,3 +665,27 @@ async def test_apply_accepts_boolean_shorthands(client):
             f"/api/v1/resumes/{body['id']}/extracted/apply", headers=cand["h"], json={"everything": True}
         )
     ).status_code == 422
+
+
+async def test_removing_a_skill_in_the_review_also_dismisses_the_profile_suggestion(client):
+    """The review and the profile's "suggested from your résumé" list must agree (found by the browser e2e)."""
+    cand = await register_candidate(client)
+    body = await upload_ok(client, cand, fx.backend_pdf())
+    ex = await extracted(client, cand, body["id"])
+    victim = next(s for s in ex["skills"] if s["name"] == "Python")
+
+    before = {s["skill"]["name"]: s["status"] for s in (await my_profile(client, cand))["skills"]}
+    assert before["Python"] == "SUGGESTED"
+
+    r = await client.patch(
+        f"/api/v1/resumes/{body['id']}/extracted",
+        headers=cand["h"],
+        json={"skills": [{"index": victim["index"], "remove": True}]},
+    )
+    assert r.status_code == 200, r.text
+
+    after = {s["skill"]["name"]: s["status"] for s in (await my_profile(client, cand))["skills"]}
+    assert after.get("Python") in (None, "REJECTED"), (
+        "the removed suggestion is gone from the profile's suggestions"
+    )
+    assert after["PostgreSQL"] == before["PostgreSQL"], "other suggestions are untouched"

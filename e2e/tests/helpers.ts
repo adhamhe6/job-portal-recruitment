@@ -38,3 +38,37 @@ export async function newCandidate(request: APIRequestContext): Promise<{ email:
   expect(res.ok(), await res.text()).toBeTruthy()
   return { email, first }
 }
+
+import { PDFDocument, StandardFonts } from 'pdf-lib'
+
+/** A small but realistic text-based résumé PDF (what the parser is built for). */
+export async function resumePdf(name: string): Promise<Buffer> {
+  const doc = await PDFDocument.create()
+  const font = await doc.embedFont(StandardFonts.Helvetica)
+  const bold = await doc.embedFont(StandardFonts.HelveticaBold)
+  const page = doc.addPage([595, 842])
+  let y = 790
+  const line = (text: string, opts: { bold?: boolean; size?: number } = {}) => {
+    page.drawText(text, { x: 50, y, size: opts.size ?? 11, font: opts.bold ? bold : font })
+    y -= (opts.size ?? 11) + 7
+  }
+  line(name, { bold: true, size: 20 })
+  line('Backend Engineer - Python, PostgreSQL and Docker')
+  line('eve.tester@example.com | Berlin, Germany')
+  y -= 8
+  line('Summary', { bold: true, size: 13 })
+  line('Backend engineer with four years of experience building APIs with Python, FastAPI and PostgreSQL.')
+  y -= 8
+  line('Skills', { bold: true, size: 13 })
+  line('Python, FastAPI, PostgreSQL, Redis, Docker, Kubernetes, Terraform, Git, CI/CD')
+  y -= 8
+  line('Experience', { bold: true, size: 13 })
+  line('Backend Engineer - Acme Cloud (2022 - Present)', { bold: true })
+  line('Built REST APIs with FastAPI and PostgreSQL; deployed with Docker and Kubernetes on AWS.')
+  line('Software Engineer - Shipwise (2020 - 2022)', { bold: true })
+  line('Developed Python services and automated CI/CD pipelines with GitHub Actions.')
+  y -= 8
+  line('Education', { bold: true, size: 13 })
+  line('BSc Computer Science, TU Berlin (2016 - 2020)')
+  return Buffer.from(await doc.save())
+}

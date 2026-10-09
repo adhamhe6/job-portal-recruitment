@@ -601,7 +601,14 @@ class ResumeService:
         loaded = await self._load(user, resume_id, mode="edit")
         result = await self._processed(loaded)
         assert result.parsed_data is not None
+        removed_skills = [
+            str(result.parsed_data["skills"][p.index].get("name") or "")
+            for p in patch.skills
+            if p.remove and p.index < len(result.parsed_data.get("skills") or [])
+        ]
         result.parsed_data = await review.apply_patch(self.session, result.parsed_data, patch)
+        if removed_skills:  # the profile's "suggested from your résumé" list must agree with the review
+            await profile_ops.dismiss_skill_suggestions(self.session, loaded.candidate.id, removed_skills)
         record_audit(
             self.session,
             actor_id=user.id,

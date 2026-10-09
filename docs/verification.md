@@ -27,10 +27,11 @@ The backend suite was run against a database created with an **ICU `en-US` colla
 used in CI) as well as the sandbox's default `C` collation; the two differ in alphabetical ordering, which is how three CI-only failures
 were found and fixed (§4).
 
-**CI (GitHub Actions)** runs the backend, frontend and Docker/browser jobs. Its history on this branch is recorded on the pull request.
-During this work it failed for reasons that were *not* application defects and were fixed in the workflow (Docker Hub rate-limiting
-unauthenticated pulls of the service-container images; see §4). This document does not claim a green CI run: check the pull request's
-checks for the current state.
+**CI (GitHub Actions)** runs three jobs: backend (lint, types, migrations, tests), frontend (lint, format, types, tests, build) and
+Docker (image build, full-stack smoke through nginx, and the Playwright suite against the Compose stack). On commit `958757f` **all three
+jobs passed** (backend 7 min 48 s, frontend 3 min 03 s, Docker + browser e2e 4 min 36 s). Earlier runs on this branch failed for reasons
+that were not application defects and were fixed (Docker Hub rate-limiting of the service-container pulls; a collation-dependent ordering
+bug, see §4); the history is on the pull request.
 
 ## 2. What the tests cover
 

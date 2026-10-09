@@ -257,6 +257,7 @@ async def test_sourcing_recruiter_can_review_and_apply_for_imported_candidates(c
     cand = (await client.get(f"/api/v1/candidates/{cid}", headers=rec["h"])).json()
     rid = cand["resumes"][0]["id"]
     assert cand["display_name"] == "Maria Gonzalez" and cand["educations"][0]["field_of_study"] == "Nursing"
+    ex_before = (await client.get(f"/api/v1/resumes/{rid}/extracted", headers=rec["h"])).json()
 
     patch = await client.patch(
         f"/api/v1/resumes/{rid}/extracted",
@@ -274,9 +275,9 @@ async def test_sourcing_recruiter_can_review_and_apply_for_imported_candidates(c
     cand2 = (await client.get(f"/api/v1/candidates/{cid}", headers=rec["h"])).json()
     assert cand2["headline"] == "ICU Nurse" and len(cand2["experiences"]) == 2
     statuses = [s["status"] for s in cand2["skills"] if s["source"] == "RESUME"]
-    assert (
-        statuses.count("SUGGESTED") == 1 and statuses.count("CONFIRMED") == len(statuses) - 1
-    )  # the removed suggestion stays unconfirmed
+    # the suggestion removed in the review was dismissed (no lingering "suggested" skill); the others were confirmed
+    assert statuses.count("SUGGESTED") == 0 and statuses and set(statuses) == {"CONFIRMED"}
+    assert len(statuses) == len(ex_before["skills"]) - 1
     # reprocessing keeps the profile intact (the structured import happens once, at creation)
     assert (await client.post(f"/api/v1/resumes/{rid}/process", headers=rec["h"])).status_code == 202
     cand3 = (await client.get(f"/api/v1/candidates/{cid}", headers=rec["h"])).json()

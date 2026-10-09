@@ -19,6 +19,7 @@ x-backend-env: &backend-env
   MAX_RESUME_MB: ${MAX_RESUME_MB:-5}
   # Raised only by the browser e2e suite, which signs in many times a minute from one address.
   LOGIN_RATE_LIMIT_ATTEMPTS: ${LOGIN_RATE_LIMIT_ATTEMPTS:-10}
+  REGISTER_RATE_LIMIT_ATTEMPTS: ${REGISTER_RATE_LIMIT_ATTEMPTS:-10}
 
 services:
   postgres:

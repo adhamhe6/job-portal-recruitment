@@ -62,21 +62,37 @@ export function SourcesTab({ filters }: { filters: ReportFilters }) {
             columns={[
               { key: 'source', header: 'Source', cell: (r) => fmt.label(r.source) },
               { key: 'apps', header: 'Applications', align: 'right', cell: (r) => fmt.int(r.applications) },
-              { key: 'short', header: 'Shortlisted', align: 'right', cell: (r) => `${fmt.int(r.reached_shortlist)} (${fmt.percent(r.shortlist_rate, 0)})` },
-              { key: 'hires', header: 'Hired', align: 'right', cell: (r) => `${fmt.int(r.hires)} (${fmt.percent(r.hire_rate, 0)})` },
+              {
+                key: 'short',
+                header: 'Shortlisted',
+                align: 'right',
+                cell: (r) => `${fmt.int(r.reached_shortlist)} (${fmt.percent(r.shortlist_rate, 0)})`,
+              },
+              {
+                key: 'hires',
+                header: 'Hired',
+                align: 'right',
+                cell: (r) => `${fmt.int(r.hires)} (${fmt.percent(r.hire_rate, 0)})`,
+              },
             ]}
           />
         </QueryCard>
       </div>
 
       <p className="text-sm text-muted-foreground">
-        {skills.data ? SCOPE_NOTE[skills.data.scope] : 'Skills demand compares what jobs ask for with what applicants have.'}{' '}
+        {skills.data
+          ? SCOPE_NOTE[skills.data.scope]
+          : 'Skills demand compares what jobs ask for with what applicants have.'}{' '}
         The skills reports are a current snapshot; the date range does not apply.
       </p>
       <div className="grid gap-5 lg:grid-cols-2">
         <ChartCard
           title="Most requested skills"
-          description={skills.data ? `Skills listed by ${skills.data.jobs_considered} published jobs` : 'Skills listed by published jobs'}
+          description={
+            skills.data
+              ? `Skills listed by ${skills.data.jobs_considered} published jobs`
+              : 'Skills listed by published jobs'
+          }
           loading={skills.isPending}
           error={skills.isError ? skills.error : undefined}
           onRetry={() => skills.refetch()}
@@ -87,7 +103,11 @@ export function SourcesTab({ filters }: { filters: ReportFilters }) {
             <EmptyState compact title="No published jobs list skills yet" />
           ) : (
             <HBarChart
-              data={requested.map((s) => ({ label: s.skill, value: s.jobs, text: `${s.jobs} (${s.required_in_jobs} req.)` }))}
+              data={requested.map((s) => ({
+                label: s.skill,
+                value: s.jobs,
+                text: `${s.jobs} (${s.required_in_jobs} req.)`,
+              }))}
               name="Jobs requesting the skill"
               rightMargin={84}
             />
@@ -95,7 +115,11 @@ export function SourcesTab({ filters }: { filters: ReportFilters }) {
         </ChartCard>
         <ChartCard
           title="Most common applicant skills"
-          description={skills.data ? `Confirmed skills of ${skills.data.applicants_considered} applicants` : 'Confirmed skills of applicants'}
+          description={
+            skills.data
+              ? `Confirmed skills of ${skills.data.applicants_considered} applicants`
+              : 'Confirmed skills of applicants'
+          }
           loading={skills.isPending}
           error={skills.isError ? skills.error : undefined}
           onRetry={() => skills.refetch()}

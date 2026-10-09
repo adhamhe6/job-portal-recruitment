@@ -57,12 +57,7 @@ export interface PipelineSummaryOut {
 }
 
 export type JobPerformanceSort =
-  | 'applications'
-  | 'title'
-  | 'shortlist_rate'
-  | 'hire_rate'
-  | 'avg_days_to_hire'
-  | 'avg_match_score'
+  'applications' | 'title' | 'shortlist_rate' | 'hire_rate' | 'avg_days_to_hire' | 'avg_match_score'
 
 export interface JobPerformanceRow {
   job_id: string

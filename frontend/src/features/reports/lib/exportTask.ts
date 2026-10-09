@@ -92,7 +92,10 @@ export async function runExportTask(
       throw new ExportFailedError(task.error_message ?? 'The export failed.', task.error_code)
     onProgress?.(task.progress, task.stage)
     if (Date.now() >= deadline)
-      throw new ExportFailedError('The export is taking longer than expected. Please try again later.', 'TIMEOUT')
+      throw new ExportFailedError(
+        'The export is taking longer than expected. Please try again later.',
+        'TIMEOUT',
+      )
     await sleep(intervalMs, signal)
   }
 }

@@ -87,7 +87,17 @@ export const useTopSkills = (enabled = true) =>
   useReport<TopSkillsOut>('top-skills', '/reports/top-skills', { limit: 10 }, enabled)
 
 export const useInterviewStatistics = (f: ReportFilters, enabled = true) =>
-  useReport<InterviewStatisticsOut>('interview-statistics', '/reports/interview-statistics', dateParams(f), enabled)
+  useReport<InterviewStatisticsOut>(
+    'interview-statistics',
+    '/reports/interview-statistics',
+    dateParams(f),
+    enabled,
+  )
 
 export const useMatchingPerformance = (f: ReportFilters, enabled = true) =>
-  useReport<MatchingPerformanceOut>('matching-performance', '/reports/matching-performance', dateParams(f), enabled)
+  useReport<MatchingPerformanceOut>(
+    'matching-performance',
+    '/reports/matching-performance',
+    dateParams(f),
+    enabled,
+  )

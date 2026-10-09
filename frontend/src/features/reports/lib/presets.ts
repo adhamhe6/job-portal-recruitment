@@ -9,8 +9,16 @@ export interface DatePreset {
 
 /** Quick ranges for the filter bar. Dates are calendar days (the API treats them as UTC days). */
 export const DATE_PRESETS: DatePreset[] = [
-  { id: '30', label: 'Last 30 days', range: () => ({ from: dates.isoDate(subDays(new Date(), 29)), to: dates.isoDate() }) },
-  { id: '90', label: 'Last 90 days', range: () => ({ from: dates.isoDate(subDays(new Date(), 89)), to: dates.isoDate() }) },
+  {
+    id: '30',
+    label: 'Last 30 days',
+    range: () => ({ from: dates.isoDate(subDays(new Date(), 29)), to: dates.isoDate() }),
+  },
+  {
+    id: '90',
+    label: 'Last 90 days',
+    range: () => ({ from: dates.isoDate(subDays(new Date(), 89)), to: dates.isoDate() }),
+  },
   {
     id: 'year',
     label: 'This year',

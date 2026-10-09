@@ -13,7 +13,9 @@ const LIVE_STAGES = ['APPLIED', 'SCREENING', 'SHORTLISTED', 'INTERVIEW', 'OFFER'
 const days = (v: number | null | undefined) => (v === null || v === undefined ? '—' : `${fmt.num(v)} d`)
 
 /** Applicant-weighted average days to hire across the listed jobs (null when nobody was hired). */
-export function weightedDaysToHire(rows: { hires: number; avg_days_to_hire: number | null }[]): number | null {
+export function weightedDaysToHire(
+  rows: { hires: number; avg_days_to_hire: number | null }[],
+): number | null {
   let hires = 0
   let total = 0
   for (const r of rows) {
@@ -83,13 +85,26 @@ export function PipelineTab({ filters }: { filters: ReportFilters }) {
           onRetry={() => pipeline.refetch()}
           height={280}
           srSummary={live
-            .map((s) => `${APPLICATION_STATUS_LABELS[s.stage]}: ${s.count} applications, average ${s.avg_days_in_stage ?? 'n/a'} days`)
+            .map(
+              (s) =>
+                `${APPLICATION_STATUS_LABELS[s.stage]}: ${s.count} applications, average ${s.avg_days_in_stage ?? 'n/a'} days`,
+            )
             .join('; ')}
         >
           {pipeline.data && pipeline.data.live === 0 ? (
-            <EmptyState compact title="No live applications" description="Nothing is waiting in the pipeline right now." />
+            <EmptyState
+              compact
+              title="No live applications"
+              description="Nothing is waiting in the pipeline right now."
+            />
           ) : (
-            <HBarChart data={stageData} name="Average days in stage" format={(v) => `${fmt.num(v)} d`} rightMargin={84} labelWidth={92} />
+            <HBarChart
+              data={stageData}
+              name="Average days in stage"
+              format={(v) => `${fmt.num(v)} d`}
+              rightMargin={84}
+              labelWidth={92}
+            />
           )}
         </ChartCard>
 
@@ -100,7 +115,9 @@ export function PipelineTab({ filters }: { filters: ReportFilters }) {
           error={perf.isError ? perf.error : undefined}
           onRetry={() => perf.refetch()}
           height={280}
-          srSummary={hiredJobs.map((r) => `${r.title}: ${r.avg_days_to_hire} days (${r.hires} hires)`).join('; ')}
+          srSummary={hiredJobs
+            .map((r) => `${r.title}: ${r.avg_days_to_hire} days (${r.hires} hires)`)
+            .join('; ')}
         >
           {hiredJobs.length === 0 ? (
             <EmptyState

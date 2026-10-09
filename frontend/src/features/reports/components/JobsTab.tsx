@@ -52,7 +52,10 @@ export function JobsTab({
       sortKey: 'title',
       cell: (r) => (
         <div className="min-w-0 max-w-64">
-          <Link to={paths.job(r.job_id)} className="block truncate rounded-sm font-medium hover:text-primary hover:underline">
+          <Link
+            to={paths.job(r.job_id)}
+            className="block truncate rounded-sm font-medium hover:text-primary hover:underline"
+          >
             {r.title}
           </Link>
           <StatusBadge kind="job" status={r.job_status} className="mt-1" />
@@ -163,7 +166,9 @@ export function JobsTab({
                 <dt>Applications</dt>
                 <dd className="text-right font-medium text-foreground tabular">{fmt.int(r.applications)}</dd>
                 <dt>Shortlist rate</dt>
-                <dd className="text-right font-medium text-foreground tabular">{fmt.percent(r.shortlist_rate, 0)}</dd>
+                <dd className="text-right font-medium text-foreground tabular">
+                  {fmt.percent(r.shortlist_rate, 0)}
+                </dd>
                 <dt>Hires</dt>
                 <dd className="text-right font-medium text-foreground tabular">
                   {fmt.int(r.hires)} ({fmt.percent(r.hire_rate, 0)})
@@ -171,7 +176,9 @@ export function JobsTab({
                 <dt>Days to hire</dt>
                 <dd className="text-right font-medium text-foreground tabular">{days(r.avg_days_to_hire)}</dd>
                 <dt>Avg. match</dt>
-                <dd className="text-right font-medium text-foreground tabular">{fmt.percent(r.avg_match_score, 0)}</dd>
+                <dd className="text-right font-medium text-foreground tabular">
+                  {fmt.percent(r.avg_match_score, 0)}
+                </dd>
               </dl>
             </div>
           )}

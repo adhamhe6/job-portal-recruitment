@@ -75,7 +75,14 @@ export function HBarChart({
           labelStyle={chartTheme.tooltip.labelStyle}
           formatter={(v) => [format(v as number), name]}
         />
-        <Bar dataKey="value" name={name} fill={color} barSize={18} radius={[0, 4, 4, 0]} isAnimationActive={false}>
+        <Bar
+          dataKey="value"
+          name={name}
+          fill={color}
+          barSize={18}
+          radius={[0, 4, 4, 0]}
+          isAnimationActive={false}
+        >
           <LabelList dataKey="text" position="right" fill="var(--foreground)" fontSize={12} />
         </Bar>
       </BarChart>

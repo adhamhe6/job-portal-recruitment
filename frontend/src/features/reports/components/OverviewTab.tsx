@@ -130,7 +130,9 @@ export function OverviewTab({ filters }: { filters: ReportFilters }) {
         error={status.isError ? status.error : undefined}
         onRetry={() => status.refetch()}
         height={300}
-        srSummary={status.data?.items.map((i) => `${APPLICATION_STATUS_LABELS[i.status]}: ${i.count}`).join('; ')}
+        srSummary={status.data?.items
+          .map((i) => `${APPLICATION_STATUS_LABELS[i.status]}: ${i.count}`)
+          .join('; ')}
       >
         <HBarChart
           data={(status.data?.items ?? []).map((i) => ({

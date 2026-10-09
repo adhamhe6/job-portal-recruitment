@@ -3,7 +3,11 @@ import { ChartCard } from '@/components/common/ChartCard'
 import { KpiCard } from '@/components/common/KpiCard'
 import { EmptyState } from '@/components/common/States'
 import { fmt } from '@/lib/format'
-import { INTERVIEW_STATUS_LABELS, INTERVIEW_TYPE_LABELS, RECOMMENDATION_LABELS } from '@/features/interviews/lib/labels'
+import {
+  INTERVIEW_STATUS_LABELS,
+  INTERVIEW_TYPE_LABELS,
+  RECOMMENDATION_LABELS,
+} from '@/features/interviews/lib/labels'
 import type { HireRecommendation, InterviewStatus, InterviewType } from '@/features/interviews/api/types'
 import { useInterviewStatistics, useMatchingPerformance } from '../api/reports'
 import type { ReportFilters } from '../api/types'
@@ -17,7 +21,12 @@ const OUTCOME_LABELS: Record<string, string> = {
   WITHDRAWN: 'Withdrawn',
   IN_PROGRESS: 'In progress',
 }
-const BAND_LABELS: Record<string, string> = { STRONG: 'Strong', GOOD: 'Good', PARTIAL: 'Partial', WEAK: 'Weak' }
+const BAND_LABELS: Record<string, string> = {
+  STRONG: 'Strong',
+  GOOD: 'Good',
+  PARTIAL: 'Partial',
+  WEAK: 'Weak',
+}
 
 export function InterviewsTab({ filters }: { filters: ReportFilters }) {
   const stats = useInterviewStatistics(filters)
@@ -40,7 +49,13 @@ export function InterviewsTab({ filters }: { filters: ReportFilters }) {
   return (
     <div className="space-y-5">
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <KpiCard label="Interviews" value={fmt.int(s?.total)} icon={<CalendarCheck />} hint="Starting in the selected period" loading={stats.isPending} />
+        <KpiCard
+          label="Interviews"
+          value={fmt.int(s?.total)}
+          icon={<CalendarCheck />}
+          hint="Starting in the selected period"
+          loading={stats.isPending}
+        />
         <KpiCard
           label="No-show rate"
           value={s?.no_show_rate == null ? '—' : fmt.percent(s.no_show_rate, 0)}
@@ -62,7 +77,11 @@ export function InterviewsTab({ filters }: { filters: ReportFilters }) {
           value={s?.feedback.average_rating == null ? '—' : `${fmt.num(s.feedback.average_rating)} / 5`}
           icon={<Star />}
           tone="success"
-          hint={s ? `${s.feedback.entries} entries on ${s.feedback.interviews_with_feedback} interviews` : undefined}
+          hint={
+            s
+              ? `${s.feedback.entries} entries on ${s.feedback.interviews_with_feedback} interviews`
+              : undefined
+          }
           loading={stats.isPending}
         />
       </div>
@@ -76,7 +95,11 @@ export function InterviewsTab({ filters }: { filters: ReportFilters }) {
           <ChartCard
             key={c.title}
             title={c.title}
-            description={c.title === 'Feedback recommendations' ? 'What interviewers recommend after the interview' : undefined}
+            description={
+              c.title === 'Feedback recommendations'
+                ? 'What interviewers recommend after the interview'
+                : undefined
+            }
             loading={stats.isPending}
             error={stats.isError ? stats.error : undefined}
             onRetry={() => stats.refetch()}
@@ -100,7 +123,9 @@ export function InterviewsTab({ filters }: { filters: ReportFilters }) {
           error={matching.isError ? matching.error : undefined}
           onRetry={() => matching.refetch()}
           height={240}
-          srSummary={m?.applicant_distribution.map((b) => `${BAND_LABELS[b.band] ?? b.band}: ${b.count}`).join('; ')}
+          srSummary={m?.applicant_distribution
+            .map((b) => `${BAND_LABELS[b.band] ?? b.band}: ${b.count}`)
+            .join('; ')}
         >
           {m && m.applicant_distribution.every((b) => b.count === 0) ? (
             <EmptyState compact title="No scored applicants in this period" />
@@ -131,7 +156,12 @@ export function InterviewsTab({ filters }: { filters: ReportFilters }) {
             className="border-0 shadow-none"
             columns={[
               { key: 'o', header: 'Outcome', cell: (r) => OUTCOME_LABELS[r.outcome] ?? fmt.label(r.outcome) },
-              { key: 'a', header: 'Scored applications', align: 'right', cell: (r) => fmt.int(r.applications) },
+              {
+                key: 'a',
+                header: 'Scored applications',
+                align: 'right',
+                cell: (r) => fmt.int(r.applications),
+              },
               { key: 's', header: 'Avg. score', align: 'right', cell: (r) => fmt.percent(r.avg_score, 0) },
             ]}
           />
@@ -139,7 +169,8 @@ export function InterviewsTab({ filters }: { filters: ReportFilters }) {
             <ul className="mt-3 list-disc space-y-1 pl-5 text-xs text-muted-foreground">
               {m.top10.pct_in_top10 !== null && (
                 <li>
-                  {fmt.num(m.top10.pct_in_top10)}% of scored applicants ranked in their job&apos;s top 10 candidates.
+                  {fmt.num(m.top10.pct_in_top10)}% of scored applicants ranked in their job&apos;s top 10
+                  candidates.
                 </li>
               )}
               {m.notes.map((n) => (

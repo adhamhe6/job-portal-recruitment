@@ -9,7 +9,7 @@ from typing import Any
 import pytest
 from httpx import AsyncClient
 
-from app.main import OPENAPI_TAGS, app
+from app.main import OPENAPI_TAGS, create_app
 
 pytestmark = pytest.mark.e2e
 
@@ -34,9 +34,22 @@ FORBIDDEN_RESPONSE_FIELDS = {
 }
 
 
+# Admin-only monitoring responses legitimately name these: ``embedding`` is the model-status object (no
+# vectors) and ``dedupe_key`` is shown on the operator's task view.
+ADMIN_ALLOWED = {"embedding", "dedupe_key"}
+
+
+def array_items(schema: dict[str, Any]) -> dict[str, Any]:
+    """``items`` of an optional array parameter (``anyOf: [array, null]``)."""
+    if "items" in schema:
+        return schema["items"]
+    return next(o["items"] for o in schema["anyOf"] if o.get("type") == "array")
+
+
 @pytest.fixture(scope="module")
 def spec() -> dict[str, Any]:
-    return app.openapi()
+    # A fresh app: other test modules register throw-away routes on the shared module-level instance.
+    return create_app().openapi()
 
 
 def operations(spec: dict[str, Any]) -> list[tuple[str, str, dict[str, Any]]]:
@@ -159,8 +172,9 @@ def test_no_response_schema_exposes_secrets_or_internal_fields(spec: dict[str, A
         for code, response in op["responses"].items():
             for media in response.get("content", {}).values():
                 names = reachable_property_names(spec, media.get("schema", {}))
-                if names & FORBIDDEN_RESPONSE_FIELDS:
-                    offenders.append((method, path, code, sorted(names & FORBIDDEN_RESPONSE_FIELDS)))
+                forbidden = FORBIDDEN_RESPONSE_FIELDS - (ADMIN_ALLOWED if "/admin/" in path else set())
+                if names & forbidden:
+                    offenders.append((method, path, code, sorted(names & forbidden)))
     assert offenders == []
 
 
@@ -215,7 +229,7 @@ def test_enumerated_inputs_are_documented_as_enums(spec: dict[str, Any]) -> None
         "match",
         "title",
     }
-    emp = params["employment_type"]["schema"]["items"]
+    emp = array_items(params["employment_type"]["schema"])
     assert set(resolve(spec, emp)["enum"]) == {
         "FULL_TIME",
         "PART_TIME",
@@ -224,6 +238,6 @@ def test_enumerated_inputs_are_documented_as_enums(spec: dict[str, Any]) -> None
         "TEMPORARY",
     }
     rec = {p["name"]: p for p in spec["paths"]["/api/v1/recommendations/jobs"]["get"]["parameters"]}
-    assert "enum" in resolve(spec, rec["workplace_type"]["schema"]["items"]), (
+    assert "enum" in resolve(spec, array_items(rec["workplace_type"]["schema"])), (
         "recommendation filters are validated, not free text"
     )

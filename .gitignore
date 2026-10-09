@@ -27,3 +27,4 @@ backend/storage/
 build/
 *.egg-info/
 backend/storage/
+dump.rdb

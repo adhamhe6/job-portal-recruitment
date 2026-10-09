@@ -1084,7 +1084,7 @@ class ReportService:
         n = func.count().label("n")
         sort_keys: dict[str, Any] = {
             "applications": n,
-            "title": func.lower(J.title),
+            "title": func.lower(J.title).collate("C"),
             "shortlisted": status_cols[ApplicationStatus.SHORTLISTED],
             "hired": status_cols[ApplicationStatus.HIRED],
             "rejected": status_cols[ApplicationStatus.REJECTED],
@@ -1396,7 +1396,7 @@ class ReportService:
         hire_rate = cast(agg.c.hires, Numeric) / func.nullif(agg.c.applications, 0)
         sort_keys: dict[str, Any] = {
             "applications": agg.c.applications,
-            "title": func.lower(agg.c.title),
+            "title": func.lower(agg.c.title).collate("C"),
             "shortlist_rate": sh_rate,
             "hire_rate": hire_rate,
             "avg_days_to_hire": agg.c.d_hire,

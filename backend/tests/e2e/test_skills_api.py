@@ -35,7 +35,7 @@ async def test_list_is_public_paginated_and_alphabetical(client: AsyncClient) ->
     assert body["total"] >= 150 and len(body["items"]) == 10 and body["pages"] == -(-body["total"] // 10)
     assert set(body["items"][0]) == {"id", "name", "category", "family", "is_verified"}
     listed = [s["name"] for s in body["items"]]
-    assert listed == sorted(listed)
+    assert listed == sorted(listed, key=str.lower)  # case-insensitive, byte-wise: independent of DB collation
     p2 = (await client.get(f"{API}/skills", params={"page_size": 10, "page": 2})).json()["items"]
     assert not {s["id"] for s in p2} & {s["id"] for s in body["items"]}
     beyond = (await client.get(f"{API}/skills", params={"page": 9999, "page_size": 10})).json()

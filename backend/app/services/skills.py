@@ -96,7 +96,7 @@ class SkillService:
     async def search(
         self, q: str | None, *, page: int, page_size: int, category: str | None = None
     ) -> tuple[list[Skill], int]:
-        stmt = select(Skill).order_by(Skill.name)
+        stmt = select(Skill).order_by(func.lower(Skill.name).collate("C"), Skill.name)
         if q:
             like = f"%{escape_like(q.strip().lower())}%"
             conditions = [func.lower(Skill.name).like(like)]
@@ -110,7 +110,9 @@ class SkillService:
             stmt = stmt.where(or_(*conditions))
             # Prefix matches first, then alphabetical.
             stmt = stmt.order_by(None).order_by(
-                (func.lower(Skill.name).like(f"{escape_like(q.strip().lower())}%")).desc(), Skill.name
+                (func.lower(Skill.name).like(f"{escape_like(q.strip().lower())}%")).desc(),
+                func.lower(Skill.name).collate("C"),
+                Skill.name,
             )
         if category:
             stmt = stmt.where(Skill.category == category)

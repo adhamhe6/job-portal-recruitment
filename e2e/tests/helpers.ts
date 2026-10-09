@@ -27,3 +27,14 @@ export const bearer = (token: string) => ({ Authorization: `Bearer ${token}` })
 export function uniqueSuffix(): string {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 6)
 }
+
+/** A brand-new candidate account (API-created so the scenario under test starts from a clean slate). */
+export async function newCandidate(request: APIRequestContext): Promise<{ email: string; first: string }> {
+  const email = `e2e.${uniqueSuffix()}@example.com`
+  const first = 'Eve'
+  const res = await request.post('/api/v1/auth/register', {
+    data: { email, password: PASSWORD, first_name: first, last_name: 'Tester', role: 'CANDIDATE' },
+  })
+  expect(res.ok(), await res.text()).toBeTruthy()
+  return { email, first }
+}

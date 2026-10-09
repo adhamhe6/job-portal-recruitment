@@ -1,7 +1,4 @@
-import type {
-  CandidateListItem,
-  CandidateView,
-} from '../api/candidates'
+import type { CandidateListItem, CandidateView } from '../api/candidates'
 import type { MatchDetail, MatchedCandidate, RankedCandidatesMeta } from '@/features/matches/api/matches'
 
 export const JOB_ID = 'job-live-1'
@@ -206,10 +203,22 @@ export function makeMatchDetail(overrides: Partial<MatchDetail> = {}): MatchDeta
         },
       },
       summary: 'Strong match; covers 3 of 4 required skills.',
-      weights: { required: 0.3, semantic: 0.3, education: 0.05, preferred: 0.1, experience: 0.15, preference: 0.1 },
+      weights: {
+        required: 0.3,
+        semantic: 0.3,
+        education: 0.05,
+        preferred: 0.1,
+        experience: 0.15,
+        preference: 0.1,
+      },
       semantic: { band: 'MEDIUM', score: 0.6629, cosine: 0.61 },
       education: { status: 'MEETS', required_level: 'MASTER', candidate_level: 'MASTER' },
-      experience: { text: '3 years vs 3+ years required', status: 'MEETS', required_min: 3, candidate_years: 3 },
+      experience: {
+        text: '3 years vs 3+ years required',
+        status: 'MEETS',
+        required_min: 3,
+        candidate_years: 3,
+      },
       preferences: { location: 'Same city', workplace: 'Job is hybrid; candidate prefers hybrid' },
       qualification_floor_applied: false,
     },

@@ -88,7 +88,7 @@ export function RefreshMatchesPanel({
         <p className="text-sm text-muted-foreground">
           {meta
             ? meta.last_generated_at
-              ? `${fmt.int(meta.total_scored)} ${pluralize(meta.total_scored, 'candidate')} scored · last updated ${dates.relative(meta.last_generated_at)}`
+              ? `${pluralize(meta.total_scored, 'candidate')} scored · last updated ${dates.relative(meta.last_generated_at)}`
               : 'No matches have been computed for this job yet.'
             : 'Checking match freshness…'}
         </p>

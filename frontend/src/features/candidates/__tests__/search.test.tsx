@@ -13,10 +13,7 @@ import {
 } from '../lib/filters'
 import { makeCandidateItem } from './testData'
 
-function captureSearch(
-  items = [makeCandidateItem()],
-  extra: Partial<ReturnType<typeof page>> = {},
-) {
+function captureSearch(items = [makeCandidateItem()], extra: Partial<ReturnType<typeof page>> = {}) {
   const calls: URLSearchParams[] = []
   server.use(
     http.get('/api/v1/search/candidates', ({ request }) => {
@@ -33,7 +30,12 @@ const last = (calls: URLSearchParams[]) => calls[calls.length - 1]!
 
 describe('candidate filter helpers', () => {
   it('turns UI percentages into API fractions and ignores the match filters without a job', () => {
-    const q = toSearchQuery({ ...CANDIDATE_SEARCH_DEFAULTS, min_match_score: '60', job_id: 'j1', sort: 'match' })
+    const q = toSearchQuery({
+      ...CANDIDATE_SEARCH_DEFAULTS,
+      min_match_score: '60',
+      job_id: 'j1',
+      sort: 'match',
+    })
     expect(q.min_match_score).toBeCloseTo(0.6)
     expect(q.sort).toBe('match')
     const noJob = toSearchQuery({ ...CANDIDATE_SEARCH_DEFAULTS, min_match_score: '60', sort: 'match' })
@@ -63,7 +65,13 @@ describe('candidate search page', () => {
         match_score: 0.82,
         match_band: 'STRONG',
       }),
-      makeCandidateItem({ id: 'cand-8', display_name: 'M A', headline: null, access: 'PROFILE', top_skills: [] }),
+      makeCandidateItem({
+        id: 'cand-8',
+        display_name: 'M A',
+        headline: null,
+        access: 'PROFILE',
+        top_skills: [],
+      }),
     ])
     renderApp('/candidates')
     const card = (await screen.findByRole('heading', { name: 'Chen Wei' })).closest('article')!
@@ -201,7 +209,7 @@ describe('candidate search page', () => {
       http.get('/api/v1/jobs', () => HttpResponse.json(page([]))),
     )
     const { user } = renderApp('/candidates')
-    expect(await screen.findByText('Service unavailable')).toBeInTheDocument()
+    expect(await screen.findByText(/couldn't search candidates/)).toBeInTheDocument()
     fail = false
     await user.click(screen.getByRole('button', { name: /try again/i }))
     expect(await screen.findByText('Priya Nair')).toBeInTheDocument()

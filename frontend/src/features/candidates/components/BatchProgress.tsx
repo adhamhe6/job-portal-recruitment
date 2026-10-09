@@ -112,8 +112,7 @@ export function BatchProgress({ batchId, title }: { batchId: string; title?: str
         <h3 className="text-sm font-semibold">
           {title ?? 'Import'}{' '}
           <span className="font-normal text-muted-foreground">
-            · {fmt.int(data.total_files)} {pluralize(data.total_files, 'file')} ·{' '}
-            {dates.relative(data.created_at)}
+            · {pluralize(data.total_files, 'file')} · {dates.relative(data.created_at)}
           </span>
         </h3>
         <span role="status" className="text-sm font-medium">

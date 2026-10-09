@@ -158,9 +158,7 @@ export function BulkImportDialog({
               role="alert"
               className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm"
             >
-              <p className="font-medium text-destructive">
-                {problems.length} {pluralize(problems.length, 'file')} not added
-              </p>
+              <p className="font-medium text-destructive">{pluralize(problems.length, 'file')} not added</p>
               <ul className="mt-1 list-disc space-y-0.5 pl-5 text-muted-foreground">
                 {problems.slice(0, 8).map((p, i) => (
                   <li key={`${p.name}-${i}`}>
@@ -176,7 +174,7 @@ export function BulkImportDialog({
             <div className="space-y-2">
               <div className="flex items-center justify-between gap-2 text-sm">
                 <span className="font-medium">
-                  {fmt.int(files.length)} {pluralize(files.length, 'file')} selected
+                  {pluralize(files.length, 'file')} selected
                   <span className="font-normal text-muted-foreground"> · {formatBytes(totalBytes)}</span>
                 </span>
                 <Button variant="ghost" size="sm" disabled={busy} onClick={() => setFiles([])}>
@@ -234,10 +232,7 @@ export function BulkImportDialog({
             )}
 
           {rejected.length > 0 && (
-            <Alert
-              variant="warning"
-              title={`${rejected.length} ${pluralize(rejected.length, 'file')} rejected by the server`}
-            >
+            <Alert variant="warning" title={`${pluralize(rejected.length, 'file')} rejected by the server`}>
               <ul>
                 {rejected.map((r, i) => (
                   <li key={`${r.filename}-${i}`}>
@@ -283,8 +278,7 @@ export function BulkImportDialog({
               {history.map((b) => (
                 <li key={b.id} className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm">
                   <span>
-                    {fmt.int(b.total_files)} {pluralize(b.total_files, 'file')} ·{' '}
-                    {dates.relative(b.created_at)} ·{' '}
+                    {pluralize(b.total_files, 'file')} · {dates.relative(b.created_at)} ·{' '}
                     <span className="text-muted-foreground">
                       {isBatchActive(b)
                         ? 'processing'
@@ -305,8 +299,7 @@ export function BulkImportDialog({
             Close
           </Button>
           <Button onClick={() => void submit()} loading={busy} disabled={files.length === 0}>
-            <UploadCloud /> Import {files.length > 0 ? fmt.int(files.length) : ''}{' '}
-            {pluralize(files.length, 'résumé')}
+            <UploadCloud /> Import {files.length > 0 ? pluralize(files.length, 'résumé') : 'résumés'}
           </Button>
         </DialogFooter>
       </DialogContent>

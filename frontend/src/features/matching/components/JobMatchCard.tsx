@@ -4,7 +4,7 @@ import { StatusBadge } from '@/components/common/StatusBadge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useJobStats } from '@/features/jobs/api/jobs'
 import type { JobListItem } from '@/lib/api'
-import { dates, fmt } from '@/lib/format'
+import { dates } from '@/lib/format'
 import { pluralize } from '@/lib/utils'
 import { paths } from '@/routes/paths'
 
@@ -48,8 +48,8 @@ export function JobMatchCard({ job }: { job: JobListItem }) {
           <ul className="space-y-1 text-muted-foreground">
             <li className="flex items-center gap-1.5">
               <Users className="size-3.5" aria-hidden />
-              {fmt.int(s.matches_computed)} {pluralize(s.matches_computed, 'candidate')} scored ·{' '}
-              {fmt.int(s.applications_total)} {pluralize(s.applications_total, 'application')}
+              {pluralize(s.matches_computed, 'candidate')} scored ·{' '}
+              {pluralize(s.applications_total, 'application')}
             </li>
             <li className="flex items-center gap-1.5">
               <Clock className="size-3.5" aria-hidden />

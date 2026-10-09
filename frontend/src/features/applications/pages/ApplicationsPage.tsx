@@ -125,7 +125,7 @@ export default function ApplicationsPage() {
         meta={data ? pluralize(data.total, 'application') : undefined}
       />
 
-      <Tabs value={view} onValueChange={(v) => update({ view: v })}>
+      <Tabs value={view} onValueChange={(v) => update({ view: v })} className="min-w-0 max-w-full">
         <FilterBar
           className="mb-4"
           active={active}
@@ -191,7 +191,7 @@ export default function ApplicationsPage() {
           {data ? `${pluralize(data.total, 'application')} found` : ''}
         </div>
 
-        <TabsContent value={view} className="mt-0">
+        <TabsContent value={view} className="mt-0 min-w-0 max-w-full">
           {view === 'board' ? (
             query.isError && !data ? (
               <Card>

@@ -22,6 +22,8 @@ export function ApplicationCard({
   const panelId = useId()
   const canWithdraw = WITHDRAWABLE.includes(a.status)
   const upcoming = a.next_interview_at
+
+  return (
     <li>
       <article
         aria-labelledby={`${panelId}-title`}

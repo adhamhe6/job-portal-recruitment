@@ -12,7 +12,6 @@ import { useJob, useManagedJobs, isStaffView } from '@/features/jobs/api/jobs'
 import { useRankedCandidates } from '@/features/matches/api/matches'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { useUrlState } from '@/hooks/useUrlState'
-import { fmt } from '@/lib/format'
 import { cn, pluralize } from '@/lib/utils'
 import { paths } from '@/routes/paths'
 import { JobMatchCard, JobMatchCardSkeleton } from '../components/JobMatchCard'
@@ -214,7 +213,7 @@ function JobRanking({ jobId }: { jobId: string }) {
           {ranked.isPending
             ? 'Loading ranking…'
             : total !== undefined
-              ? `${fmt.int(total)} ${pluralize(total, 'candidate')} ${active > 0 ? 'match your filters' : 'ranked'}`
+              ? `${pluralize(total, 'candidate')} ${active > 0 ? 'match your filters' : 'ranked'}`
               : ''}
         </p>
 

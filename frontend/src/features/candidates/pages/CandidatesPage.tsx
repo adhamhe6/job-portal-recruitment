@@ -270,7 +270,7 @@ export default function CandidatesPage() {
             {query.isPending
               ? 'Searching…'
               : total !== undefined
-                ? `${fmt.int(total)} ${pluralize(total, 'candidate')} found${hasKeyword && state.sort === 'relevance' ? ' · sorted by relevance' : ''}`
+                ? `${pluralize(total, 'candidate')} found${hasKeyword && state.sort === 'relevance' ? ' · sorted by relevance' : ''}`
                 : ''}
           </p>
 

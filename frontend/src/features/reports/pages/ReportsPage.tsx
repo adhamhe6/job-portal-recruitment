@@ -43,7 +43,7 @@ export default function ReportsPage() {
   })
   const tab: TabId = isTab(state.tab) ? state.tab : 'overview'
   const sort: JobPerformanceSort = isJobSort(state.sort) ? state.sort : 'applications'
-  const order = state.order === 'asc' ? 'asc' : 'desc'
+  const order: 'asc' | 'desc' = state.order === 'asc' ? 'asc' : 'desc'
   const rangeInvalid = Boolean(state.from && state.to && state.from > state.to)
   const jobs = useManagedJobs({ q: '', status: 'ALL', sort: 'title', page: 1, pageSize: 100 })
 

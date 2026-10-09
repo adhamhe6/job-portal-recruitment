@@ -28,6 +28,7 @@ from app.core.security import Role, hash_password
 from app.db.database import Base, dispose_engine, get_engine, get_sessionmaker
 from app.db.models import User
 from app.scripts import seed_data as D
+from app.scripts import seed_extras
 from app.services.skills import seed_ontology
 
 logger = logging.getLogger("seed")
@@ -50,6 +51,7 @@ class Seeder:
         self.candidates: dict[str, dict[str, Any]] = {}
         self.jobs: dict[str, dict[str, Any]] = {}
         self.applications: list[dict[str, Any]] = []
+        self.interviews: list[dict[str, Any]] = []
 
     async def _ok(self, resp: Any, expected: int | tuple[int, ...] = (200, 201)) -> Any:
         exp = (expected,) if isinstance(expected, int) else expected
@@ -275,14 +277,14 @@ class Seeder:
             )
             rec_app = {"id": created["id"], "cand": ad["cand"], "job": ad["job"], "path": ad["path"]}
             for step in ad["path"]:
-                if step == "INTERVIEW":
-                    rec_app["wants_interview"] = True
                 body = {"status": step, "comment": ad.get("reject") if step == "REJECTED" else None}
                 await self._ok(
                     await self.c.post(
                         f"/api/v1/applications/{created['id']}/status", headers=rec["h"], json=body
                     )
                 )
+                if step == "INTERVIEW":
+                    await seed_extras.schedule_interview(self, rec_app, len(self.interviews))
             if ad.get("withdraw"):
                 await self._ok(
                     await self.c.post(
@@ -452,9 +454,11 @@ async def run(reset: bool = False, extensions: tuple[Any, ...] = ()) -> bool:
         await seeder.companies()
         await seeder.candidate_profiles()
         await seeder.jobs_()
-        for ext in extensions:  # optional stages (résumés, interviews …) plug in here
+        await seed_extras.resumes(seeder)  # before applications, so applying can reference the primary résumé
+        for ext in extensions:  # optional extra stages plug in here
             await ext(seeder)
         await seeder.applications_()
+        await seed_extras.finish_interviews(seeder)
         await seeder.settle_job_states()
         await seeder.refresh_matches()
         await seeder.backdate()

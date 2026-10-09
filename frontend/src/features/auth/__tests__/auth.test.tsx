@@ -30,7 +30,7 @@ describe('login', () => {
     await user.click(screen.getByRole('button', { name: 'Sign in' }))
 
     await waitFor(() => expect(router.state.location.pathname).toBe('/dashboard'))
-    expect(await screen.findByRole('heading', { name: 'Dashboard' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: /welcome back/i, level: 1 })).toBeInTheDocument()
     expect(tokenStore.get()).toBe('tok-login')
     await waitFor(() => expect(authHeader).toBe('Bearer tok-login'))
     expect(JSON.stringify({ ...localStorage, ...sessionStorage })).not.toContain('tok-login')
@@ -117,7 +117,7 @@ describe('session', () => {
     const rec = signInAs('RECRUITER')
     renderApp('/dashboard')
     await waitForBoot()
-    expect(await screen.findByRole('heading', { name: 'Dashboard' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: /welcome back/i, level: 1 })).toBeInTheDocument()
     expect(
       screen.getByRole('button', { name: new RegExp(`Account menu for ${rec.first_name}`) }),
     ).toBeInTheDocument()

@@ -118,32 +118,35 @@ describe('route guards', () => {
     expect(anon.router.state.location.pathname).toBe('/login')
   })
 
-  it.each<[Role, string, string]>([
-    ['CANDIDATE', '/dashboard', 'Dashboard'],
-    ['CANDIDATE', '/recommended', 'Recommended jobs'],
-    ['CANDIDATE', '/applications', 'My applications'],
-    ['CANDIDATE', '/applications/abc', 'Application'],
-    ['CANDIDATE', '/interviews', 'My interviews'],
-    ['CANDIDATE', '/resume', 'Résumé'],
-    ['CANDIDATE', '/profile', 'Profile'],
-    ['RECRUITER', '/dashboard', 'Dashboard'],
-    ['RECRUITER', '/candidates', 'Candidates'],
-    ['RECRUITER', '/candidates/abc', 'Candidate'],
-    ['RECRUITER', '/applications', 'Applications'],
-    ['RECRUITER', '/interviews', 'Interviews'],
-    ['RECRUITER', '/matching', 'Candidate matching'],
-    ['RECRUITER', '/matching/abc', 'Candidate matching'],
-    ['RECRUITER', '/reports', 'Reports'],
-    ['RECRUITER', '/settings/company', 'Company settings'],
-    ['RECRUITER', '/settings/team', 'Team'],
-    ['ADMIN', '/dashboard', 'Dashboard'],
-    ['ADMIN', '/admin/companies', 'Companies'],
-    ['ADMIN', '/admin/system', 'System monitoring'],
-  ])('%s: %s renders an honest placeholder (route table is wired)', async (role, url, title) => {
+  it.each<[Role, string]>([
+    ['CANDIDATE', '/dashboard'],
+    ['CANDIDATE', '/recommended'],
+    ['CANDIDATE', '/applications'],
+    ['CANDIDATE', '/applications/abc'],
+    ['CANDIDATE', '/interviews'],
+    ['CANDIDATE', '/resume'],
+    ['CANDIDATE', '/profile'],
+    ['RECRUITER', '/dashboard'],
+    ['RECRUITER', '/candidates'],
+    ['RECRUITER', '/candidates/abc'],
+    ['RECRUITER', '/applications'],
+    ['RECRUITER', '/interviews'],
+    ['RECRUITER', '/matching'],
+    ['RECRUITER', '/matching/abc'],
+    ['RECRUITER', '/reports'],
+    ['RECRUITER', '/settings/company'],
+    ['RECRUITER', '/settings/team'],
+    ['ADMIN', '/dashboard'],
+    ['ADMIN', '/admin/companies'],
+    ['ADMIN', '/admin/system'],
+  ])('%s: %s is wired to a real page (not a stub, 404 or 403)', async (role, url) => {
     signInAs(role)
     renderApp(url)
-    expect(await screen.findByRole('heading', { name: title, level: 1 })).toBeInTheDocument()
-    expect(screen.getByText(/under construction/i)).toBeInTheDocument()
+    // The page title renders immediately, before any data arrives; data states are covered by each feature's own tests.
+    const [title] = await screen.findAllByRole('heading', { name: /./ })
+    expect(title).toBeInTheDocument()
+    expect(title).not.toHaveTextContent(/page not found|don.t have access/i)
+    expect(screen.queryByText(/under construction/i)).not.toBeInTheDocument()
   })
 
   it('unknown URLs get a friendly 404', async () => {

@@ -30,6 +30,23 @@ export const handlers = [
   http.get(`${API}/notifications`, () =>
     HttpResponse.json(page([makeNotification({ id: 'n1' }), makeNotification({ id: 'n2', is_read: true })])),
   ),
+  // Quiet defaults for the data the role dashboards and pages ask for, so app-level tests (sign-in, route guards)
+  // render the real pages; feature tests override these per case.
+  http.get(`${API}/applications`, () => HttpResponse.json(page([]))),
+  http.get(`${API}/applications/:id`, () =>
+    HttpResponse.json(errorBody('NOT_FOUND', 'Application not found'), { status: 404 }),
+  ),
+  http.get(`${API}/reports/:name`, () =>
+    HttpResponse.json(errorBody('NOT_FOUND', 'No report data in this test'), { status: 404 }),
+  ),
+  http.get(`${API}/interviews`, () => HttpResponse.json(page([]))),
+  http.get(`${API}/recommendations/jobs`, () =>
+    HttpResponse.json({ ...page([]), meta: { hint: null, computing_task_id: null } }),
+  ),
+  http.get(`${API}/resumes`, () => HttpResponse.json(page([]))),
+  http.get(`${API}/candidates/me/completion`, () =>
+    HttpResponse.json({ percent: 0, is_complete: false, missing: [], items: [] }),
+  ),
   http.get(`${API}/companies/:id`, ({ params }) =>
     HttpResponse.json({ id: params.id, name: 'Northwind Labs', slug: 'northwind-labs' }),
   ),

@@ -777,6 +777,221 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/resumes/bulk-imports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * My company's import batches
+         * @description Newest first. Company-scoped: batches of other companies are never listed.
+         */
+        get: operations["list_bulk_imports_api_v1_resumes_bulk_imports_get"];
+        put?: never;
+        /**
+         * Bulk-import résumés (recruiters)
+         * @description Upload up to `MAX_BULK_IMPORT_FILES` PDF / DOCX files as `multipart/form-data` (`files`, repeated; `files[]` is accepted too). Every file is validated like a single upload; **invalid files are reported per file in `rejected` and the valid ones are accepted**. A background task then creates one company-private candidate per new résumé, skipping duplicates (same file or same e-mail) and recording unreadable files as failed. Poll `GET /resumes/bulk-imports/{batch_id}`.
+         */
+        post: operations["bulk_import_api_v1_resumes_bulk_imports_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/resumes/bulk-imports/{batch_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Import batch with per-file outcomes
+         * @description Counts by outcome (`pending` / `created` / `duplicate` / `failed`) and one item per accepted file. 404 for other companies' batches.
+         */
+        get: operations["get_bulk_import_api_v1_resumes_bulk_imports__batch_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/resumes/bulk-imports/{batch_id}/process": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Re-queue an import that has not finished
+         * @description Use when the queue was unavailable at upload time or a worker was lost. Only items still `pending` are processed (idempotent).
+         */
+        post: operations["reprocess_bulk_import_api_v1_resumes_bulk_imports__batch_id__process_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/resumes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * My résumés
+         * @description The signed-in candidate's résumés, primary first, with live processing status.
+         */
+        get: operations["list_resumes_api_v1_resumes_get"];
+        put?: never;
+        /**
+         * Upload a résumé (candidates)
+         * @description `multipart/form-data` with `file` (PDF or DOCX, size-limited while streaming) and optional `set_primary` (default `true`). The file type is decided by its **content** (magic bytes), not by the client's `Content-Type`; mismatching extension / content / declared type is rejected with 415, empty files with 422, oversize files with 413.
+         *
+         *     Returns **202** with the résumé (`status = UPLOADED`) and a `task_id` to poll — processing (text extraction, parsing, skills, embedding) runs in the background. If the queue is unavailable the upload is still saved: `task_id` is `null`, `message` explains, and `POST /resumes/{id}/process` retries. Uploading the **identical file again** returns the existing résumé with **200** (`duplicate = true`) instead of creating another; a previously FAILED one is re-queued.
+         */
+        post: operations["upload_resume_api_v1_resumes_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/resumes/{resume_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Résumé with processing status
+         * @description Visible to the owner and to staff with **full** access to the candidate (applicants to your company's jobs, or candidates your company sourced). Marketplace-only access reveals nothing; everyone else gets 404. Includes the task stage / progress, `error_code` / `error_message` (safe, never document content), parser version, embedding model / version, durations, page and character counts and `was_truncated`.
+         */
+        get: operations["get_resume_api_v1_resumes__resume_id__get"];
+        put?: never;
+        post?: never;
+        /**
+         * Delete a résumé (owner)
+         * @description Deletes the rows and the stored file. **409 `RESUME_IN_USE`** if an application references it. If it was the primary résumé the newest remaining one becomes primary.
+         */
+        delete: operations["delete_resume_api_v1_resumes__resume_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/resumes/{resume_id}/file": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Download the résumé file
+         * @description Streams the stored file after re-checking authorization. Served as an attachment with the sniffed content type, `X-Content-Type-Options: nosniff` and `Cache-Control: private, no-store`. `inline=true` previews a PDF in the browser; other types are always downloaded.
+         */
+        get: operations["download_resume_api_v1_resumes__resume_id__file_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/resumes/{resume_id}/primary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Make this my primary résumé (owner) */
+        post: operations["make_primary_api_v1_resumes__resume_id__primary_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/resumes/{resume_id}/process": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * (Re)process a résumé
+         * @description Queues processing again (e.g. after a failure or when the queue was down at upload). Deduplicated: if a run is already pending or running its task is returned. Reprocessing is idempotent — suggestions are never duplicated. Owner, or the sourcing company's recruiter for an imported candidate.
+         */
+        post: operations["reprocess_resume_api_v1_resumes__resume_id__process_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/resumes/{resume_id}/extracted": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Suggestions extracted from the résumé
+         * @description What the parser found — contact details, summary, skills, experience, education, certifications, languages and years of experience — each with a confidence score, plus whether it is already on the profile. These are **suggestions**: nothing except unconfirmed skill suggestions touches the profile until you call `/apply`. Owner, or the sourcing company's recruiter for imported candidates (and only those). 409 `RESUME_NOT_PROCESSED` until processing has finished.
+         */
+        get: operations["get_extracted_api_v1_resumes__resume_id__extracted_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Correct or remove suggestions before applying
+         * @description Edit individual suggestions by `index` (`remove: true` hides one, other fields correct it). Only the stored suggestions change — the raw extracted text is never altered — and edited items are flagged `corrected`.
+         */
+        patch: operations["patch_extracted_api_v1_resumes__resume_id__extracted_patch"];
+        trace?: never;
+    };
+    "/api/v1/resumes/{resume_id}/extracted/apply": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Copy selected suggestions into the profile
+         * @description Select suggestion indices per section (or `all`) and scalar `fields` to fill. Created rows have `source = RESUME`; skills are confirmed; duplicates are skipped; scalar profile fields are only filled when empty unless listed in `overwrite`. The response says what was applied and what was skipped (and why). The profile index and matches are refreshed afterwards.
+         */
+        post: operations["apply_extracted_api_v1_resumes__resume_id__extracted_apply_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/applications": {
         parameters: {
             query?: never;
@@ -881,6 +1096,162 @@ export interface paths {
         put?: never;
         /** Add an internal note */
         post: operations["add_note_api_v1_applications__application_id__notes_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/interviews": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List interviews visible to me
+         * @description Candidates see their own interviews (logistics only); recruiters their company's; hiring managers the ones they take part in or for jobs assigned to them. Sorted by start time. `from_date`/`to_date` are inclusive calendar dates in UTC. `upcoming_only` keeps SCHEDULED/CONFIRMED/RESCHEDULED interviews that have not ended yet.
+         */
+        get: operations["list_interviews_api_v1_interviews_get"];
+        put?: never;
+        /**
+         * Schedule an interview (recruiters)
+         * @description Only SHORTLISTED or INTERVIEW applications can be scheduled (`APPLICATION_NOT_INTERVIEWABLE` otherwise). Scheduling the first interview moves a SHORTLISTED application to INTERVIEW. Participants must be active recruiters / hiring managers of the same company (a hiring manager only for jobs assigned to them) and at least one must be an INTERVIEWER. The candidate and every interviewer are protected against double-booking: a clash returns `409 INTERVIEW_CONFLICT` with the clashing time window, also when two requests race (the database exclusion constraint decides).
+         */
+        post: operations["schedule_interview_api_v1_interviews_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/interviews/{interview_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Interview detail
+         * @description Staff get the full record (internal notes, participants, feedback counters and the application's `allowed_next_statuses` so the UI can offer *Advance to OFFER / Reject*). Candidates get a restricted representation without any internal data.
+         */
+        get: operations["get_interview_api_v1_interviews__interview_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Reschedule or edit an interview (recruiters)
+         * @description Changing the time moves the interview to RESCHEDULED (the candidate must confirm again), re-checks conflicts and notifies the candidate and participants. Details-only edits (location, link, type, participants, notes) do not change the status.
+         */
+        patch: operations["update_interview_api_v1_interviews__interview_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/interviews/{interview_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cancel an interview (recruiters)
+         * @description Frees the candidate's and interviewers' calendar slot immediately and notifies everyone. The reason is internal.
+         */
+        post: operations["cancel_interview_api_v1_interviews__interview_id__cancel_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/interviews/{interview_id}/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Confirm attendance (candidate)
+         * @description SCHEDULED / RESCHEDULED → CONFIRMED. Idempotent. Only the candidate of the interview can confirm.
+         */
+        post: operations["confirm_interview_api_v1_interviews__interview_id__confirm_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/interviews/{interview_id}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mark an interview as completed (staff)
+         * @description Allowed once the start time has passed. Recruiters, admins and participating hiring managers.
+         */
+        post: operations["complete_interview_api_v1_interviews__interview_id__complete_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/interviews/{interview_id}/no-show": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Record that the candidate did not show up (staff)
+         * @description Allowed once the start time has passed. The application's stage is not changed automatically.
+         */
+        post: operations["no_show_interview_api_v1_interviews__interview_id__no_show_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/interviews/{interview_id}/feedback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * All feedback for an interview (staff only)
+         * @description Internal. Candidates always receive 403. Includes the rating average and the recommendation distribution.
+         */
+        get: operations["list_feedback_api_v1_interviews__interview_id__feedback_get"];
+        /**
+         * Update my feedback
+         * @description Replaces the caller's own feedback entry (rating, recommendation and texts). `submitted_at` keeps the time of the first submission.
+         */
+        put: operations["update_feedback_api_v1_interviews__interview_id__feedback_put"];
+        /**
+         * Submit my feedback (interviewers, recruiters, hiring managers)
+         * @description One feedback entry per author and interview (`409 FEEDBACK_ALREADY_SUBMITTED` otherwise - use PUT to update). Only possible after the interview started (or once it is COMPLETED). Recording feedback does not change the application's stage.
+         */
+        post: operations["submit_feedback_api_v1_interviews__interview_id__feedback_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1063,6 +1434,286 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/reports/recruiter-dashboard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Recruiter dashboard (hiring managers: assigned jobs only)
+         * @description KPIs, hiring funnel, applications over time, applications per job, status distribution, interview activity, the best semantic matches for published jobs and the latest applications - all computed in SQL and cached (60 s, invalidated by writes). The window defaults to the last 30 days; `total_applications`, the funnel, the charts and `hires_in_period` use it, while screening / shortlisted / interviews / deadlines are current snapshots. The funnel counts applications that ever *reached* a stage (from the status history), with REJECTED / WITHDRAWN as branches.
+         */
+        get: operations["recruiter_dashboard_api_v1_reports_recruiter_dashboard_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/candidate-dashboard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Candidate dashboard (own data only)
+         * @description Profile completion, application counts by status, the next 5 interviews, the top 5 recommended published jobs (not already applied to) with score, band and summary, résumé processing status, saved jobs and unread notifications.
+         */
+        get: operations["candidate_dashboard_api_v1_reports_candidate_dashboard_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/admin-dashboard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Platform dashboard (admins)
+         * @description Users by role/status, companies, jobs / applications / interviews / résumés by status, tasks of the last 24 h, signups, recent audit events and match totals.
+         */
+        get: operations["admin_dashboard_api_v1_reports_admin_dashboard_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/applications-by-job": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Applications per job
+         * @description Jobs that received applications in the period, with the per-status breakdown. Sortable and paginated; `format=csv` exports all rows.
+         */
+        get: operations["applications_by_job_api_v1_reports_applications_by_job_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/applications-by-status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Applications by current status
+         * @description All eight statuses (zero-filled) for applications received in the period, optionally for one job.
+         */
+        get: operations["applications_by_status_api_v1_reports_applications_by_status_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/funnel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Hiring funnel (optionally per job)
+         * @description Cumulative counts of applications that reached APPLIED → SCREENING → SHORTLISTED → INTERVIEW → OFFER → HIRED, taken from the status history, plus the REJECTED / WITHDRAWN branches.
+         */
+        get: operations["funnel_api_v1_reports_funnel_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/interview-statistics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Interview statistics
+         * @description Counts by status and type, average duration, no-show rate (no-shows / (completed + no-shows)), cancellation rate and the feedback rating / recommendation distribution. The window applies to the interview start time.
+         */
+        get: operations["interview_statistics_api_v1_reports_interview_statistics_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/job-performance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Per-job performance
+         * @description Applications, shortlist rate, hire rate, average days to first status change and to hire, and the average match score of the applicants. Job views are not tracked, so the funnel starts at the application. Use `POST /reports/job-performance/export` for a background CSV export.
+         */
+        get: operations["job_performance_api_v1_reports_job_performance_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/job-performance/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Export the job-performance report as a background CSV
+         * @description Queues an `EXPORT_REPORT` task; poll `GET /api/v1/tasks/{task_id}` - the CSV text is in `result.csv` once COMPLETED. Repeating the same request while one is running returns the running task.
+         */
+        post: operations["export_job_performance_api_v1_reports_job_performance_export_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/recruiter-activity": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Activity per recruiter (recruiters, admins)
+         * @description Stage changes (status history), interviews scheduled (audit events), notes and feedback entries per staff member. Hiring managers are refused.
+         */
+        get: operations["recruiter_activity_api_v1_reports_recruiter_activity_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/source-statistics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Applications by source
+         * @description Where applications come from (DIRECT, SEARCH, RECOMMENDATION, REFERRAL) with shortlist and hire rates per source.
+         */
+        get: operations["source_statistics_api_v1_reports_source_statistics_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/matching-performance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * What the stored match scores show
+         * @description Score distribution by band, average score of hired vs rejected applicants (with sample sizes) and the share of applicants who ranked in their job's top 10 scored candidates. Descriptive only: it does not claim the score predicts hiring.
+         */
+        get: operations["matching_performance_api_v1_reports_matching_performance_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/top-skills": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Most requested vs most common skills
+         * @description Skills most requested by published jobs next to the skills most common among the applicants (confirmed candidate skills). Admins without `company_id` get the platform-wide view.
+         */
+        get: operations["top_skills_api_v1_reports_top_skills_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/pipeline-summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Current pipeline snapshot
+         * @description Applications per stage right now with the time spent in the current stage and how many live applications have been waiting for more than 14 days.
+         */
+        get: operations["pipeline_summary_api_v1_reports_pipeline_summary_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/tasks/{task_id}": {
         parameters: {
             query?: never;
@@ -1075,6 +1726,163 @@ export interface paths {
          * @description Poll until `status` is COMPLETED or FAILED. `progress` (0-100) and `stage` are written by the worker as it runs. (Named *tasks* because `/jobs` is the job-posting resource.)
          */
         get: operations["get_task_api_v1_tasks__task_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/system": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * System health
+         * @description Database (latency, pgvector and migration revision), Redis (latency, ARQ queue depth), the embedding model (does it load and produce vectors of the configured size), worker liveness (ARQ health-check key), task counts and stale tasks. `status` is `down` when the database is unreachable, `degraded` when anything else is wrong. No secrets are exposed.
+         */
+        get: operations["system_status_api_v1_admin_system_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/tasks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Background tasks
+         * @description All tasks, newest first. Filter by `status` and `type`. Results are omitted (use `GET /tasks/{id}`).
+         */
+        get: operations["list_tasks_api_v1_admin_tasks_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/tasks/{task_id}/retry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Retry a failed task
+         * @description Only FAILED tasks: resets the attempt counter, sets the task back to PENDING and re-enqueues it. `409 TASK_NOT_RETRYABLE` for any other state, `409 TASK_ALREADY_ACTIVE` if an equivalent task is running.
+         */
+        post: operations["retry_task_api_v1_admin_tasks__task_id__retry_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/audit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Audit log
+         * @description Append-only record of business-relevant actions, newest first. `action` is an exact name or a prefix ending in `*` (e.g. `interview.*`). `from_date` / `to_date` are inclusive UTC dates.
+         */
+        get: operations["audit_log_api_v1_admin_audit_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/embeddings/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Re-embed everything that is stale
+         * @description Queues a `REFRESH_EMBEDDINGS` task (deduplicated: while one is pending or running the same task is returned with `created=false`). Unchanged items are skipped by their source hash, so it is cheap to run after a model change.
+         */
+        post: operations["refresh_embeddings_api_v1_admin_embeddings_refresh_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/embeddings/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Embedding coverage
+         * @description For jobs, candidate profiles and résumé results: how many have an embedding from the configured model/version (`current`), from another one (`outdated`) or none (`missing`), plus the latest refresh task.
+         */
+        get: operations["embeddings_status_api_v1_admin_embeddings_status_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/matching/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Matching coverage
+         * @description Stored candidate-job match pairs, how many were computed with an outdated matching / embedding version, published jobs without any match yet and the match tasks of the last 24 hours.
+         */
+        get: operations["matching_status_api_v1_admin_matching_status_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/meta": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Deployment metadata (demo accounts are listed only in demo mode) */
+        get: operations["meta_api_v1_meta_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1121,6 +1929,99 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AdminDashboard */
+        AdminDashboard: {
+            /**
+             * Generated At
+             * Format: date-time
+             */
+            generated_at: string;
+            /** Users Total */
+            users_total: number;
+            /** Users By Role */
+            users_by_role: {
+                [key: string]: number;
+            };
+            /** Users By Status */
+            users_by_status: {
+                [key: string]: number;
+            };
+            companies: components["schemas"]["CompanyTotals"];
+            /** Jobs By Status */
+            jobs_by_status: {
+                [key: string]: number;
+            };
+            /** Applications By Status */
+            applications_by_status: {
+                [key: string]: number;
+            };
+            /** Interviews By Status */
+            interviews_by_status: {
+                [key: string]: number;
+            };
+            /** Resumes By Status */
+            resumes_by_status: {
+                [key: string]: number;
+            };
+            /** Tasks Last 24H By Status */
+            tasks_last_24h_by_status: {
+                [key: string]: number;
+            };
+            /**
+             * Signups Over Time
+             * @description New users per day, last 30 days
+             */
+            signups_over_time: components["schemas"]["SeriesPoint"][];
+            /** Recent Audit Events */
+            recent_audit_events: components["schemas"]["AuditBrief"][];
+            matches: components["schemas"]["MatchTotals"];
+        };
+        /** AdminTaskOut */
+        AdminTaskOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            type: components["schemas"]["TaskType"];
+            status: components["schemas"]["TaskStatus"];
+            /** Progress */
+            progress: number;
+            /** Stage */
+            stage: string | null;
+            /** Attempts */
+            attempts: number;
+            /** Error Code */
+            error_code: string | null;
+            /** Error Message */
+            error_message: string | null;
+            /** Dedupe Key */
+            dedupe_key: string | null;
+            /** Created By Id */
+            created_by_id: string | null;
+            /** Company Id */
+            company_id: string | null;
+            /** Params */
+            params: {
+                [key: string]: unknown;
+            };
+            /** Has Result */
+            has_result: boolean;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /** Started At */
+            started_at: string | null;
+            /** Finished At */
+            finished_at: string | null;
+        };
         /** AdminUserCreate */
         AdminUserCreate: {
             /**
@@ -1152,6 +2053,24 @@ export interface components {
             status?: components["schemas"]["UserStatus"] | null;
             /** Company Id */
             company_id?: string | null;
+        };
+        /** AppInfo */
+        AppInfo: {
+            /** Name */
+            name: string;
+            /** Version */
+            version: string;
+            /** Environment */
+            environment: string;
+            /** Python Version */
+            python_version: string;
+            /**
+             * Job Backend
+             * @description `arq` (Redis + worker process) or `inline` (in-process, tests / no-worker mode)
+             */
+            job_backend: string;
+            /** Cache Enabled */
+            cache_enabled: boolean;
         };
         /** ApplicationBrief */
         ApplicationBrief: {
@@ -1312,16 +2231,238 @@ export interface components {
             /** Next Interview At */
             next_interview_at?: string | null;
         };
+        /** ApplicationStageOut */
+        ApplicationStageOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            status: components["schemas"]["ApplicationStatus"];
+            /**
+             * Allowed Next Statuses
+             * @description Stages a recruiter may move the application to now (e.g. OFFER / REJECTED after the interview)
+             */
+            allowed_next_statuses: components["schemas"]["ApplicationStatus"][];
+        };
         /**
          * ApplicationStatus
          * @enum {string}
          */
         ApplicationStatus: "APPLIED" | "SCREENING" | "SHORTLISTED" | "INTERVIEW" | "OFFER" | "HIRED" | "REJECTED" | "WITHDRAWN";
+        /** ApplicationsByJobPage */
+        ApplicationsByJobPage: {
+            /** Items */
+            items: components["schemas"]["ApplicationsByJobRow"][];
+            /**
+             * Page
+             * @description 1-based page number
+             */
+            page: number;
+            /** Page Size */
+            page_size: number;
+            /**
+             * Total
+             * @description Total rows matching the filters
+             */
+            total: number;
+            /**
+             * Pages
+             * @description Total number of pages
+             */
+            pages: number;
+            period: components["schemas"]["Period"];
+        };
+        /** ApplicationsByJobRow */
+        ApplicationsByJobRow: {
+            /**
+             * Job Id
+             * Format: uuid
+             */
+            job_id: string;
+            /** Title */
+            title: string;
+            job_status: components["schemas"]["JobStatus"];
+            /** Department */
+            department: string | null;
+            /** Applications */
+            applications: number;
+            /** By Status */
+            by_status: {
+                [key: string]: number;
+            };
+        };
+        /** ApplicationsByStatusOut */
+        ApplicationsByStatusOut: {
+            period: components["schemas"]["Period"];
+            /** Job Id */
+            job_id: string | null;
+            /** Total */
+            total: number;
+            /** Items */
+            items: components["schemas"]["StatusCount"][];
+        };
+        /**
+         * ApplyRequest
+         * @description Choose what to copy from the suggestions into the structured profile. Existing user-provided values are never
+         *     replaced silently: scalar profile fields are only filled when empty unless that field is listed in ``overwrite``.
+         * @example {
+         *       "certifications": [],
+         *       "educations": [
+         *         0
+         *       ],
+         *       "experiences": [
+         *         0,
+         *         1
+         *       ],
+         *       "fields": [
+         *         "summary",
+         *         "headline",
+         *         "location",
+         *         "years_experience"
+         *       ],
+         *       "languages": [
+         *         0,
+         *         1
+         *       ],
+         *       "overwrite": [],
+         *       "skills": "all"
+         *     }
+         */
+        ApplyRequest: {
+            /**
+             * Skills
+             * @description Suggestion indices to copy, or `all`
+             */
+            skills?: number[] | "all";
+            /**
+             * Experiences
+             * @description Suggestion indices to copy, or `all`
+             */
+            experiences?: number[] | "all";
+            /**
+             * Educations
+             * @description Suggestion indices to copy, or `all`
+             */
+            educations?: number[] | "all";
+            /**
+             * Certifications
+             * @description Suggestion indices to copy, or `all`
+             */
+            certifications?: number[] | "all";
+            /**
+             * Languages
+             * @description Suggestion indices to copy, or `all`
+             */
+            languages?: number[] | "all";
+            /**
+             * Fields
+             * @description Profile fields to fill from the suggestions
+             */
+            fields?: ("summary" | "headline" | "location" | "years_experience" | "linkedin_url" | "github_url" | "portfolio_url" | "phone")[];
+            /**
+             * Overwrite
+             * @description Fields (subset of `fields`) that may replace an existing non-empty value
+             */
+            overwrite?: ("summary" | "headline" | "location" | "years_experience" | "linkedin_url" | "github_url" | "portfolio_url" | "phone")[];
+        };
+        /** ApplyResult */
+        ApplyResult: {
+            /**
+             * Applied
+             * @description Rows created / confirmed per section
+             */
+            applied: {
+                [key: string]: number;
+            };
+            /** Fields Applied */
+            fields_applied: string[];
+            /** Skipped */
+            skipped: components["schemas"]["SkippedItem"][];
+        };
+        /** AuditBrief */
+        AuditBrief: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Action */
+            action: string;
+            /** Entity Type */
+            entity_type: string;
+            /** Entity Id */
+            entity_id: string | null;
+            /** Actor Id */
+            actor_id: string | null;
+            /** Actor Name */
+            actor_name: string | null;
+            /** Company Id */
+            company_id: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /** AuditEventOut */
+        AuditEventOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Action */
+            action: string;
+            /** Entity Type */
+            entity_type: string;
+            /** Entity Id */
+            entity_id: string | null;
+            /** Actor Id */
+            actor_id: string | null;
+            /** Actor Name */
+            actor_name: string | null;
+            /** Actor Email */
+            actor_email: string | null;
+            /** Company Id */
+            company_id: string | null;
+            /** Metadata */
+            metadata: {
+                [key: string]: unknown;
+            } | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
         /**
          * Availability
          * @enum {string}
          */
         Availability: "IMMEDIATELY" | "TWO_WEEKS" | "ONE_MONTH" | "THREE_MONTHS" | "NOT_AVAILABLE";
+        /** BandCount */
+        BandCount: {
+            /** Band */
+            band: string;
+            /** Count */
+            count: number;
+            /** Percent */
+            percent: number;
+        };
+        /** Body_bulk_import_api_v1_resumes_bulk_imports_post */
+        Body_bulk_import_api_v1_resumes_bulk_imports_post: {
+            /**
+             * Files
+             * @description Résumé files (PDF or DOCX)
+             */
+            files?: string[] | null;
+            /**
+             * Files[]
+             * @description Alias of `files` (PHP/jQuery-style repeated field name)
+             */
+            "files[]"?: string[] | null;
+        };
         /** Body_oauth_token_api_v1_auth_token_post */
         Body_oauth_token_api_v1_auth_token_post: {
             /** Grant Type */
@@ -1345,6 +2486,183 @@ export interface components {
              * Format: password
              */
             client_secret?: string | null;
+        };
+        /** Body_upload_resume_api_v1_resumes_post */
+        Body_upload_resume_api_v1_resumes_post: {
+            /**
+             * File
+             * @description The résumé: PDF (.pdf) or Word (.docx)
+             */
+            file: string;
+            /**
+             * Set Primary
+             * @description Make this the primary résumé (used for matching and as the default for applications)
+             * @default true
+             */
+            set_primary: boolean;
+        };
+        /** BulkImportAccepted */
+        BulkImportAccepted: {
+            /**
+             * Batch Id
+             * Format: uuid
+             */
+            batch_id: string;
+            /**
+             * Task Id
+             * @description null when the queue was unavailable; retry with `POST /resumes/bulk-imports/{id}/process`
+             */
+            task_id?: string | null;
+            /** Accepted */
+            accepted: number;
+            /** Rejected */
+            rejected: components["schemas"]["RejectedFile"][];
+            /** Message */
+            message?: string | null;
+        };
+        /** BulkImportBatchDetail */
+        BulkImportBatchDetail: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "PENDING" | "RUNNING" | "COMPLETED" | "FAILED";
+            /** Total Files */
+            total_files: number;
+            counts: components["schemas"]["BulkImportCounts"];
+            /** Task Id */
+            task_id?: string | null;
+            /** Progress */
+            progress?: number | null;
+            /** Created By Id */
+            created_by_id?: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Finished At */
+            finished_at?: string | null;
+            /** Items */
+            items: components["schemas"]["BulkImportItemOut"][];
+        };
+        /** BulkImportBatchOut */
+        BulkImportBatchOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "PENDING" | "RUNNING" | "COMPLETED" | "FAILED";
+            /** Total Files */
+            total_files: number;
+            counts: components["schemas"]["BulkImportCounts"];
+            /** Task Id */
+            task_id?: string | null;
+            /** Progress */
+            progress?: number | null;
+            /** Created By Id */
+            created_by_id?: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Finished At */
+            finished_at?: string | null;
+        };
+        /** BulkImportCounts */
+        BulkImportCounts: {
+            /**
+             * Pending
+             * @default 0
+             */
+            pending: number;
+            /**
+             * Created
+             * @default 0
+             */
+            created: number;
+            /**
+             * Duplicate
+             * @default 0
+             */
+            duplicate: number;
+            /**
+             * Failed
+             * @default 0
+             */
+            failed: number;
+        };
+        /** BulkImportItemOut */
+        BulkImportItemOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Filename */
+            filename: string;
+            /** Size Bytes */
+            size_bytes: number;
+            status: components["schemas"]["ImportItemStatus"];
+            /** Candidate Id */
+            candidate_id?: string | null;
+            /** Resume Id */
+            resume_id?: string | null;
+            /** Error Code */
+            error_code?: string | null;
+            /** Error Message */
+            error_message?: string | null;
+        };
+        /**
+         * CancelRequest
+         * @example {
+         *       "reason": "Interviewer unavailable; will be rescheduled next week"
+         *     }
+         */
+        CancelRequest: {
+            /**
+             * Reason
+             * @description Internal reason (not sent to the candidate)
+             */
+            reason: string;
+        };
+        /** CandidateDashboard */
+        CandidateDashboard: {
+            /**
+             * Generated At
+             * Format: date-time
+             */
+            generated_at: string;
+            profile_completion: components["schemas"]["ProfileCompletionBrief"];
+            /** Total Applications */
+            total_applications: number;
+            /**
+             * Active Applications
+             * @description Applications not yet HIRED, REJECTED or WITHDRAWN
+             */
+            active_applications: number;
+            /** Applications By Status */
+            applications_by_status: components["schemas"]["StatusCount"][];
+            /** Upcoming Interviews */
+            upcoming_interviews: components["schemas"]["UpcomingInterview"][];
+            /** Recommended Jobs */
+            recommended_jobs: components["schemas"]["RecommendedJobBrief"][];
+            resume: components["schemas"]["ResumeStatusBrief"];
+            /** Saved Jobs */
+            saved_jobs: number;
+            /** Unread Notifications */
+            unread_notifications: number;
         };
         /**
          * CandidateFacingMatch
@@ -1378,6 +2696,70 @@ export interface components {
              * Format: date-time
              */
             generated_at: string;
+        };
+        /**
+         * CandidateInterviewView
+         * @description What a candidate sees: logistics only. No notes, feedback, ratings, cancellation reasons or staff contact data.
+         */
+        CandidateInterviewView: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            audience: "candidate";
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Application Id
+             * Format: uuid
+             */
+            application_id: string;
+            /**
+             * Job Id
+             * Format: uuid
+             */
+            job_id: string;
+            /** Job Title */
+            job_title: string;
+            /** Company Name */
+            company_name: string;
+            interview_type: components["schemas"]["InterviewType"];
+            /**
+             * Start At
+             * Format: date-time
+             */
+            start_at: string;
+            /**
+             * End At
+             * Format: date-time
+             */
+            end_at: string;
+            /** Start Local */
+            start_local: string;
+            /** End Local */
+            end_local: string;
+            /** Timezone */
+            timezone: string;
+            /** Duration Minutes */
+            duration_minutes: number;
+            /** Location */
+            location: string | null;
+            /** Meeting Url */
+            meeting_url: string | null;
+            status: components["schemas"]["InterviewStatus"];
+            /**
+             * Interviewers
+             * @description Display names of the interviewers
+             */
+            interviewers: string[];
+            /**
+             * Can Confirm
+             * @description True while the candidate can still confirm attendance
+             */
+            can_confirm: boolean;
         };
         /** CandidateListItem */
         CandidateListItem: {
@@ -1641,6 +3023,26 @@ export interface components {
             credential_url: string | null;
             source: components["schemas"]["DataSource"];
         };
+        /** CertificationPatch */
+        CertificationPatch: {
+            /**
+             * Index
+             * @description `index` of the suggestion, as returned by GET /extracted
+             */
+            index: number;
+            /**
+             * Remove
+             * @description Drop this suggestion (it will not be offered or applied)
+             * @default false
+             */
+            remove: boolean;
+            /** Name */
+            name?: string | null;
+            /** Issuer */
+            issuer?: string | null;
+            /** Issued On */
+            issued_on?: string | null;
+        };
         /** ChangePasswordRequest */
         ChangePasswordRequest: {
             /** Current Password */
@@ -1745,6 +3147,15 @@ export interface components {
          * @enum {string}
          */
         CompanyStatus: "ACTIVE" | "SUSPENDED";
+        /** CompanyTotals */
+        CompanyTotals: {
+            /** Total */
+            total: number;
+            /** Active */
+            active: number;
+            /** Suspended */
+            suspended: number;
+        };
         /** CompanyUpdate */
         CompanyUpdate: {
             /** Name */
@@ -1774,12 +3185,64 @@ export interface components {
             /** Done */
             done: boolean;
         };
+        /** ContactPatch */
+        ContactPatch: {
+            /** Name */
+            name?: string | null;
+            /** Email */
+            email?: string | null;
+            /** Phone */
+            phone?: string | null;
+            /** Linkedin Url */
+            linkedin_url?: string | null;
+            /** Github Url */
+            github_url?: string | null;
+            /** Portfolio Url */
+            portfolio_url?: string | null;
+            /** Location */
+            location?: string | null;
+        };
         /**
          * DataSource
          * @description Provenance of structured candidate data: typed by the user vs. suggested by the résumé parser.
          * @enum {string}
          */
         DataSource: "USER" | "RESUME";
+        /** DatabaseStatus */
+        DatabaseStatus: {
+            /** Ok */
+            ok: boolean;
+            /** Latency Ms */
+            latency_ms?: number | null;
+            /** Pgvector Version */
+            pgvector_version?: string | null;
+            /**
+             * Migration Revision
+             * @description Revision stored in alembic_version
+             */
+            migration_revision?: string | null;
+            /**
+             * Migration Head
+             * @description Newest revision shipped with this build (best effort)
+             */
+            migration_head?: string | null;
+            /**
+             * Migrations Current
+             * @description revision == head; null when either is unknown
+             */
+            migrations_current?: boolean | null;
+            /** Error */
+            error?: string | null;
+        };
+        /** DemoAccount */
+        DemoAccount: {
+            /** Role */
+            role: string;
+            /** Label */
+            label: string;
+            /** Email */
+            email: string;
+        };
         /** EducationIn */
         EducationIn: {
             /** Institution */
@@ -1819,6 +3282,103 @@ export interface components {
             /** End Year */
             end_year: number | null;
             source: components["schemas"]["DataSource"];
+        };
+        /** EducationPatch */
+        EducationPatch: {
+            /**
+             * Index
+             * @description `index` of the suggestion, as returned by GET /extracted
+             */
+            index: number;
+            /**
+             * Remove
+             * @description Drop this suggestion (it will not be offered or applied)
+             * @default false
+             */
+            remove: boolean;
+            /** Institution */
+            institution?: string | null;
+            /** Degree */
+            degree?: string | null;
+            degree_level?: components["schemas"]["EducationLevel"] | null;
+            /** Field Of Study */
+            field_of_study?: string | null;
+            /** Start Year */
+            start_year?: number | null;
+            /** End Year */
+            end_year?: number | null;
+        };
+        /** EmbeddingBucket */
+        EmbeddingBucket: {
+            /**
+             * Population
+             * @description What is counted
+             */
+            population: string;
+            /** Total */
+            total: number;
+            /**
+             * Current
+             * @description Embedded with the configured model name and version
+             */
+            current: number;
+            /**
+             * Outdated
+             * @description Embedded with a different model name or version (run a refresh)
+             */
+            outdated: number;
+            /**
+             * Missing
+             * @description No embedding stored yet
+             */
+            missing: number;
+        };
+        /** EmbeddingModelStatus */
+        EmbeddingModelStatus: {
+            /** Backend */
+            backend: string;
+            /** Model Name */
+            model_name: string;
+            /** Model Version */
+            model_version: string;
+            /** Dimension */
+            dimension: number;
+            /**
+             * Loaded
+             * @description True when the model could be loaded and produced a vector of the expected size
+             */
+            loaded: boolean;
+            /** Error */
+            error?: string | null;
+        };
+        /** EmbeddingRefreshOut */
+        EmbeddingRefreshOut: {
+            /**
+             * Task Id
+             * Format: uuid
+             */
+            task_id: string;
+            status: components["schemas"]["TaskStatus"];
+            /**
+             * Created
+             * @description False when an identical refresh was already queued or running (deduplicated)
+             */
+            created: boolean;
+        };
+        /** EmbeddingsStatus */
+        EmbeddingsStatus: {
+            /** Model Name */
+            model_name: string;
+            /** Model Version */
+            model_version: string;
+            /** Dimension */
+            dimension: number;
+            jobs: components["schemas"]["EmbeddingBucket"];
+            candidates: components["schemas"]["EmbeddingBucket"];
+            resume_results: components["schemas"]["EmbeddingBucket"];
+            /** Active Refresh Task Id */
+            active_refresh_task_id: string | null;
+            last_refresh: components["schemas"]["LastRefresh"] | null;
         };
         /**
          * EmploymentType
@@ -1903,11 +3463,477 @@ export interface components {
             description: string | null;
             source: components["schemas"]["DataSource"];
         };
-        /** HTTPValidationError */
-        HTTPValidationError: {
-            /** Detail */
-            detail?: components["schemas"]["ValidationError"][];
+        /** ExperiencePatch */
+        ExperiencePatch: {
+            /**
+             * Index
+             * @description `index` of the suggestion, as returned by GET /extracted
+             */
+            index: number;
+            /**
+             * Remove
+             * @description Drop this suggestion (it will not be offered or applied)
+             * @default false
+             */
+            remove: boolean;
+            /** Title */
+            title?: string | null;
+            /** Company */
+            company?: string | null;
+            /** Location */
+            location?: string | null;
+            /** Start Date */
+            start_date?: string | null;
+            /** End Date */
+            end_date?: string | null;
+            /** Is Current */
+            is_current?: boolean | null;
+            /** Description */
+            description?: string | null;
         };
+        /** ExtractedCertification */
+        ExtractedCertification: {
+            /** Index */
+            index: number;
+            /** Name */
+            name: string;
+            /** Issuer */
+            issuer?: string | null;
+            /** Issued On */
+            issued_on?: string | null;
+            /** Issued Year */
+            issued_year?: number | null;
+            /** Confidence */
+            confidence: number;
+            /**
+             * Already On Profile
+             * @default false
+             */
+            already_on_profile: boolean;
+            /**
+             * Corrected
+             * @default false
+             */
+            corrected: boolean;
+        };
+        /** ExtractedContact */
+        ExtractedContact: {
+            /** Name */
+            name?: string | null;
+            /** Email */
+            email?: string | null;
+            /** Phone */
+            phone?: string | null;
+            /** Linkedin Url */
+            linkedin_url?: string | null;
+            /** Github Url */
+            github_url?: string | null;
+            /** Portfolio Url */
+            portfolio_url?: string | null;
+            /** Location */
+            location?: string | null;
+        };
+        /** ExtractedEducation */
+        ExtractedEducation: {
+            /** Index */
+            index: number;
+            /** Institution */
+            institution?: string | null;
+            /** Degree */
+            degree?: string | null;
+            degree_level?: components["schemas"]["EducationLevel"] | null;
+            /** Field Of Study */
+            field_of_study?: string | null;
+            /** Start Year */
+            start_year?: number | null;
+            /** End Year */
+            end_year?: number | null;
+            /** Confidence */
+            confidence: number;
+            /**
+             * Already On Profile
+             * @default false
+             */
+            already_on_profile: boolean;
+            /**
+             * Corrected
+             * @default false
+             */
+            corrected: boolean;
+            /** Missing For Apply */
+            missing_for_apply?: string[];
+        };
+        /** ExtractedExperience */
+        ExtractedExperience: {
+            /** Index */
+            index: number;
+            /** Title */
+            title?: string | null;
+            /** Company */
+            company?: string | null;
+            /** Location */
+            location?: string | null;
+            /** Start Date */
+            start_date?: string | null;
+            /** End Date */
+            end_date?: string | null;
+            /**
+             * Is Current
+             * @default false
+             */
+            is_current: boolean;
+            /** Description */
+            description?: string | null;
+            /** Confidence */
+            confidence: number;
+            /**
+             * Already On Profile
+             * @default false
+             */
+            already_on_profile: boolean;
+            /**
+             * Corrected
+             * @default false
+             */
+            corrected: boolean;
+            /**
+             * Missing For Apply
+             * @description Required fields still empty; correct them via PATCH before applying
+             */
+            missing_for_apply?: string[];
+        };
+        /** ExtractedLanguage */
+        ExtractedLanguage: {
+            /** Index */
+            index: number;
+            /** Language */
+            language: string;
+            proficiency?: components["schemas"]["LanguageProficiency"] | null;
+            /** Confidence */
+            confidence: number;
+            /**
+             * Already On Profile
+             * @default false
+             */
+            already_on_profile: boolean;
+            /**
+             * Corrected
+             * @default false
+             */
+            corrected: boolean;
+            /** Missing For Apply */
+            missing_for_apply?: string[];
+        };
+        /**
+         * ExtractedPatch
+         * @description Correct or remove individual suggestions. Only the fields you send change (``null`` clears a scalar). The raw
+         *     extracted text is never modified; corrected items are flagged ``corrected``.
+         * @example {
+         *       "experiences": [
+         *         {
+         *           "index": 0,
+         *           "start_date": "2020-01-01",
+         *           "title": "Senior Backend Engineer"
+         *         }
+         *       ],
+         *       "skills": [
+         *         {
+         *           "index": 3,
+         *           "remove": true
+         *         },
+         *         {
+         *           "index": 4,
+         *           "name": "PostgreSQL"
+         *         }
+         *       ],
+         *       "summary": "Backend engineer focused on reliable APIs."
+         *     }
+         */
+        ExtractedPatch: {
+            contact?: components["schemas"]["ContactPatch"] | null;
+            /** Headline */
+            headline?: string | null;
+            /** Summary */
+            summary?: string | null;
+            /** Years Of Experience */
+            years_of_experience?: number | null;
+            /** Skills */
+            skills?: components["schemas"]["SkillPatch"][];
+            /** Experiences */
+            experiences?: components["schemas"]["ExperiencePatch"][];
+            /** Educations */
+            educations?: components["schemas"]["EducationPatch"][];
+            /** Certifications */
+            certifications?: components["schemas"]["CertificationPatch"][];
+            /** Languages */
+            languages?: components["schemas"]["LanguagePatch"][];
+        };
+        /**
+         * ExtractedResume
+         * @description Everything the parser suggests for the profile, with confidence scores. Nothing here is applied automatically
+         *     except skills (as unconfirmed suggestions); raw text is never returned.
+         * @example {
+         *       "candidate_id": "0c7d5a8e-3a2b-4f11-8a53-2c9d1f9a7b10",
+         *       "certifications": [],
+         *       "contact": {
+         *         "email": "jane@example.com",
+         *         "location": "Berlin, Germany",
+         *         "name": "Jane Doe",
+         *         "phone": "+49 151 2345 6789"
+         *       },
+         *       "educations": [],
+         *       "experiences": [
+         *         {
+         *           "already_on_profile": false,
+         *           "company": "Acme Corp",
+         *           "confidence": 0.9,
+         *           "index": 0,
+         *           "is_current": true,
+         *           "missing_for_apply": [],
+         *           "start_date": "2020-01-01",
+         *           "title": "Senior Backend Engineer"
+         *         }
+         *       ],
+         *       "has_corrections": false,
+         *       "headline": "Senior Backend Engineer",
+         *       "languages": [],
+         *       "parser_version": "v1",
+         *       "resume_id": "5b0f4c1e-0d0a-4c6a-9d77-6a1f3f6f9a11",
+         *       "sections_detected": [
+         *         "summary",
+         *         "skills",
+         *         "experience"
+         *       ],
+         *       "skills": [
+         *         {
+         *           "already_on_profile": false,
+         *           "confidence": 0.95,
+         *           "corrected": false,
+         *           "index": 0,
+         *           "listed": true,
+         *           "name": "Python",
+         *           "skill_id": "16a72775-41c8-441d-a38f-b14383e768e8",
+         *           "status": "SUGGESTED"
+         *         }
+         *       ],
+         *       "summary": "Backend engineer with 8+ years of experience…",
+         *       "warnings": [],
+         *       "years_basis": "employment_history",
+         *       "years_of_experience": 7.8
+         *     }
+         */
+        ExtractedResume: {
+            /**
+             * Resume Id
+             * Format: uuid
+             */
+            resume_id: string;
+            /**
+             * Candidate Id
+             * Format: uuid
+             */
+            candidate_id: string;
+            /** Parser Version */
+            parser_version: string;
+            /** Has Corrections */
+            has_corrections: boolean;
+            contact: components["schemas"]["ExtractedContact"];
+            /** Headline */
+            headline?: string | null;
+            /** Summary */
+            summary?: string | null;
+            /**
+             * Years Of Experience
+             * @description Total years: the union of dated jobs, or an explicit claim in the résumé
+             */
+            years_of_experience?: number | null;
+            /**
+             * Years Basis
+             * @description employment_history (union of dated jobs) | stated (explicit claim) | corrected
+             */
+            years_basis?: string | null;
+            /** Skills */
+            skills: components["schemas"]["ExtractedSkill"][];
+            /** Experiences */
+            experiences: components["schemas"]["ExtractedExperience"][];
+            /** Educations */
+            educations: components["schemas"]["ExtractedEducation"][];
+            /** Certifications */
+            certifications: components["schemas"]["ExtractedCertification"][];
+            /** Languages */
+            languages: components["schemas"]["ExtractedLanguage"][];
+            /** Sections Detected */
+            sections_detected: string[];
+            /** Warnings */
+            warnings: string[];
+        };
+        /** ExtractedSkill */
+        ExtractedSkill: {
+            /**
+             * Index
+             * @description Stable position of this suggestion; used by PATCH / apply
+             */
+            index: number;
+            /** Name */
+            name: string;
+            /**
+             * Skill Id
+             * @description Taxonomy skill this resolves to; null = not in the taxonomy (cannot be applied)
+             */
+            skill_id?: string | null;
+            /** Confidence */
+            confidence: number;
+            /**
+             * Listed
+             * @description Found in a skills list (higher confidence) rather than only mentioned in prose
+             */
+            listed: boolean;
+            /**
+             * Already On Profile
+             * @description A confirmed skill with this name is already on the profile
+             */
+            already_on_profile: boolean;
+            /** @description Status of the profile skill row, if any (SUGGESTED / CONFIRMED / REJECTED) */
+            status?: components["schemas"]["SkillStatus"] | null;
+            /**
+             * Corrected
+             * @default false
+             */
+            corrected: boolean;
+        };
+        /**
+         * FeedbackIn
+         * @example {
+         *       "notes": "Would pair well with the platform team.",
+         *       "rating": 4,
+         *       "recommendation": "HIRE",
+         *       "strengths": "Clear communicator, strong SQL.",
+         *       "weaknesses": "Limited experience with message queues."
+         *     }
+         */
+        FeedbackIn: {
+            /**
+             * Rating
+             * @description 1 (poor) … 5 (outstanding)
+             */
+            rating: number;
+            recommendation: components["schemas"]["HireRecommendation"];
+            /** Strengths */
+            strengths?: string | null;
+            /** Weaknesses */
+            weaknesses?: string | null;
+            /** Notes */
+            notes?: string | null;
+        };
+        /** FeedbackOut */
+        FeedbackOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Interview Id
+             * Format: uuid
+             */
+            interview_id: string;
+            /**
+             * Author Id
+             * Format: uuid
+             */
+            author_id: string;
+            /** Author Name */
+            author_name: string;
+            /** Rating */
+            rating: number;
+            recommendation: components["schemas"]["HireRecommendation"];
+            /** Strengths */
+            strengths: string | null;
+            /** Weaknesses */
+            weaknesses: string | null;
+            /** Notes */
+            notes: string | null;
+            /**
+             * Submitted At
+             * Format: date-time
+             */
+            submitted_at: string;
+            /**
+             * Is Mine
+             * @default false
+             */
+            is_mine: boolean;
+        };
+        /** FeedbackStats */
+        FeedbackStats: {
+            /** Entries */
+            entries: number;
+            /** Interviews With Feedback */
+            interviews_with_feedback: number;
+            /** Average Rating */
+            average_rating: number | null;
+            /** Recommendations */
+            recommendations: {
+                [key: string]: number;
+            };
+        };
+        /** FeedbackSummary */
+        FeedbackSummary: {
+            /**
+             * Interview Id
+             * Format: uuid
+             */
+            interview_id: string;
+            /** Count */
+            count: number;
+            /** Average Rating */
+            average_rating: number | null;
+            /** Recommendations */
+            recommendations: {
+                [key: string]: number;
+            };
+            /** Items */
+            items: components["schemas"]["FeedbackOut"][];
+        };
+        /** FunnelOut */
+        FunnelOut: {
+            period: components["schemas"]["Period"];
+            /** Job Id */
+            job_id: string | null;
+            /** Applications */
+            applications: number;
+            /** Stages */
+            stages: components["schemas"]["FunnelStage"][];
+        };
+        /** FunnelStage */
+        FunnelStage: {
+            stage: components["schemas"]["ApplicationStatus"];
+            /**
+             * Count
+             * @description Applications that ever reached this stage (derived from application_status_history, not the current status). For the REJECTED / WITHDRAWN branches: applications currently in that terminal state.
+             */
+            count: number;
+            /**
+             * Pct Of Applied
+             * @description Share of all applications, 0-100
+             */
+            pct_of_applied: number | null;
+            /**
+             * Pct Of Previous
+             * @description Conversion from the previous main-line stage, 0-100 (null for branches)
+             */
+            pct_of_previous: number | null;
+            /**
+             * Is Branch
+             * @default false
+             */
+            is_branch: boolean;
+        };
+        /**
+         * HireRecommendation
+         * @enum {string}
+         */
+        HireRecommendation: "STRONG_HIRE" | "HIRE" | "NO_HIRE" | "STRONG_NO_HIRE";
         /** HistoryEntry */
         HistoryEntry: {
             /**
@@ -1929,6 +3955,203 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+        };
+        /**
+         * ImportItemStatus
+         * @enum {string}
+         */
+        ImportItemStatus: "PENDING" | "CREATED" | "DUPLICATE" | "FAILED";
+        /** InterviewActivityPoint */
+        InterviewActivityPoint: {
+            /**
+             * Bucket
+             * Format: date
+             */
+            bucket: string;
+            /**
+             * Scheduled
+             * @default 0
+             */
+            scheduled: number;
+            /**
+             * Confirmed
+             * @default 0
+             */
+            confirmed: number;
+            /**
+             * Rescheduled
+             * @default 0
+             */
+            rescheduled: number;
+            /**
+             * Completed
+             * @default 0
+             */
+            completed: number;
+            /**
+             * Cancelled
+             * @default 0
+             */
+            cancelled: number;
+            /**
+             * No Show
+             * @default 0
+             */
+            no_show: number;
+            /**
+             * Total
+             * @default 0
+             */
+            total: number;
+        };
+        /**
+         * InterviewCreate
+         * @example {
+         *       "application_id": "00000000-0000-0000-0000-000000000000",
+         *       "end_at": "2030-05-20T10:00:00",
+         *       "interview_type": "TECHNICAL",
+         *       "meeting_url": "https://meet.example.com/abc-defg",
+         *       "notes": "Focus on system design.",
+         *       "participants": [
+         *         {
+         *           "role": "INTERVIEWER",
+         *           "user_id": "00000000-0000-0000-0000-000000000001"
+         *         }
+         *       ],
+         *       "start_at": "2030-05-20T09:00:00",
+         *       "timezone": "Europe/Berlin"
+         *     }
+         */
+        InterviewCreate: {
+            /**
+             * Application Id
+             * Format: uuid
+             */
+            application_id: string;
+            interview_type: components["schemas"]["InterviewType"];
+            /**
+             * Start At
+             * Format: date-time
+             * @description Start of the interview. Timezone-aware values are converted to UTC; a naive value is read in `timezone`.
+             */
+            start_at: string;
+            /**
+             * End At
+             * Format: date-time
+             * @description End of the interview (after `start_at`, at most 12 hours later)
+             */
+            end_at: string;
+            /**
+             * Timezone
+             * @description IANA timezone the interview is communicated in
+             * @default UTC
+             */
+            timezone: string;
+            /**
+             * Location
+             * @description Physical location; at least one of location / meeting_url is required
+             */
+            location?: string | null;
+            /**
+             * Meeting Url
+             * @description https:// video-call link
+             */
+            meeting_url?: string | null;
+            /**
+             * Notes
+             * @description Internal notes — never shown to the candidate
+             */
+            notes?: string | null;
+            /**
+             * Participants
+             * @description At least one INTERVIEWER
+             */
+            participants: components["schemas"]["ParticipantIn"][];
+        };
+        /** InterviewStatisticsOut */
+        InterviewStatisticsOut: {
+            period: components["schemas"]["Period"];
+            /** Total */
+            total: number;
+            /** By Status */
+            by_status: {
+                [key: string]: number;
+            };
+            /** By Type */
+            by_type: {
+                [key: string]: number;
+            };
+            /** Avg Duration Minutes */
+            avg_duration_minutes: number | null;
+            /**
+             * Held Or Missed
+             * @description COMPLETED + NO_SHOW: the denominator of the no-show rate
+             */
+            held_or_missed: number;
+            /**
+             * No Show Rate
+             * @description NO_SHOW / (COMPLETED + NO_SHOW), 0..1
+             */
+            no_show_rate: number | null;
+            /**
+             * Cancellation Rate
+             * @description CANCELLED / all interviews, 0..1
+             */
+            cancellation_rate: number | null;
+            feedback: components["schemas"]["FeedbackStats"];
+        };
+        /**
+         * InterviewStatus
+         * @enum {string}
+         */
+        InterviewStatus: "SCHEDULED" | "CONFIRMED" | "RESCHEDULED" | "COMPLETED" | "CANCELLED" | "NO_SHOW";
+        /**
+         * InterviewType
+         * @enum {string}
+         */
+        InterviewType: "PHONE_SCREEN" | "TECHNICAL" | "BEHAVIORAL" | "PANEL" | "ONSITE" | "FINAL";
+        /**
+         * InterviewUpdate
+         * @description Partial update. Changing ``start_at`` / ``end_at`` reschedules (status → RESCHEDULED) and notifies everyone.
+         *
+         *     Send ``start_at`` alone to move the interview while keeping its duration. ``participants``, when present,
+         *     replaces the participant list.
+         * @example {
+         *       "end_at": "2030-05-21T10:00:00",
+         *       "notes": "Moved at the candidate's request",
+         *       "start_at": "2030-05-21T09:00:00",
+         *       "timezone": "Europe/Berlin"
+         *     }
+         */
+        InterviewUpdate: {
+            interview_type?: components["schemas"]["InterviewType"] | null;
+            /** Start At */
+            start_at?: string | null;
+            /** End At */
+            end_at?: string | null;
+            /** Timezone */
+            timezone?: string | null;
+            /** Location */
+            location?: string | null;
+            /** Meeting Url */
+            meeting_url?: string | null;
+            /** Notes */
+            notes?: string | null;
+            /** Participants */
+            participants?: components["schemas"]["ParticipantIn"][] | null;
+        };
+        /** JobCount */
+        JobCount: {
+            /**
+             * Job Id
+             * Format: uuid
+             */
+            job_id: string;
+            /** Title */
+            title: string;
+            job_status: components["schemas"]["JobStatus"];
+            /** Applications */
+            applications: number;
         };
         /**
          * JobCreate
@@ -2162,6 +4385,77 @@ export interface components {
             /** Application Count */
             application_count?: number | null;
         };
+        /** JobPerformancePage */
+        JobPerformancePage: {
+            /** Items */
+            items: components["schemas"]["JobPerformanceRow"][];
+            /**
+             * Page
+             * @description 1-based page number
+             */
+            page: number;
+            /** Page Size */
+            page_size: number;
+            /**
+             * Total
+             * @description Total rows matching the filters
+             */
+            total: number;
+            /**
+             * Pages
+             * @description Total number of pages
+             */
+            pages: number;
+            period: components["schemas"]["Period"];
+            /**
+             * Note
+             * @default Job views are not tracked; performance starts at the application.
+             */
+            note: string;
+        };
+        /** JobPerformanceRow */
+        JobPerformanceRow: {
+            /**
+             * Job Id
+             * Format: uuid
+             */
+            job_id: string;
+            /** Title */
+            title: string;
+            job_status: components["schemas"]["JobStatus"];
+            /** Published At */
+            published_at: string | null;
+            /** Applications */
+            applications: number;
+            /**
+             * Reached Shortlist
+             * @description Applications that reached SHORTLISTED or later
+             */
+            reached_shortlist: number;
+            /** Hires */
+            hires: number;
+            /**
+             * Shortlist Rate
+             * @description reached_shortlist / applications, 0..1
+             */
+            shortlist_rate: number | null;
+            /**
+             * Hire Rate
+             * @description hires / applications, 0..1
+             */
+            hire_rate: number | null;
+            /** Avg Days To First Status Change */
+            avg_days_to_first_status_change: number | null;
+            /** Avg Days To Hire */
+            avg_days_to_hire: number | null;
+            /**
+             * Avg Match Score
+             * @description Mean overall match score of applicants that have a stored score
+             */
+            avg_match_score: number | null;
+            /** Applicants Scored */
+            applicants_scored: number;
+        };
         /**
          * JobPublic
          * @description Public job detail: only intentionally public information. No recruiter identities, no internal fields.
@@ -2346,11 +4640,43 @@ export interface components {
             language: string;
             proficiency: components["schemas"]["LanguageProficiency"];
         };
+        /** LanguagePatch */
+        LanguagePatch: {
+            /**
+             * Index
+             * @description `index` of the suggestion, as returned by GET /extracted
+             */
+            index: number;
+            /**
+             * Remove
+             * @description Drop this suggestion (it will not be offered or applied)
+             * @default false
+             */
+            remove: boolean;
+            /** Language */
+            language?: string | null;
+            proficiency?: components["schemas"]["LanguageProficiency"] | null;
+        };
         /**
          * LanguageProficiency
          * @enum {string}
          */
         LanguageProficiency: "BASIC" | "CONVERSATIONAL" | "FLUENT" | "NATIVE";
+        /** LastRefresh */
+        LastRefresh: {
+            /**
+             * Task Id
+             * Format: uuid
+             */
+            task_id: string;
+            status: components["schemas"]["TaskStatus"];
+            /** Finished At */
+            finished_at: string | null;
+            /** Result */
+            result: {
+                [key: string]: unknown;
+            } | null;
+        };
         /**
          * LoginRequest
          * @example {
@@ -2413,6 +4739,42 @@ export interface components {
             /** Band */
             band: string;
         };
+        /** MatchTaskCounts */
+        MatchTaskCounts: {
+            /**
+             * Active
+             * @description PENDING or RUNNING match tasks
+             */
+            active: number;
+            /** Last 24H By Status */
+            last_24h_by_status: {
+                [key: string]: number;
+            };
+        };
+        /** MatchTotals */
+        MatchTotals: {
+            /** Pairs */
+            pairs: number;
+            /** Jobs With Matches */
+            jobs_with_matches: number;
+            /** Candidates With Matches */
+            candidates_with_matches: number;
+            /** Last Generated At */
+            last_generated_at: string | null;
+        };
+        /** MatchVersionCount */
+        MatchVersionCount: {
+            /** Matching Version */
+            matching_version: string;
+            /** Embedding Model */
+            embedding_model: string;
+            /** Embedding Version */
+            embedding_version: string;
+            /** Pairs */
+            pairs: number;
+            /** Current */
+            current: boolean;
+        };
         /** MatchedCandidate */
         MatchedCandidate: {
             /**
@@ -2473,6 +4835,64 @@ export interface components {
              * Format: date-time
              */
             generated_at: string;
+        };
+        /** MatchingPerformanceOut */
+        MatchingPerformanceOut: {
+            period: components["schemas"]["Period"];
+            /** Scored Pairs */
+            scored_pairs: number;
+            /**
+             * All Scored Distribution
+             * @description Every scored candidate of the in-scope jobs (not period-filtered)
+             */
+            all_scored_distribution: components["schemas"]["BandCount"][];
+            /**
+             * Applicant Distribution
+             * @description Applicants (applied in the period) that have a stored score
+             */
+            applicant_distribution: components["schemas"]["BandCount"][];
+            /** Avg Score By Outcome */
+            avg_score_by_outcome: components["schemas"]["OutcomeScore"][];
+            /**
+             * Hired Minus Rejected
+             * @description avg(HIRED) - avg(REJECTED) when both groups have scores
+             */
+            hired_minus_rejected: number | null;
+            top10: components["schemas"]["TopTenStats"];
+            /**
+             * Notes
+             * @description Data-driven caveats (e.g. small samples). The score is a ranking aid, not a hiring decision.
+             */
+            notes: string[];
+        };
+        /** MatchingStatus */
+        MatchingStatus: {
+            /** Matching Version */
+            matching_version: string;
+            /** Embedding Model */
+            embedding_model: string;
+            /** Embedding Version */
+            embedding_version: string;
+            /** Pairs */
+            pairs: number;
+            /** Jobs With Matches */
+            jobs_with_matches: number;
+            /** Candidates With Matches */
+            candidates_with_matches: number;
+            /** Last Generated At */
+            last_generated_at: string | null;
+            /**
+             * Stale By Version
+             * @description Pairs computed with another matching/embedding version (hash staleness is checked on read)
+             */
+            stale_by_version: number;
+            /** By Version */
+            by_version: components["schemas"]["MatchVersionCount"][];
+            /** Published Jobs */
+            published_jobs: number;
+            /** Published Jobs Without Matches */
+            published_jobs_without_matches: number;
+            tasks: components["schemas"]["MatchTaskCounts"];
         };
         /**
          * MeOut
@@ -2580,6 +5000,24 @@ export interface components {
             /** Message */
             message: string;
         };
+        /** MetaOut */
+        MetaOut: {
+            /** App */
+            app: string;
+            /** Version */
+            version: string;
+            /** Environment */
+            environment: string;
+            /** Demo Mode */
+            demo_mode: boolean;
+            /** Demo Password */
+            demo_password?: string | null;
+            /**
+             * Demo Accounts
+             * @default []
+             */
+            demo_accounts: components["schemas"]["DemoAccount"][];
+        };
         /** NoteCreate */
         NoteCreate: {
             /** Body */
@@ -2639,10 +5077,113 @@ export interface components {
          * @enum {string}
          */
         NotificationType: "APPLICATION_SUBMITTED" | "APPLICATION_STATUS_CHANGED" | "INTERVIEW_SCHEDULED" | "INTERVIEW_RESCHEDULED" | "INTERVIEW_CANCELLED" | "RESUME_PROCESSED" | "RESUME_FAILED" | "NEW_CANDIDATE_MATCH" | "NEW_JOB_RECOMMENDATION" | "BULK_IMPORT_COMPLETED";
+        /** OutcomeScore */
+        OutcomeScore: {
+            /**
+             * Outcome
+             * @enum {string}
+             */
+            outcome: "HIRED" | "REJECTED" | "WITHDRAWN" | "IN_PROGRESS";
+            /**
+             * Applications
+             * @description Applications of that outcome that have a stored match score
+             */
+            applications: number;
+            /** Avg Score */
+            avg_score: number | null;
+        };
+        /** Page[AdminTaskOut] */
+        Page_AdminTaskOut_: {
+            /** Items */
+            items: components["schemas"]["AdminTaskOut"][];
+            /**
+             * Page
+             * @description 1-based page number
+             */
+            page: number;
+            /** Page Size */
+            page_size: number;
+            /**
+             * Total
+             * @description Total rows matching the filters
+             */
+            total: number;
+            /**
+             * Pages
+             * @description Total number of pages
+             */
+            pages: number;
+        };
+        /** Page[Annotated[Union[StaffInterviewItem, CandidateInterviewView], FieldInfo(annotation=NoneType, required=True, discriminator='audience')]] */
+        Page_Annotated_Union_StaffInterviewItem__CandidateInterviewView___FieldInfo_annotation_NoneType__required_True__discriminator__audience____: {
+            /** Items */
+            items: (components["schemas"]["StaffInterviewItem"] | components["schemas"]["CandidateInterviewView"])[];
+            /**
+             * Page
+             * @description 1-based page number
+             */
+            page: number;
+            /** Page Size */
+            page_size: number;
+            /**
+             * Total
+             * @description Total rows matching the filters
+             */
+            total: number;
+            /**
+             * Pages
+             * @description Total number of pages
+             */
+            pages: number;
+        };
         /** Page[ApplicationListItem] */
         Page_ApplicationListItem_: {
             /** Items */
             items: components["schemas"]["ApplicationListItem"][];
+            /**
+             * Page
+             * @description 1-based page number
+             */
+            page: number;
+            /** Page Size */
+            page_size: number;
+            /**
+             * Total
+             * @description Total rows matching the filters
+             */
+            total: number;
+            /**
+             * Pages
+             * @description Total number of pages
+             */
+            pages: number;
+        };
+        /** Page[AuditEventOut] */
+        Page_AuditEventOut_: {
+            /** Items */
+            items: components["schemas"]["AuditEventOut"][];
+            /**
+             * Page
+             * @description 1-based page number
+             */
+            page: number;
+            /** Page Size */
+            page_size: number;
+            /**
+             * Total
+             * @description Total rows matching the filters
+             */
+            total: number;
+            /**
+             * Pages
+             * @description Total number of pages
+             */
+            pages: number;
+        };
+        /** Page[BulkImportBatchOut] */
+        Page_BulkImportBatchOut_: {
+            /** Items */
+            items: components["schemas"]["BulkImportBatchOut"][];
             /**
              * Page
              * @description 1-based page number
@@ -2749,6 +5290,28 @@ export interface components {
              */
             pages: number;
         };
+        /** Page[ResumeOut] */
+        Page_ResumeOut_: {
+            /** Items */
+            items: components["schemas"]["ResumeOut"][];
+            /**
+             * Page
+             * @description 1-based page number
+             */
+            page: number;
+            /** Page Size */
+            page_size: number;
+            /**
+             * Total
+             * @description Total rows matching the filters
+             */
+            total: number;
+            /**
+             * Pages
+             * @description Total number of pages
+             */
+            pages: number;
+        };
         /** Page[SkillOut] */
         Page_SkillOut_: {
             /** Items */
@@ -2793,12 +5356,164 @@ export interface components {
              */
             pages: number;
         };
+        /** ParticipantIn */
+        ParticipantIn: {
+            /**
+             * User Id
+             * Format: uuid
+             */
+            user_id: string;
+            /**
+             * @description OBSERVERs do not block a calendar slot
+             * @default INTERVIEWER
+             */
+            role: components["schemas"]["ParticipantRole"];
+        };
+        /** ParticipantOut */
+        ParticipantOut: {
+            /**
+             * User Id
+             * Format: uuid
+             */
+            user_id: string;
+            /** Name */
+            name: string;
+            role: components["schemas"]["ParticipantRole"];
+            /**
+             * Has Submitted Feedback
+             * @default false
+             */
+            has_submitted_feedback: boolean;
+        };
+        /**
+         * ParticipantRole
+         * @enum {string}
+         */
+        ParticipantRole: "INTERVIEWER" | "OBSERVER";
+        /**
+         * Period
+         * @description The effective, inclusive date window of a report (``null`` = unbounded).
+         */
+        Period: {
+            /** From Date */
+            from_date?: string | null;
+            /** To Date */
+            to_date?: string | null;
+            /**
+             * Granularity
+             * @description Bucket size of time series in this report
+             */
+            granularity?: ("day" | "week" | "month") | null;
+        };
+        /** PipelineStageRow */
+        PipelineStageRow: {
+            stage: components["schemas"]["ApplicationStatus"];
+            /** Count */
+            count: number;
+            /**
+             * Avg Days In Stage
+             * @description Mean days since the last status change (live stages only)
+             */
+            avg_days_in_stage: number | null;
+            /** Max Days In Stage */
+            max_days_in_stage: number | null;
+            /**
+             * Stale
+             * @description Live applications unchanged for more than `stale_after_days`
+             */
+            stale: number;
+        };
+        /** PipelineSummaryOut */
+        PipelineSummaryOut: {
+            /** Job Id */
+            job_id: string | null;
+            /** Stale After Days */
+            stale_after_days: number;
+            /** Total */
+            total: number;
+            /** Live */
+            live: number;
+            /** Closed */
+            closed: number;
+            /** Stale */
+            stale: number;
+            /** Stages */
+            stages: components["schemas"]["PipelineStageRow"][];
+        };
+        /**
+         * ProcessingOut
+         * @description Live status of the (latest) processing run; combines the processing result row and the background task.
+         */
+        ProcessingOut: {
+            /**
+             * Task Id
+             * @description Latest background task; poll `GET /tasks/{id}`
+             */
+            task_id?: string | null;
+            /**
+             * Task Status
+             * @description PENDING | RUNNING | COMPLETED | FAILED
+             */
+            task_status?: string | null;
+            /**
+             * Stage
+             * @description Current pipeline stage while the task runs
+             */
+            stage?: string | null;
+            /** Progress */
+            progress?: number | null;
+            /** Attempts */
+            attempts?: number | null;
+            /** Started At */
+            started_at?: string | null;
+            /** Finished At */
+            finished_at?: string | null;
+            /** Duration Ms */
+            duration_ms?: number | null;
+            /** Parser Version */
+            parser_version?: string | null;
+            /** Page Count */
+            page_count?: number | null;
+            /** Text Char Count */
+            text_char_count?: number | null;
+            /**
+             * Was Truncated
+             * @default false
+             */
+            was_truncated: boolean;
+            /**
+             * Has Embedding
+             * @default false
+             */
+            has_embedding: boolean;
+            /** Embedding Model */
+            embedding_model?: string | null;
+            /** Embedding Version */
+            embedding_version?: string | null;
+            /**
+             * Error Code
+             * @description Stable machine-readable failure code, e.g. NO_TEXT_EXTRACTED
+             */
+            error_code?: string | null;
+            /**
+             * Error Message
+             * @description Safe, user-facing explanation (never document content)
+             */
+            error_message?: string | null;
+        };
         /** ProfileCompletion */
         ProfileCompletion: {
             /** Percent */
             percent: number;
             /** Items */
             items: components["schemas"]["CompletionItem"][];
+            /** Missing */
+            missing: string[];
+        };
+        /** ProfileCompletionBrief */
+        ProfileCompletionBrief: {
+            /** Percent */
+            percent: number;
             /** Missing */
             missing: string[];
         };
@@ -2879,6 +5594,38 @@ export interface components {
             pages: number;
             meta: components["schemas"]["RankedCandidatesMeta"];
         };
+        /** RecentApplication */
+        RecentApplication: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Candidate Id
+             * Format: uuid
+             */
+            candidate_id: string;
+            /** Candidate Name */
+            candidate_name: string;
+            /**
+             * Job Id
+             * Format: uuid
+             */
+            job_id: string;
+            /** Job Title */
+            job_title: string;
+            status: components["schemas"]["ApplicationStatus"];
+            /**
+             * Applied At
+             * Format: date-time
+             */
+            applied_at: string;
+            /** Match Score */
+            match_score: number | null;
+            /** Match Band */
+            match_band: string | null;
+        };
         /** RecommendationsMeta */
         RecommendationsMeta: {
             /** Last Generated At */
@@ -2925,6 +5672,183 @@ export interface components {
         RecommendedJob: {
             job: components["schemas"]["JobListItem"];
             match: components["schemas"]["CandidateFacingMatch"];
+        };
+        /** RecommendedJobBrief */
+        RecommendedJobBrief: {
+            /**
+             * Job Id
+             * Format: uuid
+             */
+            job_id: string;
+            /** Title */
+            title: string;
+            /** Company Name */
+            company_name: string;
+            /** Location */
+            location: string | null;
+            /** Workplace Type */
+            workplace_type: string;
+            /** Employment Type */
+            employment_type: string;
+            /** Score */
+            score: number;
+            /** Percent */
+            percent: number;
+            /** Band */
+            band: string;
+            /** Summary */
+            summary: string | null;
+            /** Published At */
+            published_at: string | null;
+            /** Application Deadline */
+            application_deadline: string | null;
+        };
+        /** RecruiterActivityPage */
+        RecruiterActivityPage: {
+            /** Items */
+            items: components["schemas"]["RecruiterActivityRow"][];
+            /**
+             * Page
+             * @description 1-based page number
+             */
+            page: number;
+            /** Page Size */
+            page_size: number;
+            /**
+             * Total
+             * @description Total rows matching the filters
+             */
+            total: number;
+            /**
+             * Pages
+             * @description Total number of pages
+             */
+            pages: number;
+            period: components["schemas"]["Period"];
+        };
+        /** RecruiterActivityRow */
+        RecruiterActivityRow: {
+            /**
+             * User Id
+             * Format: uuid
+             */
+            user_id: string;
+            /** Name */
+            name: string;
+            /** Role */
+            role: string;
+            /**
+             * Company Id
+             * Format: uuid
+             */
+            company_id: string;
+            /** Company Name */
+            company_name: string;
+            /**
+             * Status Changes
+             * @description Application stage changes made (status history)
+             */
+            status_changes: number;
+            /**
+             * Interviews Scheduled
+             * @description From audit events
+             */
+            interviews_scheduled: number;
+            /** Notes Added */
+            notes_added: number;
+            /** Feedback Submitted */
+            feedback_submitted: number;
+            /** Total Actions */
+            total_actions: number;
+        };
+        /** RecruiterDashboard */
+        RecruiterDashboard: {
+            /**
+             * Scope
+             * @description company = recruiter view; assigned_jobs = hiring-manager view restricted to jobs assigned to them
+             * @enum {string}
+             */
+            scope: "company" | "assigned_jobs" | "platform";
+            /** Company Id */
+            company_id: string | null;
+            period: components["schemas"]["Period"];
+            /**
+             * Generated At
+             * Format: date-time
+             */
+            generated_at: string;
+            kpis: components["schemas"]["RecruiterKpis"];
+            /** Funnel */
+            funnel: components["schemas"]["FunnelStage"][];
+            /** Applications Over Time */
+            applications_over_time: components["schemas"]["SeriesPoint"][];
+            /** Applications By Job */
+            applications_by_job: components["schemas"]["JobCount"][];
+            /** Status Distribution */
+            status_distribution: components["schemas"]["StatusCount"][];
+            /** Interview Activity */
+            interview_activity: components["schemas"]["InterviewActivityPoint"][];
+            /** Top Matching Candidates */
+            top_matching_candidates: components["schemas"]["TopMatch"][];
+            /** Recent Applications */
+            recent_applications: components["schemas"]["RecentApplication"][];
+        };
+        /** RecruiterKpis */
+        RecruiterKpis: {
+            /**
+             * Active Jobs
+             * @description PUBLISHED jobs now
+             */
+            active_jobs: number;
+            /**
+             * Total Applications
+             * @description Applications received in the period
+             */
+            total_applications: number;
+            /**
+             * Applications In Screening
+             * @description Applications currently in SCREENING (snapshot)
+             */
+            applications_in_screening: number;
+            /**
+             * Shortlisted
+             * @description Applications currently SHORTLISTED (snapshot)
+             */
+            shortlisted: number;
+            /**
+             * Upcoming Interviews
+             * @description Active interviews starting within the next 7 days
+             */
+            upcoming_interviews: number;
+            /**
+             * Jobs Nearing Deadline
+             * @description PUBLISHED jobs whose deadline is within the next 7 days
+             */
+            jobs_nearing_deadline: number;
+            /**
+             * Avg Applications Per Job
+             * @description Applications received in the period / jobs that were advertised (PUBLISHED, PAUSED or CLOSED); 0 when none
+             */
+            avg_applications_per_job: number;
+            /**
+             * Hires In Period
+             * @description Applications moved to HIRED within the period
+             */
+            hires_in_period: number;
+        };
+        /** RedisStatus */
+        RedisStatus: {
+            /** Ok */
+            ok: boolean;
+            /** Latency Ms */
+            latency_ms?: number | null;
+            /**
+             * Queue Depth
+             * @description Jobs waiting in the ARQ queue (ZCARD arq:queue), best effort
+             */
+            queue_depth?: number | null;
+            /** Error */
+            error?: string | null;
         };
         /**
          * RegisterCandidateRequest
@@ -2988,6 +5912,18 @@ export interface components {
             company_location?: string | null;
             company_size?: components["schemas"]["CompanySize"] | null;
         };
+        /** RejectedFile */
+        RejectedFile: {
+            /** Filename */
+            filename: string;
+            /** Reason */
+            reason: string;
+            /**
+             * Code
+             * @description Machine-readable reason, e.g. UNSUPPORTED_MEDIA_TYPE, PAYLOAD_TOO_LARGE, EMPTY_FILE
+             */
+            code?: string | null;
+        };
         /**
          * RemotePreference
          * @enum {string}
@@ -3013,6 +5949,171 @@ export interface components {
             created_at: string;
         };
         /**
+         * ResumeOut
+         * @example {
+         *       "candidate_id": "0c7d5a8e-3a2b-4f11-8a53-2c9d1f9a7b10",
+         *       "content_type": "application/pdf",
+         *       "created_at": "2026-10-07T12:00:00Z",
+         *       "id": "5b0f4c1e-0d0a-4c6a-9d77-6a1f3f6f9a11",
+         *       "is_primary": true,
+         *       "original_filename": "jane-doe-cv.pdf",
+         *       "processing": {
+         *         "has_embedding": true,
+         *         "parser_version": "v1",
+         *         "progress": 100,
+         *         "task_status": "COMPLETED"
+         *       },
+         *       "sha256": "9f2c…",
+         *       "size_bytes": 48211,
+         *       "status": "PROCESSED",
+         *       "task_id": "7a1d2d0e-1f2b-4c33-b1f0-0d3f5f6a7b88",
+         *       "updated_at": "2026-10-07T12:00:04Z"
+         *     }
+         */
+        ResumeOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Candidate Id
+             * Format: uuid
+             */
+            candidate_id: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "UPLOADED" | "PROCESSING" | "PROCESSED" | "FAILED";
+            /** Is Primary */
+            is_primary: boolean;
+            /** Original Filename */
+            original_filename: string;
+            /** Content Type */
+            content_type: string;
+            /** Size Bytes */
+            size_bytes: number;
+            /** Sha256 */
+            sha256: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /**
+             * Task Id
+             * @description Latest processing task, if one was queued
+             */
+            task_id?: string | null;
+            processing: components["schemas"]["ProcessingOut"];
+        };
+        /** ResumeStatusBrief */
+        ResumeStatusBrief: {
+            /** Has Resume */
+            has_resume: boolean;
+            /** Resume Id */
+            resume_id?: string | null;
+            /** Filename */
+            filename?: string | null;
+            /**
+             * Status
+             * @description UPLOADED | PROCESSING | PROCESSED | FAILED
+             */
+            status?: string | null;
+            /**
+             * Processing Status
+             * @description PROCESSING | COMPLETED | FAILED (from the worker result)
+             */
+            processing_status?: string | null;
+            /** Error Code */
+            error_code?: string | null;
+            /** Uploaded At */
+            uploaded_at?: string | null;
+        };
+        /**
+         * ResumeUploadOut
+         * @description Response of ``POST /resumes``: the résumé plus what happened to the processing request.
+         * @example {
+         *       "candidate_id": "0c7d5a8e-3a2b-4f11-8a53-2c9d1f9a7b10",
+         *       "content_type": "application/pdf",
+         *       "created_at": "2026-10-07T12:00:00Z",
+         *       "id": "5b0f4c1e-0d0a-4c6a-9d77-6a1f3f6f9a11",
+         *       "is_primary": true,
+         *       "original_filename": "jane-doe-cv.pdf",
+         *       "processing": {
+         *         "has_embedding": true,
+         *         "parser_version": "v1",
+         *         "progress": 100,
+         *         "task_status": "COMPLETED"
+         *       },
+         *       "sha256": "9f2c…",
+         *       "size_bytes": 48211,
+         *       "status": "PROCESSED",
+         *       "task_id": "7a1d2d0e-1f2b-4c33-b1f0-0d3f5f6a7b88",
+         *       "updated_at": "2026-10-07T12:00:04Z"
+         *     }
+         */
+        ResumeUploadOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Candidate Id
+             * Format: uuid
+             */
+            candidate_id: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "UPLOADED" | "PROCESSING" | "PROCESSED" | "FAILED";
+            /** Is Primary */
+            is_primary: boolean;
+            /** Original Filename */
+            original_filename: string;
+            /** Content Type */
+            content_type: string;
+            /** Size Bytes */
+            size_bytes: number;
+            /** Sha256 */
+            sha256: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /**
+             * Task Id
+             * @description Latest processing task, if one was queued
+             */
+            task_id?: string | null;
+            processing: components["schemas"]["ProcessingOut"];
+            /**
+             * Message
+             * @description Set when processing could not be queued (the upload is kept; use `POST /resumes/{id}/process`)
+             */
+            message?: string | null;
+            /**
+             * Duplicate
+             * @description True when this exact file was uploaded before and the existing résumé is returned
+             * @default false
+             */
+            duplicate: boolean;
+        };
+        /**
          * Role
          * @enum {string}
          */
@@ -3035,12 +6136,42 @@ export interface components {
             /** Preferences */
             preferences: number | null;
         };
+        /** SeriesPoint */
+        SeriesPoint: {
+            /**
+             * Bucket
+             * Format: date
+             * @description First day of the bucket (UTC)
+             */
+            bucket: string;
+            /** Count */
+            count: number;
+        };
         /** SkillCreate */
         SkillCreate: {
             /** Name */
             name: string;
             /** Category */
             category?: string | null;
+        };
+        /** SkillDemand */
+        SkillDemand: {
+            /**
+             * Skill Id
+             * Format: uuid
+             */
+            skill_id: string;
+            /** Skill */
+            skill: string;
+            /**
+             * Jobs
+             * @description Published jobs listing the skill
+             */
+            jobs: number;
+            /** Required In Jobs */
+            required_in_jobs: number;
+            /** Preferred In Jobs */
+            preferred_in_jobs: number;
         };
         /** SkillDetail */
         SkillDetail: {
@@ -3082,6 +6213,25 @@ export interface components {
              */
             is_verified: boolean;
         };
+        /** SkillPatch */
+        SkillPatch: {
+            /**
+             * Index
+             * @description `index` of the suggestion, as returned by GET /extracted
+             */
+            index: number;
+            /**
+             * Remove
+             * @description Drop this suggestion (it will not be offered or applied)
+             * @default false
+             */
+            remove: boolean;
+            /**
+             * Name
+             * @description Correct the skill name (re-resolved against the taxonomy)
+             */
+            name?: string | null;
+        };
         /**
          * SkillProficiency
          * @enum {string}
@@ -3097,6 +6247,21 @@ export interface components {
          * @enum {string}
          */
         SkillStatus: "CONFIRMED" | "SUGGESTED" | "REJECTED";
+        /** SkillSupply */
+        SkillSupply: {
+            /**
+             * Skill Id
+             * Format: uuid
+             */
+            skill_id: string;
+            /** Skill */
+            skill: string;
+            /**
+             * Candidates
+             * @description Distinct applicants with the skill (confirmed)
+             */
+            candidates: number;
+        };
         /** SkillUpdate */
         SkillUpdate: {
             /** Name */
@@ -3110,11 +6275,300 @@ export interface components {
             /** Add Aliases */
             add_aliases?: string[];
         };
+        /** SkippedItem */
+        SkippedItem: {
+            /** Section */
+            section: string;
+            /** Index */
+            index?: number | null;
+            /**
+             * Reason
+             * @description ALREADY_ON_PROFILE | NOT_FOUND | REMOVED | UNKNOWN_SKILL | MISSING_* | INVALID_* | FIELD_NOT_EMPTY | NO_SUGGESTION
+             */
+            reason: string;
+        };
+        /** SourceStatRow */
+        SourceStatRow: {
+            /** Source */
+            source: string;
+            /** Applications */
+            applications: number;
+            /**
+             * Share
+             * @description Share of all applications, 0..1
+             */
+            share: number;
+            /** Reached Shortlist */
+            reached_shortlist: number;
+            /** Hires */
+            hires: number;
+            /** Shortlist Rate */
+            shortlist_rate: number | null;
+            /** Hire Rate */
+            hire_rate: number | null;
+        };
+        /** SourceStatisticsPage */
+        SourceStatisticsPage: {
+            /** Items */
+            items: components["schemas"]["SourceStatRow"][];
+            /**
+             * Page
+             * @description 1-based page number
+             */
+            page: number;
+            /** Page Size */
+            page_size: number;
+            /**
+             * Total
+             * @description Total rows matching the filters
+             */
+            total: number;
+            /**
+             * Pages
+             * @description Total number of pages
+             */
+            pages: number;
+            period: components["schemas"]["Period"];
+        };
+        /** StaffInterviewItem */
+        StaffInterviewItem: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            audience: "staff";
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Application Id
+             * Format: uuid
+             */
+            application_id: string;
+            /**
+             * Job Id
+             * Format: uuid
+             */
+            job_id: string;
+            /** Job Title */
+            job_title: string;
+            /**
+             * Candidate Id
+             * Format: uuid
+             */
+            candidate_id: string;
+            /** Candidate Name */
+            candidate_name: string;
+            interview_type: components["schemas"]["InterviewType"];
+            /**
+             * Start At
+             * Format: date-time
+             */
+            start_at: string;
+            /**
+             * End At
+             * Format: date-time
+             */
+            end_at: string;
+            /** Timezone */
+            timezone: string;
+            /** Location */
+            location: string | null;
+            /** Meeting Url */
+            meeting_url: string | null;
+            status: components["schemas"]["InterviewStatus"];
+            /** Participants */
+            participants: components["schemas"]["ParticipantOut"][];
+            /** Feedback Count */
+            feedback_count: number;
+        };
+        /** StaffInterviewView */
+        StaffInterviewView: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            audience: "staff";
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Application Id
+             * Format: uuid
+             */
+            application_id: string;
+            /**
+             * Job Id
+             * Format: uuid
+             */
+            job_id: string;
+            /** Job Title */
+            job_title: string;
+            /**
+             * Candidate Id
+             * Format: uuid
+             */
+            candidate_id: string;
+            /** Candidate Name */
+            candidate_name: string;
+            interview_type: components["schemas"]["InterviewType"];
+            /**
+             * Start At
+             * Format: date-time
+             */
+            start_at: string;
+            /**
+             * End At
+             * Format: date-time
+             */
+            end_at: string;
+            /** Timezone */
+            timezone: string;
+            /** Location */
+            location: string | null;
+            /** Meeting Url */
+            meeting_url: string | null;
+            status: components["schemas"]["InterviewStatus"];
+            /** Participants */
+            participants: components["schemas"]["ParticipantOut"][];
+            /** Feedback Count */
+            feedback_count: number;
+            /**
+             * Company Id
+             * Format: uuid
+             */
+            company_id: string;
+            /** Company Name */
+            company_name: string;
+            /**
+             * Start Local
+             * @description start_at rendered in the interview's timezone (ISO 8601 with offset)
+             */
+            start_local: string;
+            /** End Local */
+            end_local: string;
+            /** Duration Minutes */
+            duration_minutes: number;
+            /**
+             * Notes
+             * @description Internal notes
+             */
+            notes: string | null;
+            /** Cancelled Reason */
+            cancelled_reason: string | null;
+            /** Created By Id */
+            created_by_id: string | null;
+            /** Created By Name */
+            created_by_name: string | null;
+            /** My Feedback Submitted */
+            my_feedback_submitted: boolean;
+            /** Can Submit Feedback */
+            can_submit_feedback: boolean;
+            application: components["schemas"]["ApplicationStageOut"];
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /** StaleTask */
+        StaleTask: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            type: components["schemas"]["TaskType"];
+            status: components["schemas"]["TaskStatus"];
+            /** Stage */
+            stage: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /**
+             * Age Minutes
+             * @description Minutes since creation (PENDING) or since the last progress update (RUNNING)
+             */
+            age_minutes: number;
+            /**
+             * Worker Heartbeat
+             * @description RUNNING only: the executing worker's heartbeat key exists
+             */
+            worker_heartbeat?: boolean | null;
+        };
         /** StatusChange */
         StatusChange: {
             status: components["schemas"]["ApplicationStatus"];
             /** Comment */
             comment?: string | null;
+        };
+        /** StatusCount */
+        StatusCount: {
+            status: components["schemas"]["ApplicationStatus"];
+            /** Count */
+            count: number;
+            /**
+             * Percent
+             * @description Share of the total, 0-100 (one decimal)
+             */
+            percent: number;
+        };
+        /** SystemStatus */
+        SystemStatus: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ok" | "degraded" | "down";
+            /**
+             * Checked At
+             * Format: date-time
+             */
+            checked_at: string;
+            app: components["schemas"]["AppInfo"];
+            database: components["schemas"]["DatabaseStatus"];
+            redis: components["schemas"]["RedisStatus"];
+            embedding: components["schemas"]["EmbeddingModelStatus"];
+            worker: components["schemas"]["WorkerStatus"];
+            tasks: components["schemas"]["TaskHealth"];
+        };
+        /** TaskHealth */
+        TaskHealth: {
+            /** By Status */
+            by_status: {
+                [key: string]: number;
+            };
+            /** Last 24H By Status */
+            last_24h_by_status: {
+                [key: string]: number;
+            };
+            /** Stale Pending After Minutes */
+            stale_pending_after_minutes: number;
+            /** Stale Running After Minutes */
+            stale_running_after_minutes: number;
+            /** Stale Count */
+            stale_count: number;
+            /**
+             * Stale
+             * @description Up to 10, oldest first
+             */
+            stale: components["schemas"]["StaleTask"][];
         };
         /** TaskOut */
         TaskOut: {
@@ -3188,10 +6642,115 @@ export interface components {
             expires_in: number;
             user: components["schemas"]["MeOut"];
         };
+        /** TopMatch */
+        TopMatch: {
+            /**
+             * Candidate Id
+             * Format: uuid
+             */
+            candidate_id: string;
+            /** Candidate Name */
+            candidate_name: string;
+            /** Headline */
+            headline: string | null;
+            /**
+             * Job Id
+             * Format: uuid
+             */
+            job_id: string;
+            /** Job Title */
+            job_title: string;
+            /**
+             * Score
+             * @description 0..1 ranking score (not a hiring probability)
+             */
+            score: number;
+            /** Band */
+            band: string;
+            /**
+             * Application Id
+             * @description Set when the candidate already applied to that job
+             */
+            application_id: string | null;
+        };
+        /** TopSkillsOut */
+        TopSkillsOut: {
+            /**
+             * Scope
+             * @enum {string}
+             */
+            scope: "company" | "assigned_jobs" | "platform";
+            /** Jobs Considered */
+            jobs_considered: number;
+            /** Applicants Considered */
+            applicants_considered: number;
+            /** Requested */
+            requested: components["schemas"]["SkillDemand"][];
+            /** Available */
+            available: components["schemas"]["SkillSupply"][];
+        };
+        /** TopTenStats */
+        TopTenStats: {
+            /** Applicants */
+            applicants: number;
+            /** Applicants With Score */
+            applicants_with_score: number;
+            /**
+             * Applicants In Top10
+             * @description Applicants ranked in the 10 best scores of their job's scored candidates
+             */
+            applicants_in_top10: number;
+            /**
+             * Pct In Top10
+             * @description applicants_in_top10 / applicants_with_score, 0-100
+             */
+            pct_in_top10: number | null;
+        };
         /** UnreadCount */
         UnreadCount: {
             /** Unread */
             unread: number;
+        };
+        /** UpcomingInterview */
+        UpcomingInterview: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Application Id
+             * Format: uuid
+             */
+            application_id: string;
+            /**
+             * Job Id
+             * Format: uuid
+             */
+            job_id: string;
+            /** Job Title */
+            job_title: string;
+            /** Company Name */
+            company_name: string;
+            /** Interview Type */
+            interview_type: string;
+            /**
+             * Start At
+             * Format: date-time
+             */
+            start_at: string;
+            /**
+             * End At
+             * Format: date-time
+             */
+            end_at: string;
+            /** Timezone */
+            timezone: string;
+            status: components["schemas"]["InterviewStatus"];
+            /** Location */
+            location: string | null;
+            /** Meeting Url */
+            meeting_url: string | null;
         };
         /** UpdateMeRequest */
         UpdateMeRequest: {
@@ -3234,23 +6793,42 @@ export interface components {
          * @enum {string}
          */
         UserStatus: "ACTIVE" | "SUSPENDED";
-        /** ValidationError */
-        ValidationError: {
-            /** Location */
-            loc: (string | number)[];
-            /** Message */
-            msg: string;
-            /** Error Type */
-            type: string;
-            /** Input */
-            input?: unknown;
-            /** Context */
-            ctx?: Record<string, never>;
-        };
         /** WithdrawRequest */
         WithdrawRequest: {
             /** Comment */
             comment?: string | null;
+        };
+        /** WorkerStatus */
+        WorkerStatus: {
+            /**
+             * Mode
+             * @description `arq`: a separate worker process; `inline`: tasks run inside the API process
+             */
+            mode: string;
+            /**
+             * Alive
+             * @description ARQ health-check key present (the worker refreshes it periodically); null when not applicable/unknown
+             */
+            alive: boolean | null;
+            /** Health Key */
+            health_key: string;
+            /** Health Ttl Seconds */
+            health_ttl_seconds?: number | null;
+            /**
+             * Last Check
+             * @description Raw summary line written by the worker
+             */
+            last_check?: string | null;
+            /** Jobs Complete */
+            jobs_complete?: number | null;
+            /** Jobs Failed */
+            jobs_failed?: number | null;
+            /** Jobs Retried */
+            jobs_retried?: number | null;
+            /** Jobs Ongoing */
+            jobs_ongoing?: number | null;
+            /** Queued */
+            queued?: number | null;
         };
         /**
          * WorkplaceType
@@ -3295,13 +6873,13 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Validation Error */
+            /** @description Validation or business-rule failure */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
@@ -3335,13 +6913,13 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Validation Error */
+            /** @description Validation or business-rule failure */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
@@ -3375,13 +6953,13 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Validation Error */
+            /** @description Validation or business-rule failure */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description RATE_LIMITED */
@@ -3415,13 +6993,13 @@ export interface operations {
                     "application/json": components["schemas"]["TokenResponse"];
                 };
             };
-            /** @description Validation Error */
+            /** @description Validation or business-rule failure */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
@@ -4103,13 +7681,13 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Validation Error */
+            /** @description Validation or business-rule failure */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
@@ -4384,13 +7962,13 @@ export interface operations {
                     "application/json": components["schemas"]["Page_SkillOut_"];
                 };
             };
-            /** @description Validation Error */
+            /** @description Validation or business-rule failure */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
@@ -4484,13 +8062,13 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Validation Error */
+            /** @description Validation or business-rule failure */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
@@ -5843,13 +9421,13 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Validation Error */
+            /** @description Validation or business-rule failure */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
@@ -6497,13 +10075,13 @@ export interface operations {
                     "application/json": components["schemas"]["Page_JobListItem_"];
                 };
             };
-            /** @description Validation Error */
+            /** @description Validation or business-rule failure */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
@@ -6566,6 +10144,960 @@ export interface operations {
             };
             /** @description Resource not found (or not visible to the caller) */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation or business-rule failure */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    list_bulk_imports_api_v1_resumes_bulk_imports_get: {
+        parameters: {
+            query?: {
+                /** @description 1-based page number */
+                page?: number;
+                /** @description Items per page (max 100) */
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_BulkImportBatchOut_"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Authenticated but not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Resource not found (or not visible to the caller) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation or business-rule failure */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    bulk_import_api_v1_resumes_bulk_imports_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_bulk_import_api_v1_resumes_bulk_imports_post"];
+            };
+        };
+        responses: {
+            /** @description Accepted */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "batch_id": "3f2b8c0e-5c1a-4f64-9b6e-0d6d1b0a9f10",
+                     *       "task_id": "7a1d2d0e-1f2b-4c33-b1f0-0d3f5f6a7b88",
+                     *       "accepted": 2,
+                     *       "rejected": [
+                     *         {
+                     *           "filename": "old-cv.doc",
+                     *           "reason": "Legacy Word (.doc) files are not supported.",
+                     *           "code": "UNSUPPORTED_MEDIA_TYPE"
+                     *         }
+                     *       ]
+                     *     }
+                     */
+                    "application/json": components["schemas"]["BulkImportAccepted"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Authenticated but not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Resource not found (or not visible to the caller) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description PAYLOAD_TOO_LARGE: the file (or its decompressed size) exceeds the limit */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description UNSUPPORTED_MEDIA_TYPE: only PDF and DOCX are accepted; the content, extension and declared type must agree */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation or business-rule failure */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description RATE_LIMITED: too many uploads */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_bulk_import_api_v1_resumes_bulk_imports__batch_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                batch_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BulkImportBatchDetail"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Authenticated but not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Resource not found (or not visible to the caller) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation or business-rule failure */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    reprocess_bulk_import_api_v1_resumes_bulk_imports__batch_id__process_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                batch_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskRef"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Authenticated but not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Resource not found (or not visible to the caller) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation or business-rule failure */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    list_resumes_api_v1_resumes_get: {
+        parameters: {
+            query?: {
+                /** @description 1-based page number */
+                page?: number;
+                /** @description Items per page (max 100) */
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_ResumeOut_"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Authenticated but not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Resource not found (or not visible to the caller) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation or business-rule failure */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    upload_resume_api_v1_resumes_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_upload_resume_api_v1_resumes_post"];
+            };
+        };
+        responses: {
+            /** @description The identical file was already uploaded; the existing résumé is returned */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResumeUploadOut"];
+                };
+            };
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResumeUploadOut"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Authenticated but not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Resource not found (or not visible to the caller) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description PAYLOAD_TOO_LARGE: the file (or its decompressed size) exceeds the limit */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description UNSUPPORTED_MEDIA_TYPE: only PDF and DOCX are accepted; the content, extension and declared type must agree */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation or business-rule failure */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description RATE_LIMITED: too many uploads */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_resume_api_v1_resumes__resume_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                resume_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResumeOut"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Authenticated but not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Resource not found (or not visible to the caller) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation or business-rule failure */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    delete_resume_api_v1_resumes__resume_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                resume_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Authenticated but not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Resource not found (or not visible to the caller) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description RESUME_IN_USE */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation or business-rule failure */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    download_resume_api_v1_resumes__resume_id__file_get: {
+        parameters: {
+            query?: {
+                /** @description Preview PDFs inline */
+                inline?: boolean;
+            };
+            header?: never;
+            path: {
+                resume_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The file */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/pdf": unknown;
+                    "application/vnd.openxmlformats-officedocument.wordprocessingml.document": unknown;
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Authenticated but not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Resource not found (or not visible to the caller) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation or business-rule failure */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    make_primary_api_v1_resumes__resume_id__primary_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                resume_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResumeOut"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Authenticated but not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Resource not found (or not visible to the caller) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation or business-rule failure */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    reprocess_resume_api_v1_resumes__resume_id__process_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                resume_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskRef"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Authenticated but not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Resource not found (or not visible to the caller) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation or business-rule failure */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The job queue is unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_extracted_api_v1_resumes__resume_id__extracted_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                resume_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExtractedResume"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Authenticated but not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Resource not found (or not visible to the caller) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description RESUME_NOT_PROCESSED */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation or business-rule failure */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    patch_extracted_api_v1_resumes__resume_id__extracted_patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                resume_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExtractedPatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExtractedResume"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Authenticated but not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Resource not found (or not visible to the caller) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description RESUME_NOT_PROCESSED */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation or business-rule failure */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    apply_extracted_api_v1_resumes__resume_id__extracted_apply_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                resume_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApplyRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApplyResult"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Authenticated but not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Resource not found (or not visible to the caller) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description RESUME_NOT_PROCESSED */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -7079,6 +11611,739 @@ export interface operations {
             };
         };
     };
+    list_interviews_api_v1_interviews_get: {
+        parameters: {
+            query?: {
+                /** @description Repeatable status filter */
+                status?: components["schemas"]["InterviewStatus"][] | null;
+                /** @description First day (UTC) to include */
+                from_date?: string | null;
+                /** @description Last day (UTC) to include */
+                to_date?: string | null;
+                application_id?: string | null;
+                job_id?: string | null;
+                candidate_id?: string | null;
+                upcoming_only?: boolean;
+                sort?: string;
+                /** @description 1-based page number */
+                page?: number;
+                /** @description Items per page (max 100) */
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_Annotated_Union_StaffInterviewItem__CandidateInterviewView___FieldInfo_annotation_NoneType__required_True__discriminator__audience____"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Authenticated but not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Resource not found (or not visible to the caller) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation or business-rule failure */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    schedule_interview_api_v1_interviews_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InterviewCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StaffInterviewView"] | components["schemas"]["CandidateInterviewView"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Authenticated but not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Resource not found (or not visible to the caller) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description INTERVIEW_CONFLICT (candidate or interviewer already booked) or an invalid state transition */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation or business-rule failure */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_interview_api_v1_interviews__interview_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                interview_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StaffInterviewView"] | components["schemas"]["CandidateInterviewView"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Authenticated but not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Resource not found (or not visible to the caller) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation or business-rule failure */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    update_interview_api_v1_interviews__interview_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                interview_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InterviewUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StaffInterviewView"] | components["schemas"]["CandidateInterviewView"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Authenticated but not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Resource not found (or not visible to the caller) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description INTERVIEW_CONFLICT (candidate or interviewer already booked) or an invalid state transition */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation or business-rule failure */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    cancel_interview_api_v1_interviews__interview_id__cancel_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                interview_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CancelRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StaffInterviewView"] | components["schemas"]["CandidateInterviewView"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Authenticated but not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Resource not found (or not visible to the caller) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description INTERVIEW_CONFLICT (candidate or interviewer already booked) or an invalid state transition */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation or business-rule failure */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    confirm_interview_api_v1_interviews__interview_id__confirm_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                interview_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StaffInterviewView"] | components["schemas"]["CandidateInterviewView"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Authenticated but not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Resource not found (or not visible to the caller) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description INTERVIEW_CONFLICT (candidate or interviewer already booked) or an invalid state transition */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation or business-rule failure */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    complete_interview_api_v1_interviews__interview_id__complete_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                interview_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StaffInterviewView"] | components["schemas"]["CandidateInterviewView"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Authenticated but not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Resource not found (or not visible to the caller) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description INTERVIEW_CONFLICT (candidate or interviewer already booked) or an invalid state transition */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation or business-rule failure */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    no_show_interview_api_v1_interviews__interview_id__no_show_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                interview_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StaffInterviewView"] | components["schemas"]["CandidateInterviewView"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Authenticated but not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Resource not found (or not visible to the caller) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description INTERVIEW_CONFLICT (candidate or interviewer already booked) or an invalid state transition */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation or business-rule failure */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    list_feedback_api_v1_interviews__interview_id__feedback_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                interview_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FeedbackSummary"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Authenticated but not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Resource not found (or not visible to the caller) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation or business-rule failure */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    update_feedback_api_v1_interviews__interview_id__feedback_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                interview_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FeedbackIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FeedbackOut"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Authenticated but not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No feedback submitted yet (FEEDBACK_NOT_FOUND) or interview not visible */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation or business-rule failure */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    submit_feedback_api_v1_interviews__interview_id__feedback_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                interview_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FeedbackIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FeedbackOut"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Authenticated but not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Resource not found (or not visible to the caller) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description FEEDBACK_ALREADY_SUBMITTED */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation or business-rule failure */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     ranked_candidates_api_v1_matches_jobs__job_id__candidates_get: {
         parameters: {
             query?: {
@@ -7327,8 +12592,8 @@ export interface operations {
         parameters: {
             query?: {
                 min_score?: number;
-                workplace_type?: string[] | null;
-                employment_type?: string[] | null;
+                workplace_type?: components["schemas"]["WorkplaceType"][] | null;
+                employment_type?: components["schemas"]["EmploymentType"][] | null;
                 location?: string | null;
                 skill_id?: string[] | null;
                 sort?: string;
@@ -7678,6 +12943,974 @@ export interface operations {
             };
         };
     };
+    recruiter_dashboard_api_v1_reports_recruiter_dashboard_get: {
+        parameters: {
+            query?: {
+                /** @description Admins only: restrict to one company (omit for the whole platform). Staff may only pass their own. */
+                company_id?: string | null;
+                /** @description First day to include (UTC, inclusive) */
+                from_date?: string | null;
+                /** @description Last day to include (UTC, inclusive) */
+                to_date?: string | null;
+                /** @description Bucket size for time series (default: chosen from the range) */
+                granularity?: ("day" | "week" | "month") | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecruiterDashboard"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Authenticated but not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Resource not found (or not visible to the caller) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation or business-rule failure */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    candidate_dashboard_api_v1_reports_candidate_dashboard_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CandidateDashboard"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Authenticated but not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Resource not found (or not visible to the caller) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation or business-rule failure */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    admin_dashboard_api_v1_reports_admin_dashboard_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminDashboard"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Authenticated but not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Resource not found (or not visible to the caller) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation or business-rule failure */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    applications_by_job_api_v1_reports_applications_by_job_get: {
+        parameters: {
+            query?: {
+                /** @description Admins only: restrict to one company (omit for the whole platform). Staff may only pass their own. */
+                company_id?: string | null;
+                /** @description First day to include (UTC, inclusive) */
+                from_date?: string | null;
+                /** @description Last day to include (UTC, inclusive) */
+                to_date?: string | null;
+                sort?: "applications" | "title" | "shortlisted" | "hired" | "rejected";
+                /** @description Sort direction */
+                order?: "asc" | "desc";
+                /** @description `csv` returns text/csv (all rows up to 5000, ignoring pagination) */
+                format?: "json" | "csv";
+                /** @description 1-based page number */
+                page?: number;
+                /** @description Items per page (max 100) */
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description JSON body, or `text/csv` (attachment) when `format=csv`. Text cells that start with `= + - @` are prefixed with `'` to neutralise spreadsheet formula injection. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApplicationsByJobPage"];
+                    /**
+                     * @example job_id,title,applications
+                     *     …
+                     */
+                    "text/csv": string;
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Authenticated but not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Resource not found (or not visible to the caller) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation or business-rule failure */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    applications_by_status_api_v1_reports_applications_by_status_get: {
+        parameters: {
+            query?: {
+                /** @description Admins only: restrict to one company (omit for the whole platform). Staff may only pass their own. */
+                company_id?: string | null;
+                /** @description First day to include (UTC, inclusive) */
+                from_date?: string | null;
+                /** @description Last day to include (UTC, inclusive) */
+                to_date?: string | null;
+                job_id?: string | null;
+                /** @description `csv` returns text/csv (all rows up to 5000, ignoring pagination) */
+                format?: "json" | "csv";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description JSON body, or `text/csv` (attachment) when `format=csv`. Text cells that start with `= + - @` are prefixed with `'` to neutralise spreadsheet formula injection. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApplicationsByStatusOut"];
+                    /**
+                     * @example job_id,title,applications
+                     *     …
+                     */
+                    "text/csv": string;
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Authenticated but not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Resource not found (or not visible to the caller) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation or business-rule failure */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    funnel_api_v1_reports_funnel_get: {
+        parameters: {
+            query?: {
+                /** @description Admins only: restrict to one company (omit for the whole platform). Staff may only pass their own. */
+                company_id?: string | null;
+                /** @description First day to include (UTC, inclusive) */
+                from_date?: string | null;
+                /** @description Last day to include (UTC, inclusive) */
+                to_date?: string | null;
+                job_id?: string | null;
+                /** @description `csv` returns text/csv (all rows up to 5000, ignoring pagination) */
+                format?: "json" | "csv";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description JSON body, or `text/csv` (attachment) when `format=csv`. Text cells that start with `= + - @` are prefixed with `'` to neutralise spreadsheet formula injection. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FunnelOut"];
+                    /**
+                     * @example job_id,title,applications
+                     *     …
+                     */
+                    "text/csv": string;
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Authenticated but not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Resource not found (or not visible to the caller) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation or business-rule failure */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    interview_statistics_api_v1_reports_interview_statistics_get: {
+        parameters: {
+            query?: {
+                /** @description Admins only: restrict to one company (omit for the whole platform). Staff may only pass their own. */
+                company_id?: string | null;
+                /** @description First day to include (UTC, inclusive) */
+                from_date?: string | null;
+                /** @description Last day to include (UTC, inclusive) */
+                to_date?: string | null;
+                /** @description `csv` returns text/csv (all rows up to 5000, ignoring pagination) */
+                format?: "json" | "csv";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description JSON body, or `text/csv` (attachment) when `format=csv`. Text cells that start with `= + - @` are prefixed with `'` to neutralise spreadsheet formula injection. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InterviewStatisticsOut"];
+                    /**
+                     * @example job_id,title,applications
+                     *     …
+                     */
+                    "text/csv": string;
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Authenticated but not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Resource not found (or not visible to the caller) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation or business-rule failure */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    job_performance_api_v1_reports_job_performance_get: {
+        parameters: {
+            query?: {
+                /** @description Admins only: restrict to one company (omit for the whole platform). Staff may only pass their own. */
+                company_id?: string | null;
+                /** @description First day to include (UTC, inclusive) */
+                from_date?: string | null;
+                /** @description Last day to include (UTC, inclusive) */
+                to_date?: string | null;
+                sort?: "applications" | "title" | "shortlist_rate" | "hire_rate" | "avg_days_to_hire" | "avg_match_score";
+                /** @description Sort direction */
+                order?: "asc" | "desc";
+                /** @description `csv` returns text/csv (all rows up to 5000, ignoring pagination) */
+                format?: "json" | "csv";
+                /** @description 1-based page number */
+                page?: number;
+                /** @description Items per page (max 100) */
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description JSON body, or `text/csv` (attachment) when `format=csv`. Text cells that start with `= + - @` are prefixed with `'` to neutralise spreadsheet formula injection. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobPerformancePage"];
+                    /**
+                     * @example job_id,title,applications
+                     *     …
+                     */
+                    "text/csv": string;
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Authenticated but not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Resource not found (or not visible to the caller) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation or business-rule failure */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    export_job_performance_api_v1_reports_job_performance_export_post: {
+        parameters: {
+            query?: {
+                /** @description Admins only: restrict to one company (omit for the whole platform). Staff may only pass their own. */
+                company_id?: string | null;
+                /** @description First day to include (UTC, inclusive) */
+                from_date?: string | null;
+                /** @description Last day to include (UTC, inclusive) */
+                to_date?: string | null;
+                sort?: "applications" | "title" | "shortlist_rate" | "hire_rate" | "avg_days_to_hire" | "avg_match_score";
+                /** @description Sort direction */
+                order?: "asc" | "desc";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskRef"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Authenticated but not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Resource not found (or not visible to the caller) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation or business-rule failure */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    recruiter_activity_api_v1_reports_recruiter_activity_get: {
+        parameters: {
+            query?: {
+                /** @description Admins only: restrict to one company (omit for the whole platform). Staff may only pass their own. */
+                company_id?: string | null;
+                /** @description First day to include (UTC, inclusive) */
+                from_date?: string | null;
+                /** @description Last day to include (UTC, inclusive) */
+                to_date?: string | null;
+                sort?: "total" | "status_changes" | "interviews_scheduled" | "notes" | "feedback" | "name";
+                /** @description Sort direction */
+                order?: "asc" | "desc";
+                /** @description `csv` returns text/csv (all rows up to 5000, ignoring pagination) */
+                format?: "json" | "csv";
+                /** @description 1-based page number */
+                page?: number;
+                /** @description Items per page (max 100) */
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description JSON body, or `text/csv` (attachment) when `format=csv`. Text cells that start with `= + - @` are prefixed with `'` to neutralise spreadsheet formula injection. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecruiterActivityPage"];
+                    /**
+                     * @example job_id,title,applications
+                     *     …
+                     */
+                    "text/csv": string;
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Authenticated but not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Resource not found (or not visible to the caller) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation or business-rule failure */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    source_statistics_api_v1_reports_source_statistics_get: {
+        parameters: {
+            query?: {
+                /** @description Admins only: restrict to one company (omit for the whole platform). Staff may only pass their own. */
+                company_id?: string | null;
+                /** @description First day to include (UTC, inclusive) */
+                from_date?: string | null;
+                /** @description Last day to include (UTC, inclusive) */
+                to_date?: string | null;
+                sort?: "applications" | "source" | "hires" | "shortlisted";
+                /** @description Sort direction */
+                order?: "asc" | "desc";
+                /** @description `csv` returns text/csv (all rows up to 5000, ignoring pagination) */
+                format?: "json" | "csv";
+                /** @description 1-based page number */
+                page?: number;
+                /** @description Items per page (max 100) */
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description JSON body, or `text/csv` (attachment) when `format=csv`. Text cells that start with `= + - @` are prefixed with `'` to neutralise spreadsheet formula injection. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SourceStatisticsPage"];
+                    /**
+                     * @example job_id,title,applications
+                     *     …
+                     */
+                    "text/csv": string;
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Authenticated but not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Resource not found (or not visible to the caller) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation or business-rule failure */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    matching_performance_api_v1_reports_matching_performance_get: {
+        parameters: {
+            query?: {
+                /** @description Admins only: restrict to one company (omit for the whole platform). Staff may only pass their own. */
+                company_id?: string | null;
+                /** @description First day to include (UTC, inclusive) */
+                from_date?: string | null;
+                /** @description Last day to include (UTC, inclusive) */
+                to_date?: string | null;
+                /** @description `csv` returns text/csv (all rows up to 5000, ignoring pagination) */
+                format?: "json" | "csv";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description JSON body, or `text/csv` (attachment) when `format=csv`. Text cells that start with `= + - @` are prefixed with `'` to neutralise spreadsheet formula injection. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MatchingPerformanceOut"];
+                    /**
+                     * @example job_id,title,applications
+                     *     …
+                     */
+                    "text/csv": string;
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Authenticated but not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Resource not found (or not visible to the caller) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation or business-rule failure */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    top_skills_api_v1_reports_top_skills_get: {
+        parameters: {
+            query?: {
+                /** @description Admins only: restrict to one company (omit for the whole platform). Staff may only pass their own. */
+                company_id?: string | null;
+                /** @description Entries per list */
+                limit?: number;
+                /** @description `csv` returns text/csv (all rows up to 5000, ignoring pagination) */
+                format?: "json" | "csv";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description JSON body, or `text/csv` (attachment) when `format=csv`. Text cells that start with `= + - @` are prefixed with `'` to neutralise spreadsheet formula injection. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TopSkillsOut"];
+                    /**
+                     * @example job_id,title,applications
+                     *     …
+                     */
+                    "text/csv": string;
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Authenticated but not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Resource not found (or not visible to the caller) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation or business-rule failure */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    pipeline_summary_api_v1_reports_pipeline_summary_get: {
+        parameters: {
+            query?: {
+                /** @description Admins only: restrict to one company (omit for the whole platform). Staff may only pass their own. */
+                company_id?: string | null;
+                job_id?: string | null;
+                /** @description `csv` returns text/csv (all rows up to 5000, ignoring pagination) */
+                format?: "json" | "csv";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description JSON body, or `text/csv` (attachment) when `format=csv`. Text cells that start with `= + - @` are prefixed with `'` to neutralise spreadsheet formula injection. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PipelineSummaryOut"];
+                    /**
+                     * @example job_id,title,applications
+                     *     …
+                     */
+                    "text/csv": string;
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Authenticated but not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Resource not found (or not visible to the caller) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation or business-rule failure */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     get_task_api_v1_tasks__task_id__get: {
         parameters: {
             query?: never;
@@ -7732,6 +13965,448 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    system_status_api_v1_admin_system_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SystemStatus"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Authenticated but not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Resource not found (or not visible to the caller) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation or business-rule failure */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    list_tasks_api_v1_admin_tasks_get: {
+        parameters: {
+            query?: {
+                status?: components["schemas"]["TaskStatus"] | null;
+                type?: components["schemas"]["TaskType"] | null;
+                /** @description 1-based page number */
+                page?: number;
+                /** @description Items per page (max 100) */
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_AdminTaskOut_"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Authenticated but not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Resource not found (or not visible to the caller) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation or business-rule failure */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    retry_task_api_v1_admin_tasks__task_id__retry_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminTaskOut"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Authenticated but not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Resource not found (or not visible to the caller) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description TASK_NOT_RETRYABLE / TASK_ALREADY_ACTIVE */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation or business-rule failure */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    audit_log_api_v1_admin_audit_get: {
+        parameters: {
+            query?: {
+                actor_id?: string | null;
+                action?: string | null;
+                entity_type?: string | null;
+                entity_id?: string | null;
+                company_id?: string | null;
+                from_date?: string | null;
+                to_date?: string | null;
+                /** @description 1-based page number */
+                page?: number;
+                /** @description Items per page (max 100) */
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_AuditEventOut_"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Authenticated but not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Resource not found (or not visible to the caller) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation or business-rule failure */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    refresh_embeddings_api_v1_admin_embeddings_refresh_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EmbeddingRefreshOut"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Authenticated but not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Resource not found (or not visible to the caller) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation or business-rule failure */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    embeddings_status_api_v1_admin_embeddings_status_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EmbeddingsStatus"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Authenticated but not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Resource not found (or not visible to the caller) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation or business-rule failure */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    matching_status_api_v1_admin_matching_status_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MatchingStatus"];
+                };
+            };
+            /** @description Missing, invalid or expired access token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Authenticated but not allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Resource not found (or not visible to the caller) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation or business-rule failure */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    meta_api_v1_meta_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MetaOut"];
                 };
             };
         };

@@ -5,7 +5,7 @@ import { tokenStore } from '@/lib/api'
 import { server } from './server'
 
 // Lazy route chunks are transformed on first import, which can take a few seconds on a cold cache.
-configure({ asyncUtilTimeout: 6000 })
+configure({ asyncUtilTimeout: 15000 })
 
 // jsdom gaps that Radix UI / cmdk / charts rely on.
 class ResizeObserverStub {

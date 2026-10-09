@@ -11,7 +11,10 @@ const JOBS = [
   makeJobListItem({ id: JOB_ID, title: 'Machine Learning Engineer' }),
 ]
 
-function mockApi(view = makeCandidateView(), detail: ReturnType<typeof makeMatchDetail> | null = makeMatchDetail()) {
+function mockApi(
+  view = makeCandidateView(),
+  detail: ReturnType<typeof makeMatchDetail> | null = makeMatchDetail(),
+) {
   const requests: URL[] = []
   server.use(
     http.get('/api/v1/candidates/:id', ({ request }) => {
@@ -50,7 +53,10 @@ describe('candidate detail (staff)', () => {
       'mailto:priya.nair@demo.example',
     )
     expect(screen.getByText('+49 30 1234567')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /GitHub/ })).toHaveAttribute('rel', expect.stringContaining('noopener'))
+    expect(screen.getByRole('link', { name: /GitHub/ })).toHaveAttribute(
+      'rel',
+      expect.stringContaining('noopener'),
+    )
   })
 
   it('lists applications to this company with links, and defaults the match to the applied job', async () => {
@@ -67,7 +73,10 @@ describe('candidate detail (staff)', () => {
     expect(await screen.findByText('Score breakdown')).toBeInTheDocument()
     expect(screen.getByRole('combobox', { name: 'Job' })).toHaveValue(JOB_ID)
     expect(screen.getByText('PyTorch')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /where they rank/i })).toHaveAttribute('href', `/matching/${JOB_ID}`)
+    expect(screen.getByRole('link', { name: /where they rank/i })).toHaveAttribute(
+      'href',
+      `/matching/${JOB_ID}`,
+    )
     expect(requests[0]!.searchParams.has('job_id')).toBe(false)
   })
 
@@ -179,7 +188,9 @@ describe('candidate detail (staff)', () => {
     mockApi()
     server.use(
       http.get('/api/v1/candidates/:id', () =>
-        fail ? HttpResponse.json(errorBody('X', 'boom'), { status: 500 }) : HttpResponse.json(makeCandidateView()),
+        fail
+          ? HttpResponse.json(errorBody('X', 'boom'), { status: 500 })
+          : HttpResponse.json(makeCandidateView()),
       ),
     )
     const { user } = renderApp('/candidates/cand-1')

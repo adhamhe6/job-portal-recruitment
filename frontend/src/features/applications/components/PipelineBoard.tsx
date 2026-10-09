@@ -122,7 +122,7 @@ export function PipelineBoard({
 
   return (
     <div
-      className="-mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-3 sm:mx-0 sm:px-0"
+      className="relative -mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-3 sm:mx-0 sm:px-0"
       role="group"
       aria-label="Hiring pipeline"
     >

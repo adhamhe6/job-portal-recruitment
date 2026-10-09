@@ -12,7 +12,9 @@ function baseHandlers() {
   server.use(
     http.get(`${API}/interviews`, () => HttpResponse.json(page([]))),
     http.get(`${API}/jobs`, () => HttpResponse.json(page([]))),
-    http.get(`${API}/companies/${COMPANY_ID}/members`, () => HttpResponse.json([makeMember('user-recruiter', 'Riley')])),
+    http.get(`${API}/companies/${COMPANY_ID}/members`, () =>
+      HttpResponse.json([makeMember('user-recruiter', 'Riley')]),
+    ),
   )
 }
 
@@ -26,7 +28,12 @@ describe('schedule from the interviews page', () => {
         queries.push(new URL(request.url).searchParams)
         return HttpResponse.json(
           page([
-            { id: 'app-1', candidate_name: 'Nina Petrova', job_title: 'Senior Backend Engineer', status: 'SHORTLISTED' },
+            {
+              id: 'app-1',
+              candidate_name: 'Nina Petrova',
+              job_title: 'Senior Backend Engineer',
+              status: 'SHORTLISTED',
+            },
             { id: 'app-2', candidate_name: 'Alex Rivera', job_title: 'Data Analyst', status: 'INTERVIEW' },
           ]),
         )
@@ -69,7 +76,9 @@ describe('schedule from the interviews page', () => {
     signInAs('RECRUITER')
     baseHandlers()
     server.use(
-      http.get(`${API}/applications`, () => HttpResponse.json(errorBody('INTERNAL_ERROR', 'boom'), { status: 500 })),
+      http.get(`${API}/applications`, () =>
+        HttpResponse.json(errorBody('INTERNAL_ERROR', 'boom'), { status: 500 }),
+      ),
     )
     const { user } = renderApp('/interviews')
     await user.click(await screen.findByRole('button', { name: 'Schedule interview' }))

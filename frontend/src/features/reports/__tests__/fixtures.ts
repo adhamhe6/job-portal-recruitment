@@ -1,4 +1,4 @@
-import { http, HttpResponse } from 'msw'
+import { http, HttpResponse, type JsonBodyType } from 'msw'
 import { COMPANY_ID, makeJobListItem, page } from '@/test/fixtures'
 import { server } from '@/test/server'
 import type {
@@ -74,7 +74,12 @@ export const jobRow = (o: Partial<JobPerformanceRow> = {}): JobPerformanceRow =>
   ...o,
 })
 
-export const jobPerformance = (items = [jobRow(), jobRow({ job_id: 'job-2', title: 'Data Analyst', applications: 2, hires: 0, avg_days_to_hire: null })]): JobPerformancePage => ({
+export const jobPerformance = (
+  items = [
+    jobRow(),
+    jobRow({ job_id: 'job-2', title: 'Data Analyst', applications: 2, hires: 0, avg_days_to_hire: null }),
+  ],
+): JobPerformancePage => ({
   items,
   page: 1,
   page_size: 10,
@@ -86,8 +91,24 @@ export const jobPerformance = (items = [jobRow(), jobRow({ job_id: 'job-2', titl
 
 export const sources: SourceStatisticsPage = {
   items: [
-    { source: 'DIRECT', applications: 12, share: 0.8, reached_shortlist: 5, hires: 2, shortlist_rate: 0.42, hire_rate: 0.17 },
-    { source: 'REFERRAL', applications: 3, share: 0.2, reached_shortlist: 1, hires: 0, shortlist_rate: 0.33, hire_rate: 0 },
+    {
+      source: 'DIRECT',
+      applications: 12,
+      share: 0.8,
+      reached_shortlist: 5,
+      hires: 2,
+      shortlist_rate: 0.42,
+      hire_rate: 0.17,
+    },
+    {
+      source: 'REFERRAL',
+      applications: 3,
+      share: 0.2,
+      reached_shortlist: 1,
+      hires: 0,
+      shortlist_rate: 0.33,
+      hire_rate: 0,
+    },
   ],
   page: 1,
   page_size: 20,
@@ -113,7 +134,12 @@ export const interviewStats: InterviewStatisticsOut = {
   held_or_missed: 6,
   no_show_rate: 0.1667,
   cancellation_rate: 0,
-  feedback: { entries: 4, interviews_with_feedback: 3, average_rating: 4.25, recommendations: { HIRE: 3, NO_HIRE: 1 } },
+  feedback: {
+    entries: 4,
+    interviews_with_feedback: 3,
+    average_rating: 4.25,
+    recommendations: { HIRE: 3, NO_HIRE: 1 },
+  },
 }
 
 export const matching: MatchingPerformanceOut = {
@@ -130,13 +156,15 @@ export const matching: MatchingPerformanceOut = {
   ],
   hired_minus_rejected: 0.5268,
   top10: { applicants: 15, applicants_with_score: 15, applicants_in_top10: 15, pct_in_top10: 100 },
-  notes: ['Scores rank candidates against a job; they are a relevance aid, not a prediction of hiring success.'],
+  notes: [
+    'Scores rank candidates against a job; they are a relevance aid, not a prediction of hiring success.',
+  ],
 }
 
 /** Register default handlers for every report endpoint; returns the query strings each path received. */
 export function mockReports(overrides: Record<string, () => Response | Promise<Response>> = {}) {
   const calls: Record<string, URLSearchParams[]> = {}
-  const route = (path: string, data: unknown) =>
+  const route = (path: string, data: JsonBodyType) =>
     http.get(`${API}/reports/${path}`, ({ request }) => {
       const url = new URL(request.url)
       ;(calls[path] ??= []).push(url.searchParams)
@@ -164,4 +192,5 @@ export function mockReports(overrides: Record<string, () => Response | Promise<R
   )
   return calls
 }
-export const lastCall = (calls: Record<string, URLSearchParams[]>, path: string) => calls[path]![calls[path]!.length - 1]!
+export const lastCall = (calls: Record<string, URLSearchParams[]>, path: string) =>
+  calls[path]![calls[path]!.length - 1]!

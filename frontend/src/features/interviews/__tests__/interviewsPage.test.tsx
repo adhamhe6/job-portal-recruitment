@@ -23,7 +23,14 @@ const STARTED = makeStaffInterview({
   meeting_url: null,
   location: 'HQ Room 3',
   feedback_count: 2,
-  participants: [{ user_id: 'user-recruiter', name: 'Riley Recruiter', role: 'INTERVIEWER', has_submitted_feedback: false }],
+  participants: [
+    {
+      user_id: 'user-recruiter',
+      name: 'Riley Recruiter',
+      role: 'INTERVIEWER',
+      has_submitted_feedback: false,
+    },
+  ],
 })
 
 function mockApi(items = [STARTED, FUTURE]) {
@@ -58,7 +65,10 @@ describe('staff interviews page', () => {
     expect(within(alex).getByText('2 feedback entries')).toBeInTheDocument()
     const nina = screen.getByRole('link', { name: /Nina Petrova/ }).closest('li')!
     expect(within(nina).getByText('Scheduled')).toBeInTheDocument()
-    expect(within(nina).getByRole('link', { name: /Join link/ })).toHaveAttribute('href', 'https://meet.example.com/abc')
+    expect(within(nina).getByRole('link', { name: /Join link/ })).toHaveAttribute(
+      'href',
+      'https://meet.example.com/abc',
+    )
     expect(within(nina).getByText(/Ravi Patel/)).toBeInTheDocument()
     expect(within(nina).getByText(/\(observer\)/)).toBeInTheDocument()
     // the zone is always named, never implicit
@@ -166,7 +176,10 @@ describe('staff interviews page', () => {
     await user.click(screen.getByRole('button', { name: /List/ }))
     await waitFor(() => expect(router.state.location.search).toContain('view=table'))
     const table = await screen.findByRole('table', { name: 'Interviews' })
-    expect(within(table).getByRole('link', { name: 'Nina Petrova' })).toHaveAttribute('href', `/interviews/${FUTURE.id}`)
+    expect(within(table).getByRole('link', { name: 'Nina Petrova' })).toHaveAttribute(
+      'href',
+      `/interviews/${FUTURE.id}`,
+    )
     expect(within(table).getByText('Panel interview')).toBeInTheDocument()
   })
 
@@ -177,14 +190,23 @@ describe('staff interviews page', () => {
     await user.click(await screen.findByRole('button', { name: /Actions for interview with Nina Petrova/ }))
     let menu = await screen.findByRole('menu')
     expect(within(menu).getByRole('menuitem', { name: 'Reschedule' })).toBeInTheDocument()
-    expect(within(menu).getByRole('menuitem', { name: /Mark completed/ })).toHaveAttribute('aria-disabled', 'true')
-    expect(within(menu).getByRole('menuitem', { name: /Record no-show/ })).toHaveAttribute('aria-disabled', 'true')
+    expect(within(menu).getByRole('menuitem', { name: /Mark completed/ })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    )
+    expect(within(menu).getByRole('menuitem', { name: /Record no-show/ })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    )
     expect(within(menu).getByRole('menuitem', { name: 'Cancel interview' })).toBeInTheDocument()
     await user.keyboard('{Escape}')
 
     await user.click(screen.getByRole('button', { name: /Actions for interview with Alex Rivera/ }))
     menu = await screen.findByRole('menu')
-    expect(within(menu).getByRole('menuitem', { name: /Mark completed/ })).not.toHaveAttribute('aria-disabled', 'true')
+    expect(within(menu).getByRole('menuitem', { name: /Mark completed/ })).not.toHaveAttribute(
+      'aria-disabled',
+      'true',
+    )
   })
 
   it('cancels with a required internal reason and refreshes the list', async () => {
@@ -219,7 +241,9 @@ describe('staff interviews page', () => {
     server.use(
       http.post(`${API}/interviews/${STARTED.id}/complete`, () =>
         HttpResponse.json(
-          errorBody('INVALID_STATE_TRANSITION', 'A cancelled interview cannot be completed', { status: 'CANCELLED' }),
+          errorBody('INVALID_STATE_TRANSITION', 'A cancelled interview cannot be completed', {
+            status: 'CANCELLED',
+          }),
           { status: 409 },
         ),
       ),
@@ -229,7 +253,9 @@ describe('staff interviews page', () => {
     await user.click(await screen.findByRole('menuitem', { name: /Mark completed/ }))
     const dialog = await screen.findByRole('alertdialog')
     await user.click(within(dialog).getByRole('button', { name: 'Mark completed' }))
-    expect(await within(dialog).findByRole('alert')).toHaveTextContent(/cancelled interview cannot be completed/)
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent(
+      /cancelled interview cannot be completed/,
+    )
     expect(screen.getByRole('alertdialog')).toBeInTheDocument()
   })
 
@@ -246,7 +272,9 @@ describe('staff interviews page', () => {
     const { user } = renderApp('/interviews')
     await user.click(await screen.findByRole('button', { name: /Actions for interview with Alex Rivera/ }))
     await user.click(await screen.findByRole('menuitem', { name: /Mark completed/ }))
-    await user.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Mark completed' }))
+    await user.click(
+      within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Mark completed' }),
+    )
     await waitFor(() => expect(hit).toBe(true))
   })
 

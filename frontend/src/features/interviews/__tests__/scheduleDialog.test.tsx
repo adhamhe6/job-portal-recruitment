@@ -60,7 +60,8 @@ function Harness({
   )
 }
 
-const setTime = (label: RegExp, value: string) => fireEvent.change(screen.getByLabelText(label), { target: { value } })
+const setTime = (label: RegExp, value: string) =>
+  fireEvent.change(screen.getByLabelText(label), { target: { value } })
 const FUTURE_START = '2031-05-20T09:00'
 
 async function fillValidForm(user: ReturnType<typeof renderWithProviders>['user']) {
@@ -119,7 +120,7 @@ describe('ScheduleInterviewDialog', () => {
     expect(await screen.findByText('dialog closed')).toBeInTheDocument()
   })
 
-  it('offers company staff only: active recruiters and the job\'s own hiring manager', async () => {
+  it("offers company staff only: active recruiters and the job's own hiring manager", async () => {
     signInAs('RECRUITER')
     mockContext()
     const { user } = renderWithProviders(<Harness />)
@@ -200,14 +201,18 @@ describe('ScheduleInterviewDialog', () => {
     const alert = await screen.findByText('Time conflict: someone is already booked')
     const box = alert.closest('[role="alert"]') as HTMLElement
     expect(within(box).getByText(/Ravi Patel is already booked on .*9:30 AM – 10:30 AM/)).toBeInTheDocument()
-    expect(within(box).getByText(/The candidate already has an interview on .*9:00 AM – 10:00 AM/)).toBeInTheDocument()
+    expect(
+      within(box).getByText(/The candidate already has an interview on .*9:00 AM – 10:00 AM/),
+    ).toBeInTheDocument()
     expect(screen.getByLabelText(/^Starts/)).toHaveAttribute('aria-invalid', 'true')
     expect(screen.getByText('dialog open')).toBeInTheDocument()
     expect(onDone).not.toHaveBeenCalled()
 
     // adjusting the time removes the stale conflict banner and a retry succeeds
     setTime(/^Starts/, '2031-05-20T14:00')
-    await waitFor(() => expect(screen.queryByText('Time conflict: someone is already booked')).not.toBeInTheDocument())
+    await waitFor(() =>
+      expect(screen.queryByText('Time conflict: someone is already booked')).not.toBeInTheDocument(),
+    )
     await user.click(screen.getByRole('button', { name: 'Schedule interview' }))
     await waitFor(() => expect(onDone).toHaveBeenCalledWith(expect.objectContaining({ id: 'iv-ok' })))
     expect(attempts).toBe(2)
@@ -238,7 +243,10 @@ describe('ScheduleInterviewDialog', () => {
     server.use(
       http.post(`${API}/interviews`, () =>
         HttpResponse.json(
-          errorBody('INVALID_PARTICIPANT', 'Participants must be active recruiters or hiring managers of your company'),
+          errorBody(
+            'INVALID_PARTICIPANT',
+            'Participants must be active recruiters or hiring managers of your company',
+          ),
           { status: 422 },
         ),
       ),
@@ -263,10 +271,14 @@ describe('ScheduleInterviewDialog', () => {
     let fail = true
     server.use(
       http.get(`${API}/applications/app-1`, () =>
-        fail ? HttpResponse.json(errorBody('INTERNAL_ERROR', 'boom'), { status: 500 }) : HttpResponse.json(application()),
+        fail
+          ? HttpResponse.json(errorBody('INTERNAL_ERROR', 'boom'), { status: 500 })
+          : HttpResponse.json(application()),
       ),
       http.get(`${API}/jobs/job-1`, () => HttpResponse.json({ id: 'job-1', hiring_manager_id: null })),
-      http.get(`${API}/companies/${COMPANY_ID}/members`, () => HttpResponse.json([makeMember('user-recruiter', 'Riley')])),
+      http.get(`${API}/companies/${COMPANY_ID}/members`, () =>
+        HttpResponse.json([makeMember('user-recruiter', 'Riley')]),
+      ),
     )
     const { user } = renderWithProviders(<Harness />)
     expect(await screen.findByRole('status', { name: /Loading scheduling details/ })).toBeInTheDocument()

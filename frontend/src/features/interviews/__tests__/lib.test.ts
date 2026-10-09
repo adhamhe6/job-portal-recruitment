@@ -2,7 +2,12 @@ import { describe, expect, it } from 'vitest'
 import { ApiError } from '@/lib/api'
 import { describeConflict, parseConflicts } from '../lib/conflicts'
 import { groupByDay } from '../lib/agenda'
-import { makeScheduleSchema, toCreatePayload, toUpdatePayload, type ScheduleFormValues } from '../lib/schedule'
+import {
+  makeScheduleSchema,
+  toCreatePayload,
+  toUpdatePayload,
+  type ScheduleFormValues,
+} from '../lib/schedule'
 import { feedbackBlockedReason, interviewActions } from '../lib/stateMachine'
 import {
   addMinutesToLocal,
@@ -16,9 +21,15 @@ import { makeStaffInterview } from './fixtures'
 
 describe('timezone helpers', () => {
   it('reads wall-clock time in an explicit zone (summer and winter offsets)', () => {
-    expect(wallTimeToInstant('2030-07-01T10:00', 'Europe/Berlin')?.toISOString()).toBe('2030-07-01T08:00:00.000Z')
-    expect(wallTimeToInstant('2030-01-15T10:00', 'Europe/Berlin')?.toISOString()).toBe('2030-01-15T09:00:00.000Z')
-    expect(wallTimeToInstant('2030-07-01T10:00', 'America/New_York')?.toISOString()).toBe('2030-07-01T14:00:00.000Z')
+    expect(wallTimeToInstant('2030-07-01T10:00', 'Europe/Berlin')?.toISOString()).toBe(
+      '2030-07-01T08:00:00.000Z',
+    )
+    expect(wallTimeToInstant('2030-01-15T10:00', 'Europe/Berlin')?.toISOString()).toBe(
+      '2030-01-15T09:00:00.000Z',
+    )
+    expect(wallTimeToInstant('2030-07-01T10:00', 'America/New_York')?.toISOString()).toBe(
+      '2030-07-01T14:00:00.000Z',
+    )
     expect(wallTimeToInstant('2030-07-01T10:00', 'UTC')?.toISOString()).toBe('2030-07-01T10:00:00.000Z')
     expect(wallTimeToInstant('nonsense', 'UTC')).toBeNull()
   })
@@ -106,7 +117,12 @@ describe('state machine', () => {
   const past = new Date(Date.now() - 3_600_000).toISOString()
   const future = new Date(Date.now() + 3_600_000).toISOString()
   it('lets recruiters reschedule/cancel active interviews and finish them only after the start', () => {
-    const a = interviewActions({ status: 'SCHEDULED', startAt: future, canManage: true, isParticipant: false })
+    const a = interviewActions({
+      status: 'SCHEDULED',
+      startAt: future,
+      canManage: true,
+      isParticipant: false,
+    })
     expect(a.reschedule.allowed && a.cancel.allowed).toBe(true)
     expect(a.complete.allowed).toBe(false)
     expect(a.complete.reason).toMatch(/started/)
@@ -114,18 +130,27 @@ describe('state machine', () => {
     expect(b.complete.allowed && b.noShow.allowed).toBe(true)
   })
   it('gives a participating hiring manager only the finishing actions', () => {
-    const a = interviewActions({ status: 'RESCHEDULED', startAt: past, canManage: false, isParticipant: true })
+    const a = interviewActions({
+      status: 'RESCHEDULED',
+      startAt: past,
+      canManage: false,
+      isParticipant: true,
+    })
     expect(a).toMatchObject({
       reschedule: { allowed: false },
       cancel: { allowed: false },
       complete: { allowed: true },
       noShow: { allowed: true },
     })
-    expect(interviewActions({ status: 'SCHEDULED', startAt: past, canManage: false, isParticipant: false }).any).toBe(false)
+    expect(
+      interviewActions({ status: 'SCHEDULED', startAt: past, canManage: false, isParticipant: false }).any,
+    ).toBe(false)
   })
   it('offers nothing for terminal states', () => {
     for (const status of ['COMPLETED', 'CANCELLED', 'NO_SHOW'] as const)
-      expect(interviewActions({ status, startAt: past, canManage: true, isParticipant: true }).any).toBe(false)
+      expect(interviewActions({ status, startAt: past, canManage: true, isParticipant: true }).any).toBe(
+        false,
+      )
   })
   it('explains why feedback is blocked', () => {
     expect(feedbackBlockedReason('SCHEDULED', future)).toMatch(/opens once/)
@@ -141,7 +166,13 @@ describe('conflicts', () => {
     const list = parseConflicts(
       err('INTERVIEW_CONFLICT', {
         conflicts: [
-          { kind: 'interviewer', interview_id: 'i1', start_at: '2030-05-20T08:00:00+00:00', end_at: '2030-05-20T09:00:00+00:00', participant: 'Ravi Patel' },
+          {
+            kind: 'interviewer',
+            interview_id: 'i1',
+            start_at: '2030-05-20T08:00:00+00:00',
+            end_at: '2030-05-20T09:00:00+00:00',
+            participant: 'Ravi Patel',
+          },
           { kind: 'candidate', interview_id: null },
         ],
       }),
@@ -153,15 +184,35 @@ describe('conflicts', () => {
   })
   it('describes who is booked and when, in the form timezone', () => {
     const text = describeConflict(
-      { kind: 'interviewer', interview_id: 'i1', start_at: '2030-05-20T08:00:00Z', end_at: '2030-05-20T09:00:00Z', participant: 'Ravi Patel' },
+      {
+        kind: 'interviewer',
+        interview_id: 'i1',
+        start_at: '2030-05-20T08:00:00Z',
+        end_at: '2030-05-20T09:00:00Z',
+        participant: 'Ravi Patel',
+      },
       'Europe/Berlin',
     )
     expect(text).toContain('Ravi Patel is already booked')
     expect(text).toContain('10:00 AM')
     expect(
-      describeConflict({ kind: 'candidate', interview_id: 'i1', start_at: '2030-05-20T08:00:00Z', end_at: '2030-05-20T09:00:00Z', participant: null }, 'UTC'),
+      describeConflict(
+        {
+          kind: 'candidate',
+          interview_id: 'i1',
+          start_at: '2030-05-20T08:00:00Z',
+          end_at: '2030-05-20T09:00:00Z',
+          participant: null,
+        },
+        'UTC',
+      ),
     ).toContain('The candidate already has an interview')
-    expect(describeConflict({ kind: 'candidate', interview_id: null, start_at: null, end_at: null, participant: null }, 'UTC')).toMatch(/booked by another request/)
+    expect(
+      describeConflict(
+        { kind: 'candidate', interview_id: null, start_at: null, end_at: null, participant: null },
+        'UTC',
+      ),
+    ).toMatch(/booked by another request/)
   })
 })
 

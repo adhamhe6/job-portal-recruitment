@@ -22,7 +22,10 @@ const task = (o: object) => ({
 describe('background export task', () => {
   it('queues the export, reports progress while polling and resolves with the CSV', async () => {
     let query: URLSearchParams | null = null
-    const polls = [task({ progress: 10, stage: 'checking access' }), task({ progress: 80, stage: 'rendering CSV' })]
+    const polls = [
+      task({ progress: 10, stage: 'checking access' }),
+      task({ progress: 80, stage: 'rendering CSV' }),
+    ]
     server.use(
       http.post(`${API}/reports/job-performance/export`, ({ request }) => {
         query = new URL(request.url).searchParams
@@ -35,7 +38,13 @@ describe('background export task', () => {
             task({
               status: 'COMPLETED',
               progress: 100,
-              result: { csv: 'job_id,title\r\n1,A\r\n', filename: 'jp.csv', rows: 1, total_rows: 1, truncated: false },
+              result: {
+                csv: 'job_id,title\r\n1,A\r\n',
+                filename: 'jp.csv',
+                rows: 1,
+                total_rows: 1,
+                truncated: false,
+              },
             }),
         )
       }),
@@ -48,7 +57,13 @@ describe('background export task', () => {
     )
     expect(query!.get('from_date')).toBe('2026-01-01')
     expect(query!.get('order')).toBe('desc')
-    expect(result).toEqual({ csv: 'job_id,title\r\n1,A\r\n', filename: 'jp.csv', rows: 1, totalRows: 1, truncated: false })
+    expect(result).toEqual({
+      csv: 'job_id,title\r\n1,A\r\n',
+      filename: 'jp.csv',
+      rows: 1,
+      totalRows: 1,
+      truncated: false,
+    })
     expect(progress.mock.calls.map((c) => c[0])).toEqual([0, 10, 80, 100])
     expect(progress).toHaveBeenCalledWith(80, 'rendering CSV')
   })
@@ -59,7 +74,13 @@ describe('background export task', () => {
         HttpResponse.json({ task_id: 't1', status: 'PENDING' }, { status: 202 }),
       ),
       http.get(`${API}/tasks/t1`, () =>
-        HttpResponse.json(task({ status: 'FAILED', error_code: 'EXPORT_FORBIDDEN', error_message: 'The requesting user can no longer export reports' })),
+        HttpResponse.json(
+          task({
+            status: 'FAILED',
+            error_code: 'EXPORT_FORBIDDEN',
+            error_message: 'The requesting user can no longer export reports',
+          }),
+        ),
       ),
     )
     await expect(runExportTask('/reports/job-performance', {}, { intervalMs: 5 })).rejects.toMatchObject({
@@ -75,11 +96,17 @@ describe('background export task', () => {
       ),
       http.get(`${API}/tasks/t1`, () => HttpResponse.json(task({ progress: 5 }))),
     )
-    await expect(runExportTask('/reports/job-performance', {}, { intervalMs: 5, timeoutMs: 30 })).rejects.toMatchObject({
+    await expect(
+      runExportTask('/reports/job-performance', {}, { intervalMs: 5, timeoutMs: 30 }),
+    ).rejects.toMatchObject({
       code: 'TIMEOUT',
     })
     const controller = new AbortController()
-    const pending = runExportTask('/reports/job-performance', {}, { intervalMs: 50, signal: controller.signal })
+    const pending = runExportTask(
+      '/reports/job-performance',
+      {},
+      { intervalMs: 50, signal: controller.signal },
+    )
     setTimeout(() => controller.abort(), 20)
     await expect(pending).rejects.toMatchObject({ name: 'AbortError' })
   })
@@ -96,10 +123,26 @@ describe('background export task', () => {
 describe('export definitions', () => {
   const filters = { from: '2026-01-01', to: '2026-02-01', jobId: 'job-1' }
   it('sends only the filters each report understands', () => {
-    expect(exportParams(exportById('funnel')!, filters)).toEqual({ from_date: '2026-01-01', to_date: '2026-02-01', job_id: 'job-1' })
-    expect(exportParams(exportById('pipeline-summary')!, filters)).toEqual({ from_date: undefined, to_date: undefined, job_id: 'job-1' })
-    expect(exportParams(exportById('source-statistics')!, filters)).toEqual({ from_date: '2026-01-01', to_date: '2026-02-01', job_id: undefined })
-    expect(exportParams(exportById('top-skills')!, filters)).toEqual({ from_date: undefined, to_date: undefined, job_id: undefined })
+    expect(exportParams(exportById('funnel')!, filters)).toEqual({
+      from_date: '2026-01-01',
+      to_date: '2026-02-01',
+      job_id: 'job-1',
+    })
+    expect(exportParams(exportById('pipeline-summary')!, filters)).toEqual({
+      from_date: undefined,
+      to_date: undefined,
+      job_id: 'job-1',
+    })
+    expect(exportParams(exportById('source-statistics')!, filters)).toEqual({
+      from_date: '2026-01-01',
+      to_date: '2026-02-01',
+      job_id: undefined,
+    })
+    expect(exportParams(exportById('top-skills')!, filters)).toEqual({
+      from_date: undefined,
+      to_date: undefined,
+      job_id: undefined,
+    })
   })
   it('says which active filters an export ignores', () => {
     expect(ignoredFilters(exportById('funnel')!, filters)).toBeNull()
@@ -132,4 +175,3 @@ describe('report helpers', () => {
     expect(activePreset('2020-01-01', '2020-01-02')).toBeNull()
   })
 })
-

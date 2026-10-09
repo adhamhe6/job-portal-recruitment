@@ -40,10 +40,16 @@ describe('reports page — overview', () => {
 
     const table = await screen.findByRole('table', { name: 'Hiring funnel by stage' })
     const screening = within(table).getByText('Screening').closest('tr')!
-    expect(within(screening).getAllByRole('cell').map((c) => c.textContent)).toEqual(['Screening', '10', '66.7%', '66.7%'])
+    expect(
+      within(screening)
+        .getAllByRole('cell')
+        .map((c) => c.textContent),
+    ).toEqual(['Screening', '10', '66.7%', '66.7%'])
     expect(within(table).getByText('Withdrawn').closest('tr')).toHaveTextContent('Branch')
     // the chart is exposed with a text alternative
-    expect(screen.getByRole('img', { name: /Hiring funnel\. Applied: 15 · 100%; Screening: 10 · 66.7%/ })).toBeInTheDocument()
+    expect(
+      screen.getByRole('img', { name: /Hiring funnel\. Applied: 15 · 100%; Screening: 10 · 66.7%/ }),
+    ).toBeInTheDocument()
     // and the status chart has a data table for screen readers
     expect(screen.getByRole('table', { name: 'Applications by current status' })).toBeInTheDocument()
   })
@@ -62,7 +68,9 @@ describe('reports page — overview', () => {
     let fail = true
     mockReports({
       funnel: () =>
-        fail ? HttpResponse.json(errorBody('INTERNAL_ERROR', 'boom'), { status: 500 }) : HttpResponse.json(jobFunnel()),
+        fail
+          ? HttpResponse.json(errorBody('INTERNAL_ERROR', 'boom'), { status: 500 })
+          : HttpResponse.json(jobFunnel()),
     })
     const { user } = renderApp('/reports')
     const alerts = await screen.findAllByRole('alert')
@@ -146,10 +154,9 @@ describe('reports page — sections', () => {
     await user.click(await screen.findByRole('tab', { name: 'Job performance' }))
     const table = await screen.findByRole('table', { name: 'Job performance' })
     const row = within(table).getByRole('link', { name: 'Senior Backend Engineer' }).closest('tr')!
-    expect(within(row).getByRole('link', { name: '7 applications for Senior Backend Engineer' })).toHaveAttribute(
-      'href',
-      '/applications?job_id=job-1',
-    )
+    expect(
+      within(row).getByRole('link', { name: '7 applications for Senior Backend Engineer' }),
+    ).toHaveAttribute('href', '/applications?job_id=job-1')
     expect(row).toHaveTextContent('29%')
     expect(row).toHaveTextContent('12 d')
     expect(lastCall(calls, 'job-performance').get('sort')).toBe('applications')
@@ -158,7 +165,11 @@ describe('reports page — sections', () => {
     await user.click(within(table).getByRole('button', { name: /Days to hire/ }))
     await waitFor(() => expect(lastCall(calls, 'job-performance').get('sort')).toBe('avg_days_to_hire'))
     expect(router.state.location.search).toContain('sort=avg_days_to_hire')
-    await user.click(within(await screen.findByRole('table', { name: 'Job performance' })).getByRole('button', { name: /Days to hire/ }))
+    await user.click(
+      within(await screen.findByRole('table', { name: 'Job performance' })).getByRole('button', {
+        name: /Days to hire/,
+      }),
+    )
     await waitFor(() => expect(lastCall(calls, 'job-performance').get('order')).toBe('asc'))
   })
 
@@ -193,7 +204,9 @@ describe('reports page — sections', () => {
     expect(applied).toHaveTextContent('9.6 d')
     expect(applied).toHaveTextContent('17.2 d')
     expect(screen.getByRole('img', { name: /Time in current stage/ })).toBeInTheDocument()
-    expect(screen.getByRole('img', { name: /Days to hire by job\. Senior Backend Engineer: 12 days/ })).toBeInTheDocument()
+    expect(
+      screen.getByRole('img', { name: /Days to hire by job\. Senior Backend Engineer: 12 days/ }),
+    ).toBeInTheDocument()
   })
 
   it('shows sources and skills demand vs supply', async () => {
@@ -203,8 +216,12 @@ describe('reports page — sections', () => {
     await user.click(await screen.findByRole('tab', { name: 'Sources & skills' }))
     const table = await screen.findByRole('table', { name: 'Application sources' })
     expect(within(table).getByText('Referral').closest('tr')).toHaveTextContent('3')
-    expect(await screen.findByRole('img', { name: /Most requested skills\. Python: 3 jobs/ })).toBeInTheDocument()
-    expect(screen.getByRole('img', { name: /Most common applicant skills\. Python: 10 candidates/ })).toBeInTheDocument()
+    expect(
+      await screen.findByRole('img', { name: /Most requested skills\. Python: 3 jobs/ }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('img', { name: /Most common applicant skills\. Python: 10 candidates/ }),
+    ).toBeInTheDocument()
     expect(screen.getByText(/your company’s published jobs/)).toBeInTheDocument()
   })
 
@@ -218,7 +235,9 @@ describe('reports page — sections', () => {
     expect(kpi('No-show rate')).toHaveTextContent('17%')
     expect(kpi('Average length')).toHaveTextContent('55 min')
     expect(kpi('Avg. feedback rating')).toHaveTextContent('4.3 / 5')
-    expect(await screen.findByRole('table', { name: 'Average match score by application outcome' })).toBeInTheDocument()
+    expect(
+      await screen.findByRole('table', { name: 'Average match score by application outcome' }),
+    ).toBeInTheDocument()
     expect(screen.getByText(/relevance aid, not a prediction/)).toBeInTheDocument()
   })
 })
@@ -268,13 +287,27 @@ describe('reports page — CSV export', () => {
         polls += 1
         return HttpResponse.json(
           polls === 1
-            ? { id: 't1', status: 'RUNNING', progress: 40, stage: 'querying', result: null, error_code: null, error_message: null }
+            ? {
+                id: 't1',
+                status: 'RUNNING',
+                progress: 40,
+                stage: 'querying',
+                result: null,
+                error_code: null,
+                error_message: null,
+              }
             : {
                 id: 't1',
                 status: 'COMPLETED',
                 progress: 100,
                 stage: null,
-                result: { csv: 'job_id,title\r\n', filename: 'talentlens-job-performance.csv', rows: 1000, total_rows: 1500, truncated: true },
+                result: {
+                  csv: 'job_id,title\r\n',
+                  filename: 'talentlens-job-performance.csv',
+                  rows: 1000,
+                  total_rows: 1500,
+                  truncated: true,
+                },
                 error_code: null,
                 error_message: null,
               },
@@ -289,7 +322,9 @@ describe('reports page — CSV export', () => {
     expect(posted!.get('from_date')).toBe('2026-01-01')
     expect(posted!.get('sort')).toBe('hire_rate')
     expect(posted!.get('order')).toBe('asc')
-    expect(await screen.findByText('talentlens-job-performance.csv', {}, { timeout: 5000 })).toBeInTheDocument()
+    expect(
+      await screen.findByText('talentlens-job-performance.csv', {}, { timeout: 5000 }),
+    ).toBeInTheDocument()
     expect(screen.getByText(/Only the first 1000 of 1500 rows/)).toBeInTheDocument()
     expect(saved).toEqual([{ href: 'blob:report', download: 'talentlens-job-performance.csv' }])
   })
@@ -300,7 +335,8 @@ describe('reports page — CSV export', () => {
     let fail = true
     server.use(
       http.get(`${API}/reports/source-statistics`, ({ request }) => {
-        if (new URL(request.url).searchParams.get('format') !== 'csv') return HttpResponse.json({ items: [], page: 1, page_size: 20, total: 0, pages: 0, period: {} })
+        if (new URL(request.url).searchParams.get('format') !== 'csv')
+          return HttpResponse.json({ items: [], page: 1, page_size: 20, total: 0, pages: 0, period: {} })
         return fail
           ? HttpResponse.json(errorBody('INTERNAL_ERROR', 'Export exploded'), { status: 500 })
           : new HttpResponse('source\r\n', { headers: { 'Content-Type': 'text/csv' } })
@@ -339,9 +375,10 @@ describe('reports page — CSV export', () => {
     const { user } = renderApp('/reports?from=2026-01-01')
     await user.click(await screen.findByRole('button', { name: 'Export CSV' }))
     const menu = await screen.findByRole('menu')
-    expect(within(menu).getByRole('menuitem', { name: /Pipeline summary/ })).toHaveTextContent('Ignores the date range filter')
+    expect(within(menu).getByRole('menuitem', { name: /Pipeline summary/ })).toHaveTextContent(
+      'Ignores the date range filter',
+    )
     expect(within(menu).queryByRole('menuitem', { name: /Recruiter activity/ })).not.toBeInTheDocument()
     expect(within(menu).getByRole('menuitem', { name: /Hiring funnel/ })).toBeInTheDocument()
   })
 })
-

@@ -55,7 +55,11 @@ export function makeStaffView(overrides: Partial<StaffInterviewView> = {}): Staf
     created_by_name: RILEY.name,
     my_feedback_submitted: false,
     can_submit_feedback: false,
-    application: { id: base.application_id, status: 'INTERVIEW', allowed_next_statuses: ['OFFER', 'REJECTED'] },
+    application: {
+      id: base.application_id,
+      status: 'INTERVIEW',
+      allowed_next_statuses: ['OFFER', 'REJECTED'],
+    },
     created_at: '2026-10-01T09:00:00Z',
     updated_at: '2026-10-01T09:00:00Z',
     ...overrides,
@@ -116,7 +120,11 @@ export function makeFeedbackSummary(items: FeedbackOut[] = []): FeedbackSummary 
   }
 }
 
-export const makeMember = (id: string, first: string, role: 'RECRUITER' | 'HIRING_MANAGER' = 'RECRUITER') => ({
+export const makeMember = (
+  id: string,
+  first: string,
+  role: 'RECRUITER' | 'HIRING_MANAGER' = 'RECRUITER',
+) => ({
   id,
   email: `${first.toLowerCase()}@demo.example`,
   first_name: first,

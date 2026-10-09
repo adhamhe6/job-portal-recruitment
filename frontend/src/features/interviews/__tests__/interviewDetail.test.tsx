@@ -23,7 +23,9 @@ function mockStaff(view = makeStaffView({ id: 'iv-1' }), feedback = makeFeedback
       calls.feedback += 1
       return HttpResponse.json(feedback)
     }),
-    http.get(`${API}/companies/${COMPANY_ID}/members`, () => HttpResponse.json([makeMember('user-ravi', 'Ravi')])),
+    http.get(`${API}/companies/${COMPANY_ID}/members`, () =>
+      HttpResponse.json([makeMember('user-ravi', 'Ravi')]),
+    ),
   )
   return calls
 }
@@ -50,7 +52,10 @@ describe('interview detail — staff', () => {
     expect(within(people).getByText('Ravi Patel')).toBeInTheDocument()
     expect(within(people).getByText('Observer')).toBeInTheDocument()
     expect(screen.getByText('Next stage options:')).toHaveTextContent('Offer, Rejected')
-    expect(screen.getByRole('link', { name: 'Open application' })).toHaveAttribute('href', '/applications/app-1')
+    expect(screen.getByRole('link', { name: 'Open application' })).toHaveAttribute(
+      'href',
+      '/applications/app-1',
+    )
     expect(screen.getByText('Scheduled by Riley Recruiter')).toBeInTheDocument()
     // actions per state machine: future interview cannot be completed yet
     expect(screen.getByRole('button', { name: /Reschedule/ })).toBeEnabled()
@@ -63,7 +68,9 @@ describe('interview detail — staff', () => {
     signInAs('RECRUITER')
     mockStaff(
       makeStaffView({ id: 'iv-1', start_at: inHours(30), feedback_count: 1 }),
-      makeFeedbackSummary([makeFeedback({ rating: 5, recommendation: 'STRONG_HIRE', strengths: 'Great SQL.' })]),
+      makeFeedbackSummary([
+        makeFeedback({ rating: 5, recommendation: 'STRONG_HIRE', strengths: 'Great SQL.' }),
+      ]),
     )
     renderApp('/interviews/iv-1')
     expect(await screen.findByText('Feedback opens once the interview has started.')).toBeInTheDocument()
@@ -92,7 +99,12 @@ describe('interview detail — staff', () => {
       http.get(`${API}/interviews/iv-1/feedback`, () => HttpResponse.json(stored)),
       http.post(`${API}/interviews/iv-1/feedback`, async ({ request }) => {
         body = (await request.json()) as Record<string, unknown>
-        const fb = makeFeedback({ ...(body as object), author_name: 'Riley Recruiter', author_id: 'user-recruiter', is_mine: true })
+        const fb = makeFeedback({
+          ...(body as object),
+          author_name: 'Riley Recruiter',
+          author_id: 'user-recruiter',
+          is_mine: true,
+        })
         stored = makeFeedbackSummary([fb])
         return HttpResponse.json(fb, { status: 201 })
       }),
@@ -124,7 +136,12 @@ describe('interview detail — staff', () => {
 
   it('updates my own feedback with PUT', async () => {
     signInAs('RECRUITER')
-    const mine = makeFeedback({ is_mine: true, author_name: 'Riley Recruiter', rating: 3, recommendation: 'NO_HIRE' })
+    const mine = makeFeedback({
+      is_mine: true,
+      author_name: 'Riley Recruiter',
+      rating: 3,
+      recommendation: 'NO_HIRE',
+    })
     mockStaff(
       makeStaffView({ id: 'iv-1', status: 'COMPLETED', start_at: inHours(-3), my_feedback_submitted: true }),
       makeFeedbackSummary([mine]),
@@ -153,9 +170,12 @@ describe('interview detail — staff', () => {
     )
     server.use(
       http.post(`${API}/interviews/iv-1/feedback`, () =>
-        HttpResponse.json(errorBody('FEEDBACK_ALREADY_SUBMITTED', 'You already submitted feedback for this interview'), {
-          status: 409,
-        }),
+        HttpResponse.json(
+          errorBody('FEEDBACK_ALREADY_SUBMITTED', 'You already submitted feedback for this interview'),
+          {
+            status: 409,
+          },
+        ),
       ),
     )
     const { user } = renderApp('/interviews/iv-1')
@@ -168,10 +188,17 @@ describe('interview detail — staff', () => {
   it('does not offer feedback for cancelled interviews and shows the cancellation reason', async () => {
     signInAs('RECRUITER')
     mockStaff(
-      makeStaffView({ id: 'iv-1', status: 'CANCELLED', cancelled_reason: 'Interviewer unavailable', start_at: inHours(5) }),
+      makeStaffView({
+        id: 'iv-1',
+        status: 'CANCELLED',
+        cancelled_reason: 'Interviewer unavailable',
+        start_at: inHours(5),
+      }),
     )
     renderApp('/interviews/iv-1')
-    expect(await screen.findByText('Feedback cannot be recorded for a cancelled interview.')).toBeInTheDocument()
+    expect(
+      await screen.findByText('Feedback cannot be recorded for a cancelled interview.'),
+    ).toBeInTheDocument()
     expect(screen.getAllByText(/Interviewer unavailable/).length).toBeGreaterThan(0)
     expect(screen.queryByRole('button', { name: /Reschedule/ })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /^Cancel$/ })).not.toBeInTheDocument()
@@ -189,7 +216,9 @@ describe('interview detail — staff', () => {
     )
     const { user } = renderApp('/interviews/iv-1')
     await user.click(await screen.findByRole('button', { name: /No-show/ }))
-    await user.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Record no-show' }))
+    await user.click(
+      within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Record no-show' }),
+    )
     await waitFor(() => expect(hit).toBe(true))
   })
 
@@ -200,7 +229,9 @@ describe('interview detail — staff', () => {
         id: 'iv-1',
         start_at: inHours(-2),
         can_submit_feedback: true,
-        participants: [{ user_id: hm.id, name: 'Hannah Manager', role: 'INTERVIEWER', has_submitted_feedback: false }],
+        participants: [
+          { user_id: hm.id, name: 'Hannah Manager', role: 'INTERVIEWER', has_submitted_feedback: false },
+        ],
       }),
     )
     const first = renderApp('/interviews/iv-1')
@@ -236,7 +267,9 @@ describe('interview detail — staff', () => {
     mockStaff()
     server.use(
       http.get(`${API}/interviews/iv-1`, () =>
-        fail ? HttpResponse.json(errorBody('INTERNAL_ERROR', 'boom'), { status: 500 }) : HttpResponse.json(makeStaffView({ id: 'iv-1' })),
+        fail
+          ? HttpResponse.json(errorBody('INTERNAL_ERROR', 'boom'), { status: 500 })
+          : HttpResponse.json(makeStaffView({ id: 'iv-1' })),
       ),
     )
     const { user } = renderApp('/interviews/iv-1')
@@ -274,10 +307,15 @@ describe('interview detail — candidate', () => {
       }),
     )
     renderApp('/interviews/iv-cand-1')
-    expect(await screen.findByRole('heading', { level: 1, name: /Technical interview with Northwind Labs/ })).toBeInTheDocument()
+    expect(
+      await screen.findByRole('heading', { level: 1, name: /Technical interview with Northwind Labs/ }),
+    ).toBeInTheDocument()
     expect(screen.getByText('Ravi Patel')).toBeInTheDocument()
     expect(screen.getByText('HQ Room 3')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /Open meeting link/ })).toHaveAttribute('href', 'https://meet.example.com/abc')
+    expect(screen.getByRole('link', { name: /Open meeting link/ })).toHaveAttribute(
+      'href',
+      'https://meet.example.com/abc',
+    )
     expect(screen.queryByRole('heading', { name: /feedback/i })).not.toBeInTheDocument()
     expect(screen.queryByText(/hiring team/i)).not.toBeInTheDocument()
     expect(screen.queryByText(/Internal notes/)).not.toBeInTheDocument()

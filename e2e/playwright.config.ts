@@ -6,7 +6,7 @@ import { join } from 'node:path'
 function localChromium(): string | undefined {
   const root = process.env.PLAYWRIGHT_BROWSERS_PATH
   if (!root || !existsSync(root)) return undefined
-  const dir = readdirSync(root).find((d) => d.startsWith('chromium-') || d === 'chromium')
+  const dir = readdirSync(root).find((d) => /^chromium-\d+$/.test(d))
   if (!dir) return undefined
   const candidates = [join(root, dir, 'chrome-linux', 'chrome'), join(root, dir, 'chrome-linux64', 'chrome'), join(root, dir, 'chrome')]
   return candidates.find(existsSync)

@@ -9,7 +9,7 @@ import { Field } from '@/components/ui/field'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { APPLICATION_STATUS_LABELS } from '@/lib/enums'
 import { paths } from '@/routes/paths'
-import { useSchedulableApplications } from '../api/interviews'
+import { useSchedulableApplications } from '../api/staff'
 import type { StaffInterviewView } from '../api/types'
 import { ScheduleInterviewDialog } from './ScheduleInterviewDialog'
 

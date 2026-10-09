@@ -16,7 +16,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { applyApiErrors, focusFirstError } from '@/lib/forms'
 import { dates, fmt } from '@/lib/format'
 import { cn } from '@/lib/utils'
-import { useInterviewFeedback, useSaveFeedback } from '../api/interviews'
+import { useInterviewFeedback, useSaveFeedback } from '../api/staff'
 import { RECOMMENDATIONS, type FeedbackOut, type HireRecommendation } from '../api/types'
 import {
   emptyFeedback,

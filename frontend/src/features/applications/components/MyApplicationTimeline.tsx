@@ -40,7 +40,7 @@ function toItem(h: HistoryEntry): TimelineItem {
 }
 
 /** Newest-first history of an application's status changes. */
-export function ApplicationTimeline({ applicationId }: { applicationId: string }) {
+export function MyApplicationTimeline({ applicationId }: { applicationId: string }) {
   const q = useApplicationHistory(applicationId, true)
   if (q.isPending)
     return (

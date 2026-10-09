@@ -9,9 +9,9 @@ import { cn } from '@/lib/utils'
 import { paths } from '@/routes/paths'
 import type { ApplicationListItem } from '@/lib/api'
 import { WITHDRAWABLE } from '../api/myApplications'
-import { ApplicationTimeline } from './ApplicationTimeline'
+import { MyApplicationTimeline } from './MyApplicationTimeline'
 
-export function ApplicationCard({
+export function MyApplicationCard({
   application: a,
   onWithdraw,
 }: {
@@ -99,7 +99,7 @@ export function ApplicationCard({
         </div>
 
         <div id={panelId} hidden={!open} className="pt-4">
-          {open && <ApplicationTimeline applicationId={a.id} />}
+          {open && <MyApplicationTimeline applicationId={a.id} />}
         </div>
       </article>
     </li>

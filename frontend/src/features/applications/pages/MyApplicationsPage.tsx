@@ -18,7 +18,7 @@ import { APPLICATION_STATUS_LABELS } from '@/lib/enums'
 import { cn } from '@/lib/utils'
 import { paths } from '@/routes/paths'
 import { useMyApplications, useWithdrawApplication, type ApplicationSort } from '../api/myApplications'
-import { ApplicationCard } from '../components/ApplicationCard'
+import { MyApplicationCard } from '../components/MyApplicationCard'
 
 const STATUS_OPTIONS = (Object.keys(APPLICATION_STATUS_LABELS) as ApplicationStatus[]).map((value) => ({
   value,
@@ -173,7 +173,7 @@ export default function MyApplicationsPage() {
         <div className={cn(query.isFetching && 'opacity-70 transition-opacity')} aria-busy={query.isFetching}>
           <ul className="grid gap-3" aria-label="Applications">
             {query.data.items.map((a) => (
-              <ApplicationCard key={a.id} application={a} onWithdraw={setTarget} />
+              <MyApplicationCard key={a.id} application={a} onWithdraw={setTarget} />
             ))}
           </ul>
           <Pagination

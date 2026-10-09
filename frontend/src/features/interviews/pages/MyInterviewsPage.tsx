@@ -18,8 +18,8 @@ import {
   useMyInterviews,
   type CandidateInterview,
   type InterviewView,
-} from '../api/interviews'
-import { InterviewCard } from '../components/InterviewCard'
+} from '../api/myInterviews'
+import { MyInterviewCard } from '../components/MyInterviewCard'
 
 const VIEWS: { value: InterviewView; label: string }[] = [
   { value: 'upcoming', label: 'Upcoming' },
@@ -129,7 +129,7 @@ export default function MyInterviewsPage() {
               aria-busy={query.isPlaceholderData || undefined}
             >
               {query.data.items.map((i) => (
-                <InterviewCard
+                <MyInterviewCard
                   key={i.id}
                   interview={i}
                   confirming={confirmingId === i.id}

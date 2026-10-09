@@ -28,7 +28,7 @@ import {
   useSchedulingContext,
   useUpdateInterview,
   type SchedulingContext,
-} from '../api/interviews'
+} from '../api/staff'
 import type { StaffInterviewItem, StaffInterviewView } from '../api/types'
 import { describeConflict, parseConflicts } from '../lib/conflicts'
 import { INTERVIEW_TYPE_OPTIONS } from '../lib/labels'

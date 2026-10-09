@@ -12,7 +12,7 @@ import { InterviewRowActions } from './InterviewRowActions'
 import { InterviewTime, InterviewWhere, ParticipantNames } from './InterviewParts'
 
 /** One interview as a row/card: time, who, what, where, status and the actions menu. */
-export function InterviewCard({
+export function StaffInterviewCard({
   interview: iv,
   viewerTz,
   onAction,
@@ -94,7 +94,7 @@ export function InterviewAgenda({
             <ul className="divide-y">
               {day.items.map((iv) => (
                 <li key={iv.id}>
-                  <InterviewCard interview={iv} viewerTz={viewerTz} onAction={onAction} />
+                  <StaffInterviewCard interview={iv} viewerTz={viewerTz} onAction={onAction} />
                 </li>
               ))}
             </ul>

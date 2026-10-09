@@ -1,5 +1,5 @@
 import { format, parseISO } from 'date-fns'
-import type { InterviewType } from '../api/interviews'
+import type { InterviewType } from '../api/myInterviews'
 
 export const INTERVIEW_TYPE_LABELS: Record<InterviewType, string> = {
   PHONE_SCREEN: 'Phone screen',

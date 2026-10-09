@@ -1,4 +1,5 @@
 import { CalendarClock, ExternalLink, MapPin } from 'lucide-react'
+import { lazy, Suspense, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { StatusBadge } from '@/components/common/StatusBadge'
 import { EmptyState, ErrorState } from '@/components/common/States'
@@ -12,9 +13,15 @@ import { paths } from '@/routes/paths'
 import { useApplicationInterviews } from '../api/applications'
 import { canScheduleInterview } from '../lib/workflow'
 
+// Owned by the interviews module; loaded only when the dialog is opened.
+const ScheduleInterviewDialog = lazy(() =>
+  import('@/features/interviews/components/ScheduleInterviewDialog').then((m) => ({
+    default: m.ScheduleInterviewDialog,
+  })),
+)
+
 /**
- * Interviews of this application plus the "schedule" entry point. The schedule dialog belongs to the interviews
- * module; until it exists this links to the interviews area, where interviews are created.
+ * Interviews of this application plus the "Schedule interview" entry point (the interviews module's dialog).
  */
 export function ApplicationInterviews({
   applicationId,
@@ -24,6 +31,7 @@ export function ApplicationInterviews({
   status: ApplicationStatus
 }) {
   const { can } = useAuth()
+  const [scheduling, setScheduling] = useState(false)
   const query = useApplicationInterviews(applicationId, true)
   const canSchedule = can('schedule_interviews')
   const schedulable = canScheduleInterview(status)
@@ -42,8 +50,8 @@ export function ApplicationInterviews({
           </CardDescription>
         </div>
         {canSchedule && schedulable && (
-          <Button asChild size="sm">
-            <Link to={`${paths.interviews}?application_id=${applicationId}`}>Schedule interview</Link>
+          <Button size="sm" onClick={() => setScheduling(true)}>
+            Schedule interview
           </Button>
         )}
       </CardHeader>
@@ -98,6 +106,15 @@ export function ApplicationInterviews({
           </ul>
         )}
       </CardContent>
+      {scheduling && (
+        <Suspense fallback={null}>
+          <ScheduleInterviewDialog
+            applicationId={applicationId}
+            open={scheduling}
+            onOpenChange={setScheduling}
+          />
+        </Suspense>
+      )}
     </Card>
   )
 }

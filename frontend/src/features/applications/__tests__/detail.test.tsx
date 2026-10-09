@@ -152,16 +152,13 @@ describe('application detail (staff)', () => {
     expect(await screen.findByText('Write a note before saving.')).toBeInTheDocument()
   })
 
-  it('offers "Schedule interview" only for shortlisted/interview applications and links to the interviews area', async () => {
+  it('offers "Schedule interview" only for shortlisted/interview applications', async () => {
     signInAs('RECRUITER')
     staffHandlers(
       makeApplicationDetail({ status: 'SHORTLISTED', allowed_next_statuses: ['INTERVIEW', 'REJECTED'] }),
     )
     renderApp('/applications/app-1')
-    expect(await screen.findByRole('link', { name: 'Schedule interview' })).toHaveAttribute(
-      'href',
-      '/interviews?application_id=app-1',
-    )
+    expect(await screen.findByRole('button', { name: 'Schedule interview' })).toBeInTheDocument()
   })
 
   it('does not offer scheduling before shortlisting and shows an empty interviews state', async () => {
@@ -170,7 +167,7 @@ describe('application detail (staff)', () => {
     server.use(http.get('/api/v1/interviews', () => HttpResponse.json(page([]))))
     renderApp('/applications/app-1')
     expect(await screen.findByText('No interviews yet')).toBeInTheDocument()
-    expect(screen.queryByRole('link', { name: 'Schedule interview' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Schedule interview' })).not.toBeInTheDocument()
     expect(screen.getByText(/once the application is shortlisted/)).toBeInTheDocument()
   })
 

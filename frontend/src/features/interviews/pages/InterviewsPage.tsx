@@ -21,14 +21,14 @@ import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { useUrlState } from '@/hooks/useUrlState'
 import { cn } from '@/lib/utils'
 import { paths } from '@/routes/paths'
-import { useInterviews, type InterviewFilters } from '../api/interviews'
+import { useInterviews, type InterviewFilters } from '../api/staff'
 import {
   INTERVIEW_STATUSES,
   isStaffInterview,
   type InterviewStatus,
   type StaffInterviewItem,
 } from '../api/types'
-import { InterviewAgenda, InterviewCard } from '../components/InterviewAgenda'
+import { InterviewAgenda, StaffInterviewCard } from '../components/InterviewAgenda'
 import { InterviewRowActions } from '../components/InterviewRowActions'
 import { InterviewTime, ParticipantNames } from '../components/InterviewParts'
 import { NewInterviewButton } from '../components/NewInterviewButton'
@@ -367,7 +367,7 @@ export default function InterviewsPage() {
             pageSize={state.who ? undefined : query.data?.page_size}
             onPageChange={(p) => update({ page: p }, { resetPage: false })}
             empty={empty}
-            renderCard={(iv) => <InterviewCard interview={iv} viewerTz={viewerTz} onAction={request} />}
+            renderCard={(iv) => <StaffInterviewCard interview={iv} viewerTz={viewerTz} onAction={request} />}
           />
         </Card>
       ) : !query.data ? (

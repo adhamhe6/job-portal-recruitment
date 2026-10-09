@@ -4,7 +4,7 @@ import { StatusBadge } from '@/components/common/StatusBadge'
 import { Button } from '@/components/ui/button'
 import { dates } from '@/lib/format'
 import { paths } from '@/routes/paths'
-import type { CandidateInterview } from '../api/interviews'
+import type { CandidateInterview } from '../api/myInterviews'
 import {
   browserTimeZone,
   INTERVIEW_TYPE_LABELS,
@@ -12,11 +12,11 @@ import {
   sameZone,
   timeOfDay,
   wallClock,
-} from '../lib/format'
+} from '../lib/myInterviewFormat'
 
 const CLOSED = new Set(['COMPLETED', 'CANCELLED', 'NO_SHOW'])
 
-export function InterviewCard({
+export function MyInterviewCard({
   interview: i,
   confirming,
   onConfirm,

@@ -122,6 +122,7 @@ function Form({ companyId, onClose }: { companyId: string; onClose: () => void }
       </Field>
       <Field
         label="Role"
+        htmlFor="am-role"
         error={errors.role?.message}
         hint="Recruiters manage jobs and candidates; hiring managers review the jobs assigned to them."
         required
@@ -130,7 +131,12 @@ function Form({ companyId, onClose }: { companyId: string; onClose: () => void }
           control={control}
           name="role"
           render={({ field }) => (
-            <SimpleSelect value={field.value} onValueChange={field.onChange} options={MEMBER_ROLE_OPTIONS} />
+            <SimpleSelect
+              id="am-role"
+              value={field.value}
+              onValueChange={field.onChange}
+              options={MEMBER_ROLE_OPTIONS}
+            />
           )}
         />
       </Field>

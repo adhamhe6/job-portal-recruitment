@@ -116,7 +116,7 @@ export function TasksPanel({
       onError: (e) => toast.error('Could not retry the task', { description: describeRetryError(e) }),
     })
 
-  const RetryButton = ({ t }: { t: AdminTask }) =>
+  const retryButton = (t: AdminTask) =>
     t.status === 'FAILED' ? (
       <Button
         size="sm"
@@ -130,7 +130,7 @@ export function TasksPanel({
       </Button>
     ) : null
 
-  const ErrorCell = ({ t }: { t: AdminTask }) =>
+  const errorCell = (t: AdminTask) =>
     t.error_code || t.error_message ? (
       <div className="max-w-xs text-xs">
         {t.error_code && <span className="font-mono font-semibold text-destructive">{t.error_code}</span>}
@@ -189,12 +189,12 @@ export function TasksPanel({
       hideBelow: 'md',
       cell: (t) => <span title={dates.dateTime(t.created_at)}>{dates.relative(t.created_at)}</span>,
     },
-    { key: 'error', header: 'Error', hideBelow: 'md', cell: (t) => <ErrorCell t={t} /> },
+    { key: 'error', header: 'Error', hideBelow: 'md', cell: (t) => errorCell(t) },
     {
       key: 'actions',
       header: <span className="sr-only">Actions</span>,
       align: 'right',
-      cell: (t) => <RetryButton t={t} />,
+      cell: (t) => retryButton(t),
     },
   ]
 
@@ -256,8 +256,8 @@ export function TasksPanel({
                 {t.stage ? `${t.stage} · ` : ''}
                 {t.progress}% · {t.attempts} attempt(s) · {dates.relative(t.created_at)}
               </p>
-              <ErrorCell t={t} />
-              <RetryButton t={t} />
+              {errorCell(t)}
+              {retryButton(t)}
             </div>
           )}
           empty={

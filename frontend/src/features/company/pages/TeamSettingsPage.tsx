@@ -53,7 +53,7 @@ export default function TeamSettingsPage() {
 
   const nameOf = (m: MemberOut) => `${m.first_name} ${m.last_name}`
 
-  const Actions = ({ m }: { m: MemberOut }) => {
+  const actions = (m: MemberOut) => {
     if (!canManage) return null
     if (m.id === user?.id) return <span className="text-xs text-muted-foreground">You</span>
     return (
@@ -138,7 +138,7 @@ export default function TeamSettingsPage() {
             key: 'actions',
             header: <span className="sr-only">Actions</span>,
             align: 'right' as const,
-            cell: (m: MemberOut) => <Actions m={m} />,
+            cell: (m: MemberOut) => actions(m),
           },
         ]
       : []),
@@ -201,7 +201,7 @@ export default function TeamSettingsPage() {
                       </p>
                     )}
                   </div>
-                  <Actions m={m} />
+                  {actions(m)}
                 </div>
               )}
               empty={

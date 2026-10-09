@@ -32,7 +32,14 @@ export function groupByDay(
     let day = days.get(key)
     if (!day) {
       const label = formatDay(iv.start_at, viewerTz)
-      const prefix = key === today ? 'Today · ' : key === tomorrow ? 'Tomorrow · ' : key === yesterday ? 'Yesterday · ' : ''
+      const prefix =
+        key === today
+          ? 'Today · '
+          : key === tomorrow
+            ? 'Tomorrow · '
+            : key === yesterday
+              ? 'Yesterday · '
+              : ''
       day = { key, heading: `${prefix}${label}`, items: [] }
       days.set(key, day)
     }

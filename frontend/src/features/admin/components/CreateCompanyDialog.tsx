@@ -86,12 +86,13 @@ function Form({ onClose }: { onClose: () => void }) {
         <Field label="Industry" error={errors.industry?.message} optional>
           <Input {...register('industry')} />
         </Field>
-        <Field label="Size" error={errors.size?.message} optional>
+        <Field label="Size" htmlFor="cc-size" error={errors.size?.message} optional>
           <Controller
             control={control}
             name="size"
             render={({ field }) => (
               <SimpleSelect
+                id="cc-size"
                 value={field.value}
                 onValueChange={field.onChange}
                 options={SIZE_OPTIONS}

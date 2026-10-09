@@ -15,7 +15,14 @@ export const INTERVIEW_STATUSES = [
 ] as const
 export type InterviewStatus = (typeof INTERVIEW_STATUSES)[number]
 
-export const INTERVIEW_TYPES = ['PHONE_SCREEN', 'TECHNICAL', 'BEHAVIORAL', 'PANEL', 'ONSITE', 'FINAL'] as const
+export const INTERVIEW_TYPES = [
+  'PHONE_SCREEN',
+  'TECHNICAL',
+  'BEHAVIORAL',
+  'PANEL',
+  'ONSITE',
+  'FINAL',
+] as const
 export type InterviewType = (typeof INTERVIEW_TYPES)[number]
 
 export type ParticipantRole = 'INTERVIEWER' | 'OBSERVER'
@@ -95,8 +102,9 @@ export interface CandidateInterviewView {
 export type InterviewListEntry = StaffInterviewItem | CandidateInterviewView
 export type InterviewDetail = StaffInterviewView | CandidateInterviewView
 
-export const isStaffInterview = <T extends InterviewListEntry>(i: T): i is Extract<T, { audience: 'staff' }> =>
-  i.audience === 'staff'
+export const isStaffInterview = <T extends InterviewListEntry>(
+  i: T,
+): i is Extract<T, { audience: 'staff' }> => i.audience === 'staff'
 
 export interface ParticipantIn {
   user_id: string

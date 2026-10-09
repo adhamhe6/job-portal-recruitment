@@ -4,13 +4,7 @@ import { Link } from 'react-router-dom'
 import { EmptyState, ErrorState } from '@/components/common/States'
 import { Button } from '@/components/ui/button'
 import { Combobox } from '@/components/ui/combobox'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Field } from '@/components/ui/field'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { APPLICATION_STATUS_LABELS } from '@/lib/enums'
@@ -24,7 +18,8 @@ function ApplicationPicker({ onPick }: { onPick: (applicationId: string) => void
   const q = useDebouncedValue(search, 250)
   const apps = useSchedulableApplications(q, true)
 
-  if (apps.isError && !apps.data) return <ErrorState compact error={apps.error} onRetry={() => apps.refetch()} />
+  if (apps.isError && !apps.data)
+    return <ErrorState compact error={apps.error} onRetry={() => apps.refetch()} />
   if (apps.data && apps.data.items.length === 0 && !q) {
     return (
       <EmptyState
@@ -41,7 +36,11 @@ function ApplicationPicker({ onPick }: { onPick: (applicationId: string) => void
     )
   }
   return (
-    <Field label="Application" required hint="Shortlisted candidates and candidates already at the interview stage.">
+    <Field
+      label="Application"
+      required
+      hint="Shortlisted candidates and candidates already at the interview stage."
+    >
       <Combobox
         value=""
         onChange={onPick}

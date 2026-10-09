@@ -77,10 +77,16 @@ export function InterviewAgenda({
   busy?: boolean
 }) {
   return (
-    <div className={busy ? 'space-y-6 opacity-60 transition-opacity' : 'space-y-6'} aria-busy={busy || undefined}>
+    <div
+      className={busy ? 'space-y-6 opacity-60 transition-opacity' : 'space-y-6'}
+      aria-busy={busy || undefined}
+    >
       {days.map((day) => (
         <section key={day.key} aria-labelledby={`day-${day.key}`}>
-          <h2 id={`day-${day.key}`} className="mb-2 text-sm font-semibold tracking-tight text-muted-foreground">
+          <h2
+            id={`day-${day.key}`}
+            className="mb-2 text-sm font-semibold tracking-tight text-muted-foreground"
+          >
             {day.heading}
             <span className="ml-2 font-normal">({pluralize(day.items.length, 'interview')})</span>
           </h2>

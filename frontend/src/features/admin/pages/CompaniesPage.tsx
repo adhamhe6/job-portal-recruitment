@@ -52,7 +52,7 @@ export default function CompaniesPage() {
     },
   ].filter(Boolean) as ActiveFilter[]
 
-  const Actions = ({ c }: { c: AdminCompany }) => (
+  const actions = (c: AdminCompany) => (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="icon-sm" aria-label={`Actions for ${c.name}`}>
@@ -105,7 +105,7 @@ export default function CompaniesPage() {
       key: 'actions',
       header: <span className="sr-only">Actions</span>,
       align: 'right',
-      cell: (c) => <Actions c={c} />,
+      cell: (c) => actions(c),
     },
   ]
 
@@ -168,7 +168,7 @@ export default function CompaniesPage() {
                   </p>
                   <AccountStatusBadge status={c.status} />
                 </div>
-                <Actions c={c} />
+                {actions(c)}
               </div>
             )}
             empty={

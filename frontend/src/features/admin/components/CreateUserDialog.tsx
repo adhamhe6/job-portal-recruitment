@@ -130,12 +130,13 @@ function CreateUserForm({ onDone, onCancel }: { onDone: () => void; onCancel: ()
       <Field label="Phone" error={errors.phone?.message} optional>
         <Input type="tel" autoComplete="off" {...register('phone')} />
       </Field>
-      <Field label="Role" error={errors.role?.message} required>
+      <Field label="Role" htmlFor="cu-role" error={errors.role?.message} required>
         <Controller
           control={control}
           name="role"
           render={({ field }) => (
             <SimpleSelect
+              id="cu-role"
               value={field.value}
               onValueChange={(v) => {
                 field.onChange(v)
@@ -149,6 +150,7 @@ function CreateUserForm({ onDone, onCancel }: { onDone: () => void; onCancel: ()
       {staff && (
         <Field
           label="Company"
+          htmlFor="cu-company"
           error={errors.company_id?.message}
           hint="Recruiters and hiring managers always belong to a company."
           required
@@ -158,6 +160,7 @@ function CreateUserForm({ onDone, onCancel }: { onDone: () => void; onCancel: ()
             name="company_id"
             render={({ field }) => (
               <Combobox
+                id="cu-company"
                 value={field.value}
                 onChange={field.onChange}
                 options={(companies.data ?? []).map((c) => ({ value: c.id, label: c.name }))}

@@ -10,7 +10,9 @@ const API = '/api/v1'
 
 function mockCompanies() {
   server.use(
-    http.get(`${API}/companies`, () => HttpResponse.json(page([makeCompany(), makeCompany({ id: 'c-2', name: 'Orbit Finance' })]))),
+    http.get(`${API}/companies`, () =>
+      HttpResponse.json(page([makeCompany(), makeCompany({ id: 'c-2', name: 'Orbit Finance' })])),
+    ),
   )
 }
 
@@ -25,7 +27,15 @@ describe('admin users page', () => {
         return HttpResponse.json(
           page([
             makeAdminUser(),
-            makeAdminUser({ id: 'u-2', first_name: 'Sam', last_name: 'Suspended', email: 'sam@x.example', role: 'RECRUITER', company_id: 'c-1', status: 'SUSPENDED' }),
+            makeAdminUser({
+              id: 'u-2',
+              first_name: 'Sam',
+              last_name: 'Suspended',
+              email: 'sam@x.example',
+              role: 'RECRUITER',
+              company_id: 'c-1',
+              status: 'SUSPENDED',
+            }),
           ]),
         )
       }),
@@ -54,7 +64,9 @@ describe('admin users page', () => {
     const bodies: unknown[] = []
     let fail = true
     server.use(
-      http.get(`${API}/users`, () => HttpResponse.json(page([makeAdminUser({ id: 'u-9', first_name: 'Dana', last_name: 'Doe' })]))),
+      http.get(`${API}/users`, () =>
+        HttpResponse.json(page([makeAdminUser({ id: 'u-9', first_name: 'Dana', last_name: 'Doe' })])),
+      ),
       http.patch(`${API}/users/u-9`, async ({ request }) => {
         bodies.push(await request.json())
         return fail
@@ -69,7 +81,9 @@ describe('admin users page', () => {
     expect(within(dialog).getByText(/signed out everywhere/i)).toBeInTheDocument()
     expect(bodies).toHaveLength(0) // nothing sent before confirming
     await user.click(within(dialog).getByRole('button', { name: 'Deactivate' }))
-    expect(await within(dialog).findByText(/cannot suspend or change the role of your own account/i)).toBeInTheDocument()
+    expect(
+      await within(dialog).findByText(/cannot suspend or change the role of your own account/i),
+    ).toBeInTheDocument()
     fail = false
     await user.click(within(dialog).getByRole('button', { name: 'Deactivate' }))
     await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
@@ -82,7 +96,17 @@ describe('admin users page', () => {
     mockCompanies()
     server.use(
       http.get(`${API}/users`, () =>
-        HttpResponse.json(page([makeAdminUser({ id: me.id, first_name: 'Riley', last_name: 'Admin', role: 'ADMIN', email: me.email })])),
+        HttpResponse.json(
+          page([
+            makeAdminUser({
+              id: me.id,
+              first_name: 'Riley',
+              last_name: 'Admin',
+              role: 'ADMIN',
+              email: me.email,
+            }),
+          ]),
+        ),
       ),
     )
     renderApp('/admin/users')
@@ -95,7 +119,9 @@ describe('admin users page', () => {
     mockCompanies()
     const bodies: unknown[] = []
     server.use(
-      http.get(`${API}/users`, () => HttpResponse.json(page([makeAdminUser({ id: 'u-9', first_name: 'Dana', last_name: 'Doe' })]))),
+      http.get(`${API}/users`, () =>
+        HttpResponse.json(page([makeAdminUser({ id: 'u-9', first_name: 'Dana', last_name: 'Doe' })])),
+      ),
       http.patch(`${API}/users/u-9`, async ({ request }) => {
         bodies.push(await request.json())
         return HttpResponse.json(makeAdminUser({ id: 'u-9', role: 'RECRUITER', company_id: 'c-2' }))
@@ -127,8 +153,14 @@ describe('admin users page', () => {
         attempts += 1
         body = (await request.json()) as Record<string, unknown>
         return attempts === 1
-          ? HttpResponse.json(errorBody('EMAIL_ALREADY_REGISTERED', 'An account with this email already exists'), { status: 409 })
-          : HttpResponse.json(makeAdminUser({ id: 'u-new', first_name: 'Nia', last_name: 'New', role: 'CANDIDATE' }), { status: 201 })
+          ? HttpResponse.json(
+              errorBody('EMAIL_ALREADY_REGISTERED', 'An account with this email already exists'),
+              { status: 409 },
+            )
+          : HttpResponse.json(
+              makeAdminUser({ id: 'u-new', first_name: 'Nia', last_name: 'New', role: 'CANDIDATE' }),
+              { status: 201 },
+            )
       }),
     )
     const { user } = renderApp('/admin/users')
@@ -145,7 +177,10 @@ describe('admin users page', () => {
     expect(await within(dialog).findByText('Use at least 10 characters')).toBeInTheDocument()
     expect(attempts).toBe(0)
     await user.clear(within(dialog).getByLabelText(/initial password/i, { selector: 'input' }))
-    await user.type(within(dialog).getByLabelText(/initial password/i, { selector: 'input' }), 'GoodPass12345')
+    await user.type(
+      within(dialog).getByLabelText(/initial password/i, { selector: 'input' }),
+      'GoodPass12345',
+    )
     await user.click(within(dialog).getByRole('button', { name: 'Create user' }))
     expect(await within(dialog).findByText('An account with this email already exists')).toBeInTheDocument()
     await user.click(within(dialog).getByRole('button', { name: 'Create user' }))
@@ -182,6 +217,6 @@ describe('admin users page', () => {
   it('is not available to recruiters', async () => {
     signInAs('RECRUITER')
     renderApp('/admin/users')
-    expect(await screen.findByText(/don.t have permission|access denied|forbidden/i)).toBeInTheDocument()
+    expect(await screen.findByText(/don.t have access to this page/i)).toBeInTheDocument()
   })
 })

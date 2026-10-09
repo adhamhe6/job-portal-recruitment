@@ -89,7 +89,8 @@ function StaffInterview({ iv }: { iv: StaffInterviewView }) {
       />
       {actions.complete.reason && !actions.complete.allowed && (
         <p className="-mt-3 mb-4 text-xs text-muted-foreground">
-          Mark completed and no-show: {actions.complete.reason.charAt(0).toLowerCase() + actions.complete.reason.slice(1)}
+          Mark completed and no-show:{' '}
+          {actions.complete.reason.charAt(0).toLowerCase() + actions.complete.reason.slice(1)}
         </p>
       )}
 
@@ -171,7 +172,10 @@ export default function InterviewDetailPage() {
     const notFound = query.error instanceof ApiError && query.error.status === 404
     return (
       <>
-        <PageHeader title="Interview" breadcrumbs={[{ label: 'Interviews', to: paths.interviews }, { label: 'Interview' }]} />
+        <PageHeader
+          title="Interview"
+          breadcrumbs={[{ label: 'Interviews', to: paths.interviews }, { label: 'Interview' }]}
+        />
         <Card>
           <ErrorState
             error={query.error}

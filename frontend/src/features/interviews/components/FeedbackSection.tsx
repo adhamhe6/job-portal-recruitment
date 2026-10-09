@@ -41,7 +41,10 @@ function RatingStars({ value }: { value: number }) {
         {[1, 2, 3, 4, 5].map((n) => (
           <Star
             key={n}
-            className={cn('size-4', n <= value ? 'fill-amber-400 text-amber-500' : 'text-muted-foreground/40')}
+            className={cn(
+              'size-4',
+              n <= value ? 'fill-amber-400 text-amber-500' : 'text-muted-foreground/40',
+            )}
           />
         ))}
       </span>
@@ -267,7 +270,10 @@ export function FeedbackSection({
                 <p>
                   <span className="text-muted-foreground">Average rating </span>
                   <strong className="tabular">{fmt.num(data.average_rating)}/5</strong>
-                  <span className="text-muted-foreground"> from {data.count} {data.count === 1 ? 'entry' : 'entries'}</span>
+                  <span className="text-muted-foreground">
+                    {' '}
+                    from {data.count} {data.count === 1 ? 'entry' : 'entries'}
+                  </span>
                 </p>
                 <ul className="flex flex-wrap gap-2" aria-label="Recommendations">
                   {RECOMMENDATIONS.filter((r) => (data.recommendations[r] ?? 0) > 0).map((r) => (
@@ -282,7 +288,10 @@ export function FeedbackSection({
             )}
 
             {showNewForm && (
-              <section aria-labelledby="my-feedback-heading" className="rounded-lg border border-primary/30 p-4">
+              <section
+                aria-labelledby="my-feedback-heading"
+                className="rounded-lg border border-primary/30 p-4"
+              >
                 <h3 id="my-feedback-heading" className="mb-3 font-semibold">
                   Your feedback
                 </h3>

@@ -121,12 +121,13 @@ export function CompanyProfileForm({ company, canEdit }: { company: CompanyOut; 
               <Field label="Industry" error={errors.industry?.message} optional>
                 <Input {...register('industry')} />
               </Field>
-              <Field label="Company size" error={errors.size?.message} optional>
+              <Field label="Company size" htmlFor="cp-size" error={errors.size?.message} optional>
                 <Controller
                   control={control}
                   name="size"
                   render={({ field }) => (
                     <SimpleSelect
+                      id="cp-size"
                       value={field.value}
                       onValueChange={field.onChange}
                       options={SIZE_OPTIONS}

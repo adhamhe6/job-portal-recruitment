@@ -263,7 +263,7 @@ describe('application detail (candidate)', () => {
     expect(screen.queryByText('Internal notes')).not.toBeInTheDocument()
     expect(screen.queryByText(/Match with this job/)).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Shortlist|Reject/ })).not.toBeInTheDocument()
-    expect(screen.queryByText('Interviews')).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Interviews' })).not.toBeInTheDocument()
     expect(requested).toEqual([])
   })
 

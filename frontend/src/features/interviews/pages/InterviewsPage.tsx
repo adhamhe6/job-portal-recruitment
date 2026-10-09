@@ -22,7 +22,12 @@ import { useUrlState } from '@/hooks/useUrlState'
 import { cn } from '@/lib/utils'
 import { paths } from '@/routes/paths'
 import { useInterviews, type InterviewFilters } from '../api/interviews'
-import { INTERVIEW_STATUSES, isStaffInterview, type InterviewStatus, type StaffInterviewItem } from '../api/types'
+import {
+  INTERVIEW_STATUSES,
+  isStaffInterview,
+  type InterviewStatus,
+  type StaffInterviewItem,
+} from '../api/types'
 import { InterviewAgenda, InterviewCard } from '../components/InterviewAgenda'
 import { InterviewRowActions } from '../components/InterviewRowActions'
 import { InterviewTime, ParticipantNames } from '../components/InterviewParts'
@@ -76,10 +81,7 @@ export default function InterviewsPage() {
   const canSchedule = can('schedule_interviews')
   const { request, dialog } = useInterviewActions()
 
-  const loaded = useMemo(
-    () => (query.data?.items ?? []).filter(isStaffInterview),
-    [query.data?.items],
-  )
+  const loaded = useMemo(() => (query.data?.items ?? []).filter(isStaffInterview), [query.data?.items])
   const items = useMemo(
     () => (state.who ? loaded.filter((i) => i.participants.some((p) => p.user_id === state.who)) : loaded),
     [loaded, state.who],
@@ -92,8 +94,11 @@ export default function InterviewsPage() {
     for (const m of members.data ?? []) {
       if (m.status === 'ACTIVE') map.set(m.id, `${m.first_name} ${m.last_name}`.trim())
     }
-    for (const iv of loaded) for (const p of iv.participants) if (!map.has(p.user_id)) map.set(p.user_id, p.name)
-    return [...map.entries()].map(([value, label]) => ({ value, label })).sort((a, b) => a.label.localeCompare(b.label))
+    for (const iv of loaded)
+      for (const p of iv.participants) if (!map.has(p.user_id)) map.set(p.user_id, p.name)
+    return [...map.entries()]
+      .map(([value, label]) => ({ value, label }))
+      .sort((a, b) => a.label.localeCompare(b.label))
   }, [members.data, loaded])
 
   const jobTitle = jobs.data?.items.find((j) => j.id === state.job)?.title
@@ -115,7 +120,9 @@ export default function InterviewsPage() {
           },
         ]
       : []),
-    ...(state.from ? [{ key: 'from', label: `From ${state.from}`, onRemove: () => update({ from: '' }) }] : []),
+    ...(state.from
+      ? [{ key: 'from', label: `From ${state.from}`, onRemove: () => update({ from: '' }) }]
+      : []),
     ...(state.to ? [{ key: 'to', label: `To ${state.to}`, onRemove: () => update({ to: '' }) }] : []),
     ...(!upcomingOnly
       ? [{ key: 'past', label: 'Including past interviews', onRemove: () => update({ upcoming: '1' }) }]
@@ -318,14 +325,16 @@ export default function InterviewsPage() {
             onChange={(e) => update({ to: e.target.value })}
           />
         </div>
-        <label className="flex cursor-pointer items-center gap-2 text-sm">
+        <div className="flex items-center gap-2 text-sm">
           <Checkbox
+            id="iv-upcoming"
             checked={upcomingOnly}
             onCheckedChange={(c) => update({ upcoming: c === true ? '1' : '0' })}
-            aria-label="Upcoming only"
           />
-          Upcoming only
-        </label>
+          <Label htmlFor="iv-upcoming" className="cursor-pointer">
+            Upcoming only
+          </Label>
+        </div>
       </FilterBar>
 
       {rangeInvalid && (
@@ -335,8 +344,8 @@ export default function InterviewsPage() {
       )}
       {truncated && (
         <Alert variant="info" className="mb-4">
-          Showing the first {CLIENT_FILTER_PAGE_SIZE} of {total} matching interviews for this interviewer filter.
-          Narrow the date range or status to see the rest.
+          Showing the first {CLIENT_FILTER_PAGE_SIZE} of {total} matching interviews for this interviewer
+          filter. Narrow the date range or status to see the rest.
         </Alert>
       )}
 
@@ -384,8 +393,8 @@ export default function InterviewsPage() {
         </>
       )}
       <p className="mt-4 text-xs text-muted-foreground">
-        Times are shown in your timezone ({viewerTz.replace(/_/g, ' ')}). When an interview was set up in another
-        timezone, that time is shown as well.
+        Times are shown in your timezone ({viewerTz.replace(/_/g, ' ')}). When an interview was set up in
+        another timezone, that time is shown as well.
       </p>
       {dialog}
     </>

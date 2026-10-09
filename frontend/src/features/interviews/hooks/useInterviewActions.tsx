@@ -48,8 +48,7 @@ export function describeTransitionError(e: unknown): string {
     if (e.isNetworkError) return e.message
     if (e.status === 404) return 'This interview no longer exists or you no longer have access to it.'
     if (e.status === 403) return 'You are not allowed to change this interview.'
-    if (e.is('INVALID_STATE_TRANSITION'))
-      return `${e.message}. Reload the page to see its current status.`
+    if (e.is('INVALID_STATE_TRANSITION')) return `${e.message}. Reload the page to see its current status.`
     return e.message
   }
   return errorMessage(e)
@@ -114,7 +113,12 @@ function TransitionDialog({
       onConfirm={run}
     >
       {action === 'cancel' && (
-        <Field label="Reason" required hint="Internal. At least 3 characters." error={error && reasonTooShort ? error : undefined}>
+        <Field
+          label="Reason"
+          required
+          hint="Internal. At least 3 characters."
+          error={error && reasonTooShort ? error : undefined}
+        >
           <Textarea
             rows={3}
             maxLength={500}

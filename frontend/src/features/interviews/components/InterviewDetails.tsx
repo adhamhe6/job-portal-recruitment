@@ -1,4 +1,12 @@
-import { CalendarCheck, CalendarClock, CalendarX2, CheckCircle2, ExternalLink, Info, Video } from 'lucide-react'
+import {
+  CalendarCheck,
+  CalendarClock,
+  CalendarX2,
+  CheckCircle2,
+  ExternalLink,
+  Info,
+  Video,
+} from 'lucide-react'
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { Timeline, type TimelineItem } from '@/components/common/Timeline'
@@ -80,7 +88,10 @@ export function StaffDetailsCard({ iv }: { iv: StaffInterviewView }) {
             <span className="text-muted-foreground">· {iv.company_name}</span>
           </Row>
           <Row label="Candidate">
-            <Link to={paths.candidate(iv.candidate_id)} className="font-medium hover:text-primary hover:underline">
+            <Link
+              to={paths.candidate(iv.candidate_id)}
+              className="font-medium hover:text-primary hover:underline"
+            >
               {iv.candidate_name}
             </Link>
           </Row>
@@ -115,7 +126,12 @@ export function HistoryCard({ iv }: { iv: StaffInterviewView }) {
       icon: <CalendarCheck />,
     },
   ]
-  if (iv.updated_at !== iv.created_at && iv.status !== 'CANCELLED' && iv.status !== 'COMPLETED' && iv.status !== 'NO_SHOW') {
+  if (
+    iv.updated_at !== iv.created_at &&
+    iv.status !== 'CANCELLED' &&
+    iv.status !== 'COMPLETED' &&
+    iv.status !== 'NO_SHOW'
+  ) {
     items.push({
       id: 'updated',
       title: iv.status === 'RESCHEDULED' ? 'Rescheduled' : 'Last updated',
@@ -134,9 +150,21 @@ export function HistoryCard({ iv }: { iv: StaffInterviewView }) {
       tone: 'danger',
     })
   if (iv.status === 'COMPLETED')
-    items.push({ id: 'completed', title: 'Completed', time: dates.dateTime(iv.updated_at), icon: <CheckCircle2 />, tone: 'success' })
+    items.push({
+      id: 'completed',
+      title: 'Completed',
+      time: dates.dateTime(iv.updated_at),
+      icon: <CheckCircle2 />,
+      tone: 'success',
+    })
   if (iv.status === 'NO_SHOW')
-    items.push({ id: 'no-show', title: 'Candidate did not attend', time: dates.dateTime(iv.updated_at), icon: <CalendarX2 />, tone: 'danger' })
+    items.push({
+      id: 'no-show',
+      title: 'Candidate did not attend',
+      time: dates.dateTime(iv.updated_at),
+      icon: <CalendarX2 />,
+      tone: 'danger',
+    })
   return (
     <Card>
       <CardHeader>
@@ -152,12 +180,29 @@ export function HistoryCard({ iv }: { iv: StaffInterviewView }) {
 /** The candidate's page: logistics only, plus confirming attendance. */
 export function CandidateInterviewCard({ iv }: { iv: CandidateInterviewView }) {
   const confirm = useInterviewTransition()
-  const notice: Partial<Record<CandidateInterviewView['status'], { variant: 'info' | 'success' | 'warning' | 'danger'; text: string }>> = {
+  const notice: Partial<
+    Record<
+      CandidateInterviewView['status'],
+      { variant: 'info' | 'success' | 'warning' | 'danger'; text: string }
+    >
+  > = {
     CONFIRMED: { variant: 'success', text: 'You have confirmed your attendance. See you there!' },
-    RESCHEDULED: { variant: 'warning', text: 'The time of this interview changed. Please check the new time and confirm it.' },
-    CANCELLED: { variant: 'danger', text: 'This interview was cancelled. The hiring team will be in touch if a new time is needed.' },
-    COMPLETED: { variant: 'info', text: 'This interview has taken place. The team will update you on the next steps.' },
-    NO_SHOW: { variant: 'warning', text: 'This interview was recorded as missed. Contact the hiring team if that is a mistake.' },
+    RESCHEDULED: {
+      variant: 'warning',
+      text: 'The time of this interview changed. Please check the new time and confirm it.',
+    },
+    CANCELLED: {
+      variant: 'danger',
+      text: 'This interview was cancelled. The hiring team will be in touch if a new time is needed.',
+    },
+    COMPLETED: {
+      variant: 'info',
+      text: 'This interview has taken place. The team will update you on the next steps.',
+    },
+    NO_SHOW: {
+      variant: 'warning',
+      text: 'This interview was recorded as missed. Contact the hiring team if that is a mistake.',
+    },
   }
   const n = notice[iv.status]
   return (
@@ -191,14 +236,21 @@ export function CandidateInterviewCard({ iv }: { iv: CandidateInterviewView }) {
               </Link>
             </Row>
             <Row label="You will meet">
-              {iv.interviewers.length ? iv.interviewers.join(', ') : <span className="text-muted-foreground">To be confirmed</span>}
+              {iv.interviewers.length ? (
+                iv.interviewers.join(', ')
+              ) : (
+                <span className="text-muted-foreground">To be confirmed</span>
+              )}
             </Row>
           </dl>
         </CardContent>
       </Card>
       <div className="flex flex-wrap items-center gap-3">
         {iv.can_confirm && (
-          <Button loading={confirm.isPending} onClick={() => confirm.mutate({ id: iv.id, action: 'confirm' })}>
+          <Button
+            loading={confirm.isPending}
+            onClick={() => confirm.mutate({ id: iv.id, action: 'confirm' })}
+          >
             <CheckCircle2 /> Confirm attendance
           </Button>
         )}

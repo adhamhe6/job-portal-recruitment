@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Globe } from 'lucide-react'
-import { useMemo, useRef, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Controller, useForm, useWatch } from 'react-hook-form'
 import { toast } from 'sonner'
 import { ErrorState } from '@/components/common/States'
@@ -140,7 +140,8 @@ function DialogBody({
   // The list shape has no internal notes; load the full record so saving never wipes them.
   const needsFull = Boolean(interview && !('notes' in interview))
   const full = useInterview(interview?.id, needsFull)
-  const existing = interview && 'notes' in interview ? interview : (full.data as StaffInterviewView | undefined)
+  const existing =
+    interview && 'notes' in interview ? interview : (full.data as StaffInterviewView | undefined)
 
   const failed = ctx.isError ? ctx : members.isError ? members : full.isError ? full : null
   if (failed) {
@@ -254,10 +255,14 @@ function ScheduleForm({
     getValues,
     control,
     formState: { errors },
-  } = useForm<ScheduleFormValues>({ resolver: zodResolver(schema), defaultValues: defaults, mode: 'onTouched' })
+  } = useForm<ScheduleFormValues>({
+    resolver: zodResolver(schema),
+    defaultValues: defaults,
+    mode: 'onTouched',
+  })
 
   const values = useWatch({ control }) as ScheduleFormValues
-  const previousStart = useRef(defaults.start)
+  const [previousStart, setPreviousStart] = useState(defaults.start)
   const [formError, setFormError] = useState<string | null>(null)
   const [conflict, setConflict] = useState<{ key: string; lines: string[] } | null>(null)
   const slotKey = JSON.stringify([values.start, values.end, values.timezone, values.interviewers])
@@ -336,9 +341,7 @@ function ScheduleForm({
 
   const timeChanged =
     Boolean(existing) &&
-    (values.start !== defaults.start ||
-      values.end !== defaults.end ||
-      values.timezone !== defaults.timezone)
+    (values.start !== defaults.start || values.end !== defaults.end || values.timezone !== defaults.timezone)
   const submitLabel = !existing ? 'Schedule interview' : timeChanged ? 'Reschedule interview' : 'Save changes'
 
   return (
@@ -350,8 +353,8 @@ function ScheduleForm({
 
       {stageBlocked && (
         <Alert variant="warning" title="This application cannot be scheduled yet">
-          Interviews can only be scheduled for shortlisted applications or applications already at the interview
-          stage. This one is currently <strong>{application.status.toLowerCase()}</strong>.
+          Interviews can only be scheduled for shortlisted applications or applications already at the
+          interview stage. This one is currently <strong>{application.status.toLowerCase()}</strong>.
         </Alert>
       )}
 
@@ -377,7 +380,12 @@ function ScheduleForm({
             ))}
           </NativeSelect>
         </Field>
-        <Field label="Timezone" required error={errors.timezone?.message} hint="The zone the candidate is told.">
+        <Field
+          label="Timezone"
+          required
+          error={errors.timezone?.message}
+          hint="The zone the candidate is told."
+        >
           <NativeSelect {...register('timezone')}>
             {zones.map((z) => (
               <option key={z} value={z}>
@@ -393,8 +401,8 @@ function ScheduleForm({
               onChange: (e: { target: { value: string } }) => {
                 const next = e.target.value
                 // Moving the start keeps the interview's duration (60 minutes for a new one).
-                if (next) setValue('end', endAfterStartChange(previousStart.current, getValues('end'), next))
-                previousStart.current = next
+                if (next) setValue('end', endAfterStartChange(previousStart, getValues('end'), next))
+                setPreviousStart(next)
               },
             })}
           />
@@ -413,18 +421,17 @@ function ScheduleForm({
           <span>
             {formatSlot(start.toISOString(), end.toISOString(), values.timezone)} (
             {offsetLabel(start, values.timezone)})
-            {values.timezone !== 'UTC' && (
-              <>
-                {' '}
-                = {formatSlot(start.toISOString(), end.toISOString(), 'UTC')}
-              </>
-            )}
+            {values.timezone !== 'UTC' && <> = {formatSlot(start.toISOString(), end.toISOString(), 'UTC')}</>}
           </span>
         </p>
       )}
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Location" error={errors.location?.message} hint="Address or room. Optional if you add a link.">
+        <Field
+          label="Location"
+          error={errors.location?.message}
+          hint="Address or room. Optional if you add a link."
+        >
           <Input placeholder="e.g. HQ, 3rd floor, Room Bergen" maxLength={300} {...register('location')} />
         </Field>
         <Field
@@ -432,7 +439,12 @@ function ScheduleForm({
           error={errors.meeting_url?.message}
           hint="Video-call link, https:// only. Optional if you add a location."
         >
-          <Input type="url" inputMode="url" placeholder="https://meet.example.com/…" {...register('meeting_url')} />
+          <Input
+            type="url"
+            inputMode="url"
+            placeholder="https://meet.example.com/…"
+            {...register('meeting_url')}
+          />
         </Field>
       </div>
 

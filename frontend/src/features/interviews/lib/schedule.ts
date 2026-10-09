@@ -1,10 +1,5 @@
 import { z } from 'zod'
-import {
-  INTERVIEW_TYPES,
-  type InterviewCreate,
-  type InterviewUpdate,
-  type ParticipantIn,
-} from '../api/types'
+import { INTERVIEW_TYPES, type InterviewCreate, type InterviewUpdate, type ParticipantIn } from '../api/types'
 import { addMinutesToLocal, isValidTimeZone, minutesBetweenLocal, wallTimeToInstant } from './time'
 
 /** Backend limits (backend/app/services/interviews.py + schemas/interview.py). */
@@ -69,10 +64,7 @@ export function makeScheduleSchema({ original, now = () => new Date() }: Schedul
         return add('end', 'An interview cannot last longer than 12 hours')
 
       const timeChanged =
-        !original ||
-        original.start !== v.start ||
-        original.end !== v.end ||
-        original.timezone !== v.timezone
+        !original || original.start !== v.start || original.end !== v.end || original.timezone !== v.timezone
       if (timeChanged && start.getTime() < now().getTime() - PAST_TOLERANCE_MINUTES * 60_000)
         add('start', 'The interview cannot start in the past')
     })

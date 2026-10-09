@@ -91,6 +91,7 @@ function Form({ companyId, member, onClose }: { companyId: string; member: Membe
         {formError && <Alert variant="danger">{formError}</Alert>}
         <Field
           label="Role"
+          htmlFor="em-role"
           hint={member.is_company_admin ? 'Company administrators stay recruiters.' : undefined}
           error={errors.role?.message}
         >
@@ -99,6 +100,7 @@ function Form({ companyId, member, onClose }: { companyId: string; member: Membe
             name="role"
             render={({ field }) => (
               <SimpleSelect
+                id="em-role"
                 value={field.value}
                 onValueChange={field.onChange}
                 options={MEMBER_ROLE_OPTIONS}

@@ -66,7 +66,11 @@ export function interviewActions({
 }
 
 /** Plain-language explanation of why feedback cannot be submitted right now. */
-export function feedbackBlockedReason(status: InterviewStatus, startAt: string, now = new Date()): string | null {
+export function feedbackBlockedReason(
+  status: InterviewStatus,
+  startAt: string,
+  now = new Date(),
+): string | null {
   if (status === 'CANCELLED' || status === 'NO_SHOW')
     return `Feedback cannot be recorded for a ${status === 'NO_SHOW' ? 'no-show' : 'cancelled'} interview.`
   if (status !== 'COMPLETED' && new Date(startAt).getTime() > now.getTime())

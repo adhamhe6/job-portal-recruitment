@@ -108,10 +108,10 @@ export function OverviewTab({ filters }: { filters: ReportFilters }) {
             columns={[
               { key: 'stage', header: 'Stage', cell: (s) => APPLICATION_STATUS_LABELS[s.stage] },
               { key: 'count', header: 'Reached', align: 'right', cell: (s) => fmt.int(s.count) },
-              { key: 'applied', header: '% of applied', align: 'right', cell: (s) => pct(s.pct_of_applied) },
+              { key: 'applied', header: 'Of applied', align: 'right', cell: (s) => pct(s.pct_of_applied) },
               {
                 key: 'prev',
-                header: 'From previous stage',
+                header: 'Step rate',
                 align: 'right',
                 cell: (s) => (s.is_branch ? 'Branch' : pct(s.pct_of_previous)),
               },

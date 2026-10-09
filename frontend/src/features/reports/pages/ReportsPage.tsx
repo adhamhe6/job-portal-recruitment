@@ -111,14 +111,14 @@ export default function ReportsPage() {
           </div>
         }
       >
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Label htmlFor="rep-from" className="text-xs text-muted-foreground">
             From
           </Label>
           <Input
             id="rep-from"
             type="date"
-            className="w-40"
+            className="w-40 max-w-full"
             value={state.from}
             max={state.to || undefined}
             aria-invalid={rangeInvalid || undefined}
@@ -130,7 +130,7 @@ export default function ReportsPage() {
           <Input
             id="rep-to"
             type="date"
-            className="w-40"
+            className="w-40 max-w-full"
             value={state.to}
             min={state.from || undefined}
             aria-invalid={rangeInvalid || undefined}

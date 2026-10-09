@@ -307,14 +307,15 @@ export function FeedbackSection({
               </p>
             )}
 
-            {data && data.items.length === 0 ? (
+            {data && data.items.length === 0 && !showNewForm && (
               <EmptyState
                 compact
                 icon={<MessageSquareText aria-hidden />}
                 title="No feedback yet"
                 description="Feedback appears here as soon as an interviewer submits it."
               />
-            ) : (
+            )}
+            {data && data.items.length > 0 && (
               <ul className="space-y-3" aria-label="Feedback entries">
                 {data?.items.map((item) =>
                   item.is_mine && editing ? (

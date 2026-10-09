@@ -106,8 +106,13 @@ export function InterviewsTab({ filters }: { filters: ReportFilters }) {
             height={240}
             srSummary={c.data.map((d) => `${d.label}: ${d.value}`).join('; ')}
           >
-            {s && s.total === 0 && c.title !== 'Feedback recommendations' ? (
-              <EmptyState compact title="No interviews in this period" />
+            {s && c.data.every((d) => d.value === 0) ? (
+              <EmptyState
+                compact
+                title={
+                  c.title === 'Feedback recommendations' ? 'No feedback yet' : 'No interviews in this period'
+                }
+              />
             ) : (
               <HBarChart data={c.data} name={c.name} labelWidth={96} rightMargin={32} />
             )}

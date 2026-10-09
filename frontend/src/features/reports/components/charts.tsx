@@ -33,6 +33,7 @@ export function HBarChart({
   color = 'var(--chart-1)',
   labelWidth = 104,
   rightMargin = 56,
+  decimals = false,
 }: {
   data: BarDatum[]
   /** Series name for the tooltip ("Applications"). */
@@ -41,6 +42,8 @@ export function HBarChart({
   color?: string
   labelWidth?: number
   rightMargin?: number
+  /** Allow fractional axis ticks (days, rates); counts keep whole-number ticks. */
+  decimals?: boolean
 }) {
   const rows = data.map((d) => ({ ...d, text: d.text ?? format(d.value) }))
   return (
@@ -54,7 +57,8 @@ export function HBarChart({
         <CartesianGrid horizontal={false} stroke={chartTheme.grid} strokeWidth={1} />
         <XAxis
           type="number"
-          allowDecimals
+          allowDecimals={decimals}
+          tickFormatter={(v: number) => format(v)}
           tick={chartTheme.axis}
           tickLine={false}
           axisLine={false}

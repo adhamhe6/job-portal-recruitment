@@ -130,6 +130,7 @@ export function PipelineTab({ filters }: { filters: ReportFilters }) {
               data={hiredJobs.map((r) => ({ label: r.title, value: r.avg_days_to_hire ?? 0 }))}
               name="Average days to hire"
               format={(v) => `${fmt.num(v)} d`}
+              decimals
               labelWidth={120}
               color="var(--chart-3)"
             />

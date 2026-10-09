@@ -43,13 +43,12 @@ function StaffInterview({ iv }: { iv: StaffInterviewView }) {
   })
   const mayWrite = hasRole('RECRUITER', 'HIRING_MANAGER') && can('provide_feedback')
   const blocked = iv.can_submit_feedback ? null : feedbackBlockedReason(iv.status, iv.start_at)
-  const title = `${interviewTypeLabel(iv.interview_type)} · ${iv.candidate_name}`
 
   return (
     <>
       <PageHeader
-        title={title}
-        description={`${iv.job_title} at ${iv.company_name}`}
+        title={iv.candidate_name}
+        description={`${interviewTypeLabel(iv.interview_type)} · ${iv.job_title} at ${iv.company_name}`}
         breadcrumbs={[{ label: 'Interviews', to: paths.interviews }, { label: iv.candidate_name }]}
         meta={<StatusBadge kind="interview" status={iv.status} />}
         actions={

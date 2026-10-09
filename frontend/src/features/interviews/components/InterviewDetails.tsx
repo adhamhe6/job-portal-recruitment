@@ -50,7 +50,9 @@ export function WhenRows({
       <Row label="When">
         <p className="font-medium">{formatSlot(startAt, endAt, timezone)}</p>
         <p className="text-xs text-muted-foreground">
-          {timezone.replace(/_/g, ' ')} ({offsetLabel(new Date(startAt), timezone)})
+          {timezone === 'UTC'
+            ? 'Coordinated Universal Time (UTC)'
+            : `${timezone.replace(/_/g, ' ')} (${offsetLabel(new Date(startAt), timezone)})`}
         </p>
         {!sameOffset(startAt, timezone, viewerTz) && (
           <p className="mt-1 text-xs text-muted-foreground">

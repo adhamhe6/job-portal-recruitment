@@ -32,7 +32,7 @@ test.describe('workflows 2–3 · a recruiter publishes a job and works the appl
     // --- it is publicly searchable
     const publicPage = await (await browser.newContext({ baseURL: page.url().split('/manage')[0] })).newPage()
     await publicPage.goto('/jobs')
-    await publicPage.getByRole('searchbox', { name: 'Search jobs' }).fill(title)
+    await publicPage.getByPlaceholder('Search by title, skill or keyword').fill(title)
     await expect(publicPage.getByRole('link', { name: title, exact: true })).toBeVisible()
     await publicPage.context().close()
 
@@ -42,7 +42,7 @@ test.describe('workflows 2–3 · a recruiter publishes a job and works the appl
     const cand = await candCtx.newPage()
     await login(cand, email)
     await cand.goto('/jobs')
-    await cand.getByRole('searchbox', { name: 'Search jobs' }).fill(title)
+    await cand.getByPlaceholder('Search by title, skill or keyword').fill(title)
     await cand.getByRole('link', { name: title, exact: true }).click()
     await cand.getByRole('button', { name: 'Apply now' }).first().click()
     await cand.getByRole('dialog').getByRole('button', { name: 'Submit application' }).click()

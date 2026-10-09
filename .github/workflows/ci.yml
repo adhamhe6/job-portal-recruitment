@@ -105,6 +105,9 @@ jobs:
         run: |
           cp .env.example .env
           sed -i "s/^SECRET_KEY=.*/SECRET_KEY=$(openssl rand -hex 32)/" .env
+          # The browser suite signs in and registers throwaway accounts far faster than a person would; the
+          # production-style limits stay at their defaults everywhere else.
+          sed -i "s/^LOGIN_RATE_LIMIT_ATTEMPTS=.*/LOGIN_RATE_LIMIT_ATTEMPTS=1000/; s/^REGISTER_RATE_LIMIT_ATTEMPTS=.*/REGISTER_RATE_LIMIT_ATTEMPTS=1000/" .env
       - name: Build images
         run: docker compose build
       - name: Start stack (migrate + demo data → api, worker, web)

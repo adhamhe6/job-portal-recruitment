@@ -8,9 +8,9 @@ test.describe('workflow 1 · a candidate finds a job, applies, and tracks the ap
 
     // search narrows the catalogue and shows real results
     await page.goto('/jobs')
-    await page.getByRole('searchbox', { name: 'Search jobs' }).fill('python')
+    await page.getByPlaceholder('Search by title, skill or keyword').fill('senior backend engineer')
     await expect(page.getByRole('status').filter({ hasText: /jobs? found/ })).toBeVisible()
-    const result = page.getByRole('link', { name: 'Senior Backend Engineer' }).first()
+    const result = page.getByRole('link', { name: 'Senior Backend Engineer', exact: true })
     await expect(result).toBeVisible()
     await result.click()
 

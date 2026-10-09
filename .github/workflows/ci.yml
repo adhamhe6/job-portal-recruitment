@@ -20,26 +20,22 @@ jobs:
     defaults:
       run:
         working-directory: backend
-    services:
-      postgres:
-        image: pgvector/pgvector:pg16
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: talentlens_test
-        ports: ["5432:5432"]
-        options: >-
-          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 3s --health-retries 20
-      redis:
-        image: redis:7-alpine
-        ports: ["6379:6379"]
-        options: >-
-          --health-cmd "redis-cli ping" --health-interval 5s --health-timeout 3s --health-retries 20
     env:
       TEST_DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/talentlens_test
       TEST_REDIS_URL: redis://localhost:6379/15
     steps:
       - uses: actions/checkout@v4
+      # PostgreSQL + pgvector and Redis run natively on the runner (apt) instead of as service containers: pulling
+      # images from Docker Hub is rate-limited for unauthenticated runners and failed this job before any code ran.
+      - name: Start PostgreSQL (with pgvector) and Redis
+        working-directory: .
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-16-pgvector redis-server
+          sudo systemctl start postgresql redis-server
+          sudo -u postgres psql -c "ALTER USER postgres PASSWORD 'postgres'"
+          sudo -u postgres createdb talentlens_test
+          pg_isready -h localhost -p 5432 && redis-cli ping
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"

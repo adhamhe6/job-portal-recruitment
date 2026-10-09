@@ -1,0 +1,22 @@
+import type { components } from '@/lib/api'
+
+type S = components['schemas']
+
+export type CandidateProfile = S['CandidateProfileOut']
+export type ProfileUpdate = S['ProfileUpdate']
+export type ProfileCompletion = S['ProfileCompletion']
+export type CandidateSkill = S['CandidateSkillOut']
+export type CandidateSkillIn = S['CandidateSkillIn']
+export type CandidateSkillUpdate = S['CandidateSkillUpdate']
+export type Experience = S['ExperienceOut']
+export type ExperienceIn = S['ExperienceIn']
+export type Education = S['EducationOut']
+export type EducationIn = S['EducationIn']
+export type Certification = S['CertificationOut']
+export type CertificationIn = S['CertificationIn']
+export type Language = S['LanguageOut']
+export type LanguageIn = S['LanguageIn']
+export type SkillProficiency = S['SkillProficiency']
+export type LanguageProficiency = S['LanguageProficiency']
+export type RemotePreference = S['RemotePreference']
+export type Availability = S['Availability']

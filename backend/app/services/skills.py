@@ -31,11 +31,15 @@ class SkillService:
         key = skill_key(term)
         if not key:
             return None
-        skill = (await self.session.execute(select(Skill).where(Skill.normalized_name == key))).scalar_one_or_none()
+        skill = (
+            await self.session.execute(select(Skill).where(Skill.normalized_name == key))
+        ).scalar_one_or_none()
         if skill:
             return skill
         return (
-            await self.session.execute(select(Skill).join(SkillAlias, SkillAlias.skill_id == Skill.id).where(SkillAlias.alias == key))
+            await self.session.execute(
+                select(Skill).join(SkillAlias, SkillAlias.skill_id == Skill.id).where(SkillAlias.alias == key)
+            )
         ).scalar_one_or_none()
 
     async def find_by_terms(self, terms: Iterable[str]) -> dict[str, Skill]:
@@ -44,12 +48,19 @@ class SkillService:
         if not keyed:
             return {}
         keys = set(keyed.values())
-        direct = {s.normalized_name: s for s in (await self.session.execute(select(Skill).where(Skill.normalized_name.in_(keys)))).scalars()}
+        direct = {
+            s.normalized_name: s
+            for s in (
+                await self.session.execute(select(Skill).where(Skill.normalized_name.in_(keys)))
+            ).scalars()
+        }
         via_alias = {
             a.alias: s
             for a, s in (
                 await self.session.execute(
-                    select(SkillAlias, Skill).join(Skill, Skill.id == SkillAlias.skill_id).where(SkillAlias.alias.in_(keys))
+                    select(SkillAlias, Skill)
+                    .join(Skill, Skill.id == SkillAlias.skill_id)
+                    .where(SkillAlias.alias.in_(keys))
                 )
             ).all()
         }
@@ -82,7 +93,9 @@ class SkillService:
         await self._invalidate()
         return skill
 
-    async def search(self, q: str | None, *, page: int, page_size: int, category: str | None = None) -> tuple[list[Skill], int]:
+    async def search(
+        self, q: str | None, *, page: int, page_size: int, category: str | None = None
+    ) -> tuple[list[Skill], int]:
         stmt = select(Skill).order_by(Skill.name)
         if q:
             like = f"%{escape_like(q.strip().lower())}%"
@@ -90,10 +103,15 @@ class SkillService:
             key = skill_key(q)
             if key:  # punctuation-only input ("...", "-") has an empty key, which would otherwise match every skill
                 key_like = f"%{escape_like(key)}%"
-                conditions += [Skill.normalized_name.like(key_like), Skill.id.in_(select(SkillAlias.skill_id).where(SkillAlias.alias.like(key_like)))]
+                conditions += [
+                    Skill.normalized_name.like(key_like),
+                    Skill.id.in_(select(SkillAlias.skill_id).where(SkillAlias.alias.like(key_like))),
+                ]
             stmt = stmt.where(or_(*conditions))
             # Prefix matches first, then alphabetical.
-            stmt = stmt.order_by(None).order_by((func.lower(Skill.name).like(f"{escape_like(q.strip().lower())}%")).desc(), Skill.name)
+            stmt = stmt.order_by(None).order_by(
+                (func.lower(Skill.name).like(f"{escape_like(q.strip().lower())}%")).desc(), Skill.name
+            )
         if category:
             stmt = stmt.where(Skill.category == category)
         return await paginate(self.session, stmt, page=page, page_size=page_size)
@@ -109,7 +127,15 @@ class SkillService:
         skill = await self.session.get(Skill, skill_id)
         if skill is None:
             raise NotFoundError("Skill not found", code="SKILL_NOT_FOUND")
-        aliases = (await self.session.execute(select(SkillAlias.display_alias).where(SkillAlias.skill_id == skill_id))).scalars().all()
+        aliases = (
+            (
+                await self.session.execute(
+                    select(SkillAlias.display_alias).where(SkillAlias.skill_id == skill_id)
+                )
+            )
+            .scalars()
+            .all()
+        )
         return SkillDetail(**SkillOut.model_validate(skill).model_dump(), aliases=sorted(aliases))
 
     async def update(self, skill_id: uuid.UUID, data: SkillUpdate) -> SkillDetail:
@@ -131,7 +157,9 @@ class SkillService:
             if other and other.id != skill.id:
                 raise ConflictError(f"'{alias}' already refers to {other.name}", code="SKILL_EXISTS")
             if key and key != skill.normalized_name and not other:
-                self.session.add(SkillAlias(skill_id=skill.id, alias=key, display_alias=" ".join(alias.split())))
+                self.session.add(
+                    SkillAlias(skill_id=skill.id, alias=key, display_alias=" ".join(alias.split()))
+                )
         await self.session.commit()
         await self._invalidate()
         if self.cache:  # job lists show required-skill names
@@ -148,7 +176,9 @@ async def seed_ontology(session: AsyncSession) -> int:
         if o.key in existing:
             skill = (await session.execute(select(Skill).where(Skill.normalized_name == o.key))).scalar_one()
         else:
-            skill = Skill(name=o.name, normalized_name=o.key, category=o.category, family=o.family, is_verified=True)
+            skill = Skill(
+                name=o.name, normalized_name=o.key, category=o.category, family=o.family, is_verified=True
+            )
             session.add(skill)
             await session.flush()
             created += 1

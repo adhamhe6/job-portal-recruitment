@@ -6,7 +6,12 @@ pytestmark = pytest.mark.e2e
 async def test_register_login_me(client):
     r = await client.post(
         "/api/v1/auth/register",
-        json={"email": "Ada@Example.com", "password": "CorrectHorse42", "first_name": "Ada", "last_name": "L"},
+        json={
+            "email": "Ada@Example.com",
+            "password": "CorrectHorse42",
+            "first_name": "Ada",
+            "last_name": "L",
+        },
     )
     assert r.status_code == 201, r.text
     body = r.json()
@@ -18,7 +23,12 @@ async def test_register_login_me(client):
     assert me.status_code == 200
     dup = await client.post(
         "/api/v1/auth/register",
-        json={"email": "ada@example.com", "password": "CorrectHorse42", "first_name": "Ada", "last_name": "L"},
+        json={
+            "email": "ada@example.com",
+            "password": "CorrectHorse42",
+            "first_name": "Ada",
+            "last_name": "L",
+        },
     )
     assert dup.status_code == 409
     assert dup.json()["error"]["code"] == "EMAIL_ALREADY_REGISTERED"

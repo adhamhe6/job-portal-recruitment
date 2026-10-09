@@ -58,6 +58,7 @@ ignore = [
     "S311",    # random is used for demo seed data, not crypto
     "E501",    # long lines are handled by the formatter
     "RUF001", "RUF002", "RUF003",  # intentional typography in docs/strings
+    "N812", "N818", "N801", "N802", "PT012", "RUF043", "SIM102", "S105",  # style conventions the codebase deliberately deviates from
     "RET504",
 ]
 

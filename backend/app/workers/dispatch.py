@@ -29,7 +29,11 @@ class ArqDispatcher:
         if self.pool is None:
             try:
                 rs = RedisSettings.from_dsn(get_settings().redis_url)
-                rs.conn_timeout, rs.conn_retries, rs.conn_retry_delay = 2, 1, 0  # fail fast: the API must not hang on a dead queue
+                rs.conn_timeout, rs.conn_retries, rs.conn_retry_delay = (
+                    2,
+                    1,
+                    0,
+                )  # fail fast: the API must not hang on a dead queue
                 self.pool = await create_pool(rs)
             except Exception as exc:
                 logger.error("job queue unavailable", extra={"error": type(exc).__name__})

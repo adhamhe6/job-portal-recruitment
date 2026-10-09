@@ -51,7 +51,15 @@ def fields_in_error(model: type, **data: Any) -> set[str]:
 
 @pytest.mark.parametrize(
     "password",
-    ["CorrectHorse42", "abcdefghi1", "1234567890a", "Passw0rd!!", "ünïcödé-pass-9", "a" * 127 + "1", "a1" * 64],
+    [
+        "CorrectHorse42",
+        "abcdefghi1",
+        "1234567890a",
+        "Passw0rd!!",
+        "ünïcödé-pass-9",
+        "a" * 127 + "1",
+        "a1" * 64,
+    ],
 )
 def test_acceptable_passwords(password: str) -> None:
     assert validate_password_strength(password) == password
@@ -82,26 +90,43 @@ def test_password_length_boundaries() -> None:
         validate_password_strength("a" * 8 + "1")
 
 
-@pytest.mark.parametrize(("model", "field"), [(RegisterCandidateRequest, "password"), (RegisterEmployerRequest, "password")])
+@pytest.mark.parametrize(
+    ("model", "field"), [(RegisterCandidateRequest, "password"), (RegisterEmployerRequest, "password")]
+)
 def test_weak_password_is_reported_against_its_field(model: type, field: str) -> None:
-    data = {"email": "a@example.com", "password": "weak", "first_name": "A", "last_name": "B", "company_name": "Acme Inc"}
+    data = {
+        "email": "a@example.com",
+        "password": "weak",
+        "first_name": "A",
+        "last_name": "B",
+        "company_name": "Acme Inc",
+    }
     assert fields_in_error(model, **data) == {field}
 
 
 def test_change_password_validates_only_the_new_password() -> None:
-    assert fields_in_error(ChangePasswordRequest, current_password="x", new_password="short") == {"new_password"}
-    assert ChangePasswordRequest(current_password="x", new_password="Longenough1").new_password == "Longenough1"
+    assert fields_in_error(ChangePasswordRequest, current_password="x", new_password="short") == {
+        "new_password"
+    }
+    assert (
+        ChangePasswordRequest(current_password="x", new_password="Longenough1").new_password == "Longenough1"
+    )
 
 
 # --- phone numbers ------------------------------------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("phone", ["+49 170 1234567", "(415) 555-0199", "+1-415-555-0199", "123456", "030 1234567", "+44.20.7946.0958"])
+@pytest.mark.parametrize(
+    "phone",
+    ["+49 170 1234567", "(415) 555-0199", "+1-415-555-0199", "123456", "030 1234567", "+44.20.7946.0958"],
+)
 def test_valid_phone_numbers(phone: str) -> None:
     assert validate_phone(phone) == phone
 
 
-@pytest.mark.parametrize("phone", ["abc", "12345", "phone: 123456", "+49 170 12345a", "1" * 40, "<script>", "123 456 789; DROP"])
+@pytest.mark.parametrize(
+    "phone", ["abc", "12345", "phone: 123456", "+49 170 12345a", "1" * 40, "<script>", "123 456 789; DROP"]
+)
 def test_invalid_phone_numbers(phone: str) -> None:
     with pytest.raises(ValueError, match="valid phone"):
         validate_phone(phone)
@@ -113,16 +138,40 @@ def test_blank_phone_becomes_none(blank: str | None) -> None:
 
 
 def test_phone_is_trimmed_and_validated_wherever_it_is_accepted() -> None:
-    reg = RegisterCandidateRequest(email="a@example.com", password="Longenough1", first_name="A", last_name="B", phone=" +49 170 1234567 ")
+    reg = RegisterCandidateRequest(
+        email="a@example.com",
+        password="Longenough1",
+        first_name="A",
+        last_name="B",
+        phone=" +49 170 1234567 ",
+    )
     assert reg.phone == "+49 170 1234567"
-    assert "phone" in fields_in_error(RegisterCandidateRequest, email="a@example.com", password="Longenough1", first_name="A", last_name="B", phone="abc")
+    assert "phone" in fields_in_error(
+        RegisterCandidateRequest,
+        email="a@example.com",
+        password="Longenough1",
+        first_name="A",
+        last_name="B",
+        phone="abc",
+    )
     assert "phone" in fields_in_error(UpdateMeRequest, phone="abc")
     assert "phone" in fields_in_error(ProfileUpdate, phone="abc")
     assert "phone" in fields_in_error(
-        MemberCreate, email="a@example.com", password="Longenough1", first_name="A", last_name="B", phone="abc"
+        MemberCreate,
+        email="a@example.com",
+        password="Longenough1",
+        first_name="A",
+        last_name="B",
+        phone="abc",
     )
     assert "phone" in fields_in_error(
-        AdminUserCreate, email="a@example.com", password="Longenough1", first_name="A", last_name="B", role="CANDIDATE", phone="abc"
+        AdminUserCreate,
+        email="a@example.com",
+        password="Longenough1",
+        first_name="A",
+        last_name="B",
+        role="CANDIDATE",
+        phone="abc",
     )
 
 
@@ -130,15 +179,23 @@ def test_phone_is_trimmed_and_validated_wherever_it_is_accepted() -> None:
 
 
 def test_names_are_trimmed_and_must_not_be_blank() -> None:
-    ok = RegisterCandidateRequest(email="a@example.com", password="Longenough1", first_name="  Ada ", last_name=" Lovelace  ")
+    ok = RegisterCandidateRequest(
+        email="a@example.com", password="Longenough1", first_name="  Ada ", last_name=" Lovelace  "
+    )
     assert (ok.first_name, ok.last_name) == ("Ada", "Lovelace")
     base = {"email": "a@example.com", "password": "Longenough1"}
-    assert fields_in_error(RegisterCandidateRequest, **base, first_name="   ", last_name="B") == {"first_name"}
+    assert fields_in_error(RegisterCandidateRequest, **base, first_name="   ", last_name="B") == {
+        "first_name"
+    }
     assert fields_in_error(RegisterCandidateRequest, **base, first_name="A", last_name="") == {"last_name"}
-    assert fields_in_error(RegisterCandidateRequest, **base, first_name="x" * 101, last_name="B") == {"first_name"}
+    assert fields_in_error(RegisterCandidateRequest, **base, first_name="x" * 101, last_name="B") == {
+        "first_name"
+    }
 
 
-@pytest.mark.parametrize("email", ["", "plain", "a@", "@example.com", "a b@example.com", "a@@example.com", "a@example"])
+@pytest.mark.parametrize(
+    "email", ["", "plain", "a@", "@example.com", "a b@example.com", "a@@example.com", "a@example"]
+)
 def test_invalid_emails(email: str) -> None:
     assert fields_in_error(LoginRequest, email=email, password="x") == {"email"}
 
@@ -158,23 +215,52 @@ def test_employer_registration_company_rules() -> None:
     base = {"email": "a@example.com", "password": "Longenough1", "first_name": "A", "last_name": "B"}
     assert fields_in_error(RegisterEmployerRequest, **base, company_name="A") == {"company_name"}
     assert RegisterEmployerRequest(**base, company_name="  Acme  ").company_name == "Acme"
-    assert fields_in_error(RegisterEmployerRequest, **base, company_name="Acme", company_size="HUGE") == {"company_size"}
-    assert fields_in_error(RegisterEmployerRequest, **base, company_name="Acme", company_website="javascript:alert(1)") == {"company_website"}
-    assert RegisterEmployerRequest(**base, company_name="Acme", company_website="https://acme.example.com").company_website == "https://acme.example.com"
+    assert fields_in_error(RegisterEmployerRequest, **base, company_name="Acme", company_size="HUGE") == {
+        "company_size"
+    }
+    assert fields_in_error(
+        RegisterEmployerRequest, **base, company_name="Acme", company_website="javascript:alert(1)"
+    ) == {"company_website"}
+    assert (
+        RegisterEmployerRequest(
+            **base, company_name="Acme", company_website="https://acme.example.com"
+        ).company_website
+        == "https://acme.example.com"
+    )
 
 
 # --- URLs ------------------------------------------------------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("url", ["https://example.com", "http://example.com/a?b=1#c", "https://sub.example.co.uk/in/jane-doe", "http://localhost:8080"])
+@pytest.mark.parametrize(
+    "url",
+    [
+        "https://example.com",
+        "http://example.com/a?b=1#c",
+        "https://sub.example.co.uk/in/jane-doe",
+        "http://localhost:8080",
+    ],
+)
 def test_valid_urls(url: str) -> None:
     assert validate_http_url(url) == url
 
 
 @pytest.mark.parametrize(
     "url",
-    ["javascript:alert(1)", "ftp://example.com", "example.com", "www.example.com", "https://", "http://", "//example.com", "https://exa mple.com",
-     "data:text/html;base64,AAAA", "https://example.com/" + "a" * 500, "mailto:a@example.com", "not a url"],
+    [
+        "javascript:alert(1)",
+        "ftp://example.com",
+        "example.com",
+        "www.example.com",
+        "https://",
+        "http://",
+        "//example.com",
+        "https://exa mple.com",
+        "data:text/html;base64,AAAA",
+        "https://example.com/" + "a" * 500,
+        "mailto:a@example.com",
+        "not a url",
+    ],
 )
 def test_invalid_urls(url: str) -> None:
     with pytest.raises(ValueError, match="valid http"):
@@ -209,10 +295,20 @@ def test_profile_update_is_fully_optional_and_tracks_explicit_nulls() -> None:
 @pytest.mark.parametrize(
     ("field", "value"),
     [
-        ("years_experience", -1), ("years_experience", 70.1), ("years_experience", "abc"), ("years_experience", Decimal("1.55")),
-        ("expected_salary", -5), ("salary_currency", "US"), ("salary_currency", "USDX"), ("remote_preference", "ANYWHERE"),
-        ("availability", "SOMEDAY"), ("employment_preference", "SLAVERY"), ("headline", "x" * 201), ("summary", "x" * 5001),
-        ("location", "x" * 201), ("is_searchable", "maybe"),
+        ("years_experience", -1),
+        ("years_experience", 70.1),
+        ("years_experience", "abc"),
+        ("years_experience", Decimal("1.55")),
+        ("expected_salary", -5),
+        ("salary_currency", "US"),
+        ("salary_currency", "USDX"),
+        ("remote_preference", "ANYWHERE"),
+        ("availability", "SOMEDAY"),
+        ("employment_preference", "SLAVERY"),
+        ("headline", "x" * 201),
+        ("summary", "x" * 5001),
+        ("location", "x" * 201),
+        ("is_searchable", "maybe"),
     ],
 )
 def test_profile_field_rejections(field: str, value: Any) -> None:
@@ -230,18 +326,34 @@ def test_profile_boundaries_and_normalisation() -> None:
 
 
 def test_experience_current_job_rule_clears_the_end_date() -> None:
-    e = ExperienceIn(title="Dev", company_name="Acme", start_date=TODAY - timedelta(days=400), is_current=True, end_date=TODAY - timedelta(days=10))
+    e = ExperienceIn(
+        title="Dev",
+        company_name="Acme",
+        start_date=TODAY - timedelta(days=400),
+        is_current=True,
+        end_date=TODAY - timedelta(days=10),
+    )
     assert e.end_date is None and e.is_current is True
 
 
 def test_experience_dates() -> None:
     start = TODAY - timedelta(days=400)
-    assert ExperienceIn(title="Dev", company_name="A", start_date=start, end_date=start).end_date == start  # one-day job is fine
+    assert (
+        ExperienceIn(title="Dev", company_name="A", start_date=start, end_date=start).end_date == start
+    )  # one-day job is fine
     assert ExperienceIn(title="Dev", company_name="A", start_date=start).end_date is None
     assert ExperienceIn(title="Dev", company_name="A", start_date=TODAY).start_date == TODAY
-    msgs = " ".join(e["msg"] for e in errors(ExperienceIn, title="Dev", company_name="A", start_date=start, end_date=start - timedelta(days=1)))
+    msgs = " ".join(
+        e["msg"]
+        for e in errors(
+            ExperienceIn, title="Dev", company_name="A", start_date=start, end_date=start - timedelta(days=1)
+        )
+    )
     assert "end_date must not be before start_date" in msgs
-    msgs = " ".join(e["msg"] for e in errors(ExperienceIn, title="Dev", company_name="A", start_date=TODAY + timedelta(days=1)))
+    msgs = " ".join(
+        e["msg"]
+        for e in errors(ExperienceIn, title="Dev", company_name="A", start_date=TODAY + timedelta(days=1))
+    )
     assert "cannot be in the future" in msgs
 
 
@@ -251,14 +363,22 @@ def test_experience_required_text_fields(title: str, company: str) -> None:
 
 
 def test_education_years() -> None:
-    assert EducationIn(institution="MIT", degree_level="MASTER", start_year=2010, end_year=2010).end_year == 2010
-    assert EducationIn(institution="MIT", degree_level="MASTER", start_year=1950, end_year=2100).start_year == 1950
+    assert (
+        EducationIn(institution="MIT", degree_level="MASTER", start_year=2010, end_year=2010).end_year == 2010
+    )
+    assert (
+        EducationIn(institution="MIT", degree_level="MASTER", start_year=1950, end_year=2100).start_year
+        == 1950
+    )
     assert EducationIn(institution="MIT", degree_level="MASTER").start_year is None
     assert "end_year must not be before start_year" in " ".join(
-        e["msg"] for e in errors(EducationIn, institution="MIT", degree_level="MASTER", start_year=2012, end_year=2010)
+        e["msg"]
+        for e in errors(EducationIn, institution="MIT", degree_level="MASTER", start_year=2012, end_year=2010)
     )
     for bad in (1949, 2101, 0, -5):
-        assert fields_in_error(EducationIn, institution="MIT", degree_level="MASTER", start_year=bad) == {"start_year"}
+        assert fields_in_error(EducationIn, institution="MIT", degree_level="MASTER", start_year=bad) == {
+            "start_year"
+        }
     assert fields_in_error(EducationIn, institution="MIT", degree_level="PHD") == {"degree_level"}
     assert fields_in_error(EducationIn, institution="", degree_level="MASTER") == {"institution"}
 
@@ -267,7 +387,8 @@ def test_certification_dates() -> None:
     assert CertificationIn(name="CKA", issued_on=TODAY, expires_on=TODAY).name == "CKA"
     assert CertificationIn(name="CKA").issued_on is None
     assert "expires_on must not be before issued_on" in " ".join(
-        e["msg"] for e in errors(CertificationIn, name="CKA", issued_on=TODAY, expires_on=TODAY - timedelta(days=1))
+        e["msg"]
+        for e in errors(CertificationIn, name="CKA", issued_on=TODAY, expires_on=TODAY - timedelta(days=1))
     )
 
 
@@ -323,7 +444,13 @@ def job(**overrides: Any) -> dict[str, Any]:
 
 def test_job_create_minimal() -> None:
     j = JobCreate(**job())
-    assert (j.employment_type, j.workplace_type, j.salary_currency, j.min_experience_years, j.skills) == ("FULL_TIME", "ONSITE", "USD", 0, [])
+    assert (j.employment_type, j.workplace_type, j.salary_currency, j.min_experience_years, j.skills) == (
+        "FULL_TIME",
+        "ONSITE",
+        "USD",
+        0,
+        [],
+    )
 
 
 @pytest.mark.parametrize(
@@ -360,7 +487,9 @@ def test_job_create_single_field_rejections(overrides: dict[str, Any], field: st
 def test_job_cross_field_ranges() -> None:
     msgs = " ".join(e["msg"] for e in errors(JobCreate, **job(salary_min=100, salary_max=99)))
     assert "salary_max must be greater than or equal to salary_min" in msgs
-    msgs = " ".join(e["msg"] for e in errors(JobCreate, **job(min_experience_years=5, max_experience_years=4)))
+    msgs = " ".join(
+        e["msg"] for e in errors(JobCreate, **job(min_experience_years=5, max_experience_years=4))
+    )
     assert "max_experience_years must be greater than or equal to min_experience_years" in msgs
     assert JobCreate(**job(salary_min=100, salary_max=100)).salary_max == 100  # equal bounds are fine
     assert JobCreate(**job(salary_max=50)).salary_min is None  # open-ended on one side is fine
@@ -368,7 +497,9 @@ def test_job_cross_field_ranges() -> None:
 
 
 def test_job_normalisation() -> None:
-    j = JobCreate(**job(title="  Senior   Backend\tEngineer ", description="  " + DESC + "  ", salary_currency="eur"))
+    j = JobCreate(
+        **job(title="  Senior   Backend\tEngineer ", description="  " + DESC + "  ", salary_currency="eur")
+    )
     assert j.title == "Senior Backend Engineer" and j.description == DESC and j.salary_currency == "EUR"
 
 
@@ -390,7 +521,9 @@ def test_job_update_is_partial_but_validates_what_it_gets() -> None:
     assert fields_in_error(JobUpdate, description="         ") == {"description"}
     assert fields_in_error(JobUpdate, salary_min=-1) == {"salary_min"}
     assert JobUpdate(salary_currency="gbp").salary_currency == "GBP"
-    assert JobUpdate(skills=[]).skills == []  # an empty list means "remove all skills", distinct from "unchanged"
+    assert (
+        JobUpdate(skills=[]).skills == []
+    )  # an empty list means "remove all skills", distinct from "unchanged"
     assert JobUpdate().skills is None
 
 

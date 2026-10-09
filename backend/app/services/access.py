@@ -53,7 +53,9 @@ def can_view_job_internal(user: User, job: Job) -> bool:
     return user.role == Role.HIRING_MANAGER and job.hiring_manager_id == user.id
 
 
-async def load_job_for_staff(session: AsyncSession, user: User, job_id: uuid.UUID, *, write: bool = False) -> Job:
+async def load_job_for_staff(
+    session: AsyncSession, user: User, job_id: uuid.UUID, *, write: bool = False
+) -> Job:
     job = await session.get(Job, job_id)
     if job is None or not can_view_job_internal(user, job):
         raise NotFoundError("Job not found", code="JOB_NOT_FOUND")
@@ -71,7 +73,9 @@ class CandidateAccess(enum.IntEnum):
     FULL = 2  # applicant or company-sourced: contact details + résumé file
 
 
-async def candidate_access_for(session: AsyncSession, user: User, candidate: CandidateProfile) -> CandidateAccess:
+async def candidate_access_for(
+    session: AsyncSession, user: User, candidate: CandidateProfile
+) -> CandidateAccess:
     """What may ``user`` see of ``candidate``?
 
     * the candidate themself and admins: everything
@@ -106,7 +110,11 @@ async def candidate_access_for(session: AsyncSession, user: User, candidate: Can
 
 
 async def load_candidate_for_user(
-    session: AsyncSession, user: User, candidate_id: uuid.UUID, *, minimum: CandidateAccess = CandidateAccess.PROFILE
+    session: AsyncSession,
+    user: User,
+    candidate_id: uuid.UUID,
+    *,
+    minimum: CandidateAccess = CandidateAccess.PROFILE,
 ) -> tuple[CandidateProfile, CandidateAccess]:
     candidate = await session.get(CandidateProfile, candidate_id)
     if candidate is None:

@@ -16,8 +16,7 @@ import argparse
 import asyncio
 import logging
 import random
-import sys
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta
 from typing import Any
 
 from httpx import ASGITransport, AsyncClient
@@ -319,7 +318,7 @@ class Seeder:
                 )
 
     async def refresh_matches(self) -> None:
-        for key, job in self.jobs.items():
+        for _key, job in self.jobs.items():
             if job["data"]["status"] == "PUBLISHED":
                 await self._ok(
                     await self.c.post(
@@ -336,9 +335,9 @@ class Seeder:
     # --- history -----------------------------------------------------------------------------------------------------
     async def backdate(self) -> None:
         """Spread created/applied/stage timestamps over the past weeks so reports show a believable time series."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         async with get_engine().begin() as conn:
-            for key, job in self.jobs.items():
+            for _key, job in self.jobs.items():
                 days = job["data"]["days_ago"]
                 if days is None:
                     created = now - timedelta(days=RNG.randint(2, 6))
@@ -484,4 +483,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    main()

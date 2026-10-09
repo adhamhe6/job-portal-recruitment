@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import builtins
 import uuid
 from typing import Any
 
@@ -31,7 +32,9 @@ class CompanyService:
             raise NotFoundError("Company not found", code="COMPANY_NOT_FOUND")
         return company
 
-    async def list(self, *, q: str | None, status: CompanyStatus | None, page: int, page_size: int) -> tuple[list[Company], int]:
+    async def list(
+        self, *, q: str | None, status: CompanyStatus | None, page: int, page_size: int
+    ) -> tuple[list[Company], int]:
         stmt = select(Company).order_by(Company.name)
         if q:
             stmt = stmt.where(func.lower(Company.name).like(f"%{escape_like(q.lower())}%"))
@@ -46,7 +49,12 @@ class CompanyService:
         self.session.add(company)
         await self.session.flush()
         record_audit(
-            self.session, actor_id=actor.id, action="company.created", entity_type="company", entity_id=company.id, company_id=company.id
+            self.session,
+            actor_id=actor.id,
+            action="company.created",
+            entity_type="company",
+            entity_id=company.id,
+            company_id=company.id,
         )
         try:
             await self.session.commit()
@@ -60,7 +68,9 @@ class CompanyService:
             return
         if actor.company_id != company_id or actor.role != Role.RECRUITER:
             raise PermissionDeniedError("You cannot manage this company")
-        flag = await self.session.scalar(select(RecruiterProfile.is_company_admin).where(RecruiterProfile.user_id == actor.id))
+        flag = await self.session.scalar(
+            select(RecruiterProfile.is_company_admin).where(RecruiterProfile.user_id == actor.id)
+        )
         if not flag:
             raise PermissionDeniedError("Only company administrators can do this")
 
@@ -75,12 +85,19 @@ class CompanyService:
         if "name" in changes and changes["name"] is None:
             changes.pop("name")
         if "name" in changes and changes["name"].lower() != company.name.lower():
-            if await self.session.scalar(select(Company.id).where(func.lower(Company.name) == changes["name"].lower())):
+            if await self.session.scalar(
+                select(Company.id).where(func.lower(Company.name) == changes["name"].lower())
+            ):
                 raise ConflictError("A company with this name already exists", code="COMPANY_NAME_TAKEN")
         for k, v in changes.items():
             setattr(company, k, v)
         record_audit(
-            self.session, actor_id=actor.id, action="company.updated", entity_type="company", entity_id=company.id, company_id=company.id
+            self.session,
+            actor_id=actor.id,
+            action="company.updated",
+            entity_type="company",
+            entity_id=company.id,
+            company_id=company.id,
         )
         await self.session.commit()
         if self.cache:  # company name/logo/status are part of cached job lists, searches and recommendations
@@ -88,7 +105,7 @@ class CompanyService:
         return company
 
     # --- members -------------------------------------------------------------------------------------
-    async def list_members(self, actor: User, company_id: uuid.UUID) -> list[MemberOut]:
+    async def list_members(self, actor: User, company_id: uuid.UUID) -> builtins.list[MemberOut]:
         if not is_admin(actor) and (actor.company_id != company_id or actor.role not in STAFF_ROLES):
             raise NotFoundError("Company not found", code="COMPANY_NOT_FOUND")
         rows = (
@@ -134,7 +151,9 @@ class CompanyService:
         profile = await self.session.get(RecruiterProfile, user.id)
         return self._member_out(user, profile)
 
-    async def update_member(self, actor: User, company_id: uuid.UUID, user_id: uuid.UUID, data: MemberUpdate) -> MemberOut:
+    async def update_member(
+        self, actor: User, company_id: uuid.UUID, user_id: uuid.UUID, data: MemberUpdate
+    ) -> MemberOut:
         await self._require_company_admin(actor, company_id)
         user = await self.session.get(User, user_id)
         if user is None or user.company_id != company_id:
@@ -143,8 +162,12 @@ class CompanyService:
         if profile is None:
             profile = RecruiterProfile(user_id=user.id)
             self.session.add(profile)
-        if user.id == actor.id and (data.status == UserStatus.SUSPENDED or (data.role and data.role != user.role)):
-            raise BusinessRuleError("You cannot suspend or change the role of your own account", code="SELF_MODIFICATION")
+        if user.id == actor.id and (
+            data.status == UserStatus.SUSPENDED or (data.role and data.role != user.role)
+        ):
+            raise BusinessRuleError(
+                "You cannot suspend or change the role of your own account", code="SELF_MODIFICATION"
+            )
         if data.role:
             user.role = data.role
         if data.status:
@@ -156,7 +179,12 @@ class CompanyService:
         if data.department is not None:
             profile.department = data.department
         record_audit(
-            self.session, actor_id=actor.id, action="member.updated", entity_type="user", entity_id=user.id, company_id=company_id
+            self.session,
+            actor_id=actor.id,
+            action="member.updated",
+            entity_type="user",
+            entity_id=user.id,
+            company_id=company_id,
         )
         await self.session.commit()
         return self._member_out(user, profile)

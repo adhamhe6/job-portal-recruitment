@@ -178,7 +178,11 @@ class InterviewStatus(enum.StrEnum):
     NO_SHOW = "NO_SHOW"
 
 
-ACTIVE_INTERVIEW_STATUSES = (InterviewStatus.SCHEDULED, InterviewStatus.CONFIRMED, InterviewStatus.RESCHEDULED)
+ACTIVE_INTERVIEW_STATUSES = (
+    InterviewStatus.SCHEDULED,
+    InterviewStatus.CONFIRMED,
+    InterviewStatus.RESCHEDULED,
+)
 
 
 class ParticipantRole(enum.StrEnum):

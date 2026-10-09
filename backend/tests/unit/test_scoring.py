@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import itertools
 import json
 import math
 
@@ -24,7 +25,7 @@ from app.matching.scoring import (
     semantic_band,
     skill_coverage,
 )
-from tests.helpers_matching import candidate, exp, days_ago, job, skill
+from tests.helpers_matching import candidate, days_ago, exp, job, skill
 
 PG = skill("PostgreSQL", "relational-database")
 MYSQL = skill("MySQL", "relational-database")
@@ -56,7 +57,7 @@ def test_calibrate_cosine_midpoint_and_monotonic() -> None:
     xs = [i / 100 for i in range(-20, 121)]
     ys = [calibrate_cosine(x) for x in xs]
     assert all(0.0 <= y <= 1.0 for y in ys)
-    assert all(a <= b for a, b in zip(ys, ys[1:], strict=False))
+    assert all(a <= b for a, b in itertools.pairwise(ys))
     assert len(set(ys)) > 40  # strictly increasing inside the calibration window
 
 
@@ -314,7 +315,7 @@ def test_combine_all_components() -> None:
         "preference": 1.0,
     }
     assert combine(comps) == pytest.approx(1.0)
-    assert combine({k: 0.0 for k in comps}) == 0.0
+    assert combine(dict.fromkeys(comps, 0.0)) == 0.0
     mixed = {
         "semantic": 0.5,
         "required": 1.0,
@@ -538,7 +539,7 @@ def test_better_qualified_candidate_ranks_higher_for_the_same_job() -> None:
     weak = candidate(skills=[skill("Excel")], declared_years=1)
     scores = {
         n: score_pair(j, c, 0.6).overall
-        for n, c in dict(strong=strong, related=related, medium=medium, weak=weak).items()
+        for n, c in {"strong": strong, "related": related, "medium": medium, "weak": weak}.items()
     }
     assert scores["strong"] > scores["related"] > scores["weak"]
     assert scores["strong"] > scores["medium"] > scores["weak"]

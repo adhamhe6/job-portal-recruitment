@@ -35,14 +35,18 @@ def test_there_is_exactly_one_head_and_a_linear_history() -> None:
     scripts = script_directory()
     assert len(scripts.get_heads()) == 1
     revisions = list(scripts.walk_revisions())
-    assert revisions and all(len(r.down_revision or ()) <= 1 if isinstance(r.down_revision, tuple) else True for r in revisions)
+    assert revisions and all(
+        len(r.down_revision or ()) <= 1 if isinstance(r.down_revision, tuple) else True for r in revisions
+    )
     assert revisions[-1].down_revision is None, "the chain starts at an initial revision"
     assert scripts.get_current_head() == revisions[0].revision
 
 
 async def test_the_migrated_database_has_no_drift_from_the_models(migrated_db: None) -> None:
     def diff(sync_conn: object) -> list[object]:
-        ctx = MigrationContext.configure(sync_conn, opts={"compare_type": True, "compare_server_default": False})  # type: ignore[arg-type]
+        ctx = MigrationContext.configure(
+            sync_conn, opts={"compare_type": True, "compare_server_default": False}
+        )  # type: ignore[arg-type]
         return compare_metadata(ctx, Base.metadata)
 
     async with get_engine().connect() as conn:
@@ -58,14 +62,25 @@ async def test_the_database_is_at_the_head_revision(migrated_db: None) -> None:
 
 async def test_every_model_table_exists_and_nothing_else_does(migrated_db: None) -> None:
     async with get_engine().connect() as conn:
-        tables = {r[0] for r in (await conn.execute(text("SELECT tablename FROM pg_tables WHERE schemaname = 'public'"))).all()}
+        tables = {
+            r[0]
+            for r in (
+                await conn.execute(text("SELECT tablename FROM pg_tables WHERE schemaname = 'public'"))
+            ).all()
+        }
     assert tables == {t.name for t in Base.metadata.sorted_tables} | {"alembic_version"}
 
 
 def alembic(url: str, *args: str) -> subprocess.CompletedProcess[str]:
     env = {**os.environ, "DATABASE_URL": url, "ENVIRONMENT": "test"}
     return subprocess.run(  # noqa: S603
-        [sys.executable, "-m", "alembic", "-c", str(BACKEND / "alembic.ini"), *args], cwd=BACKEND, env=env, capture_output=True, text=True, timeout=180, check=False,
+        [sys.executable, "-m", "alembic", "-c", str(BACKEND / "alembic.ini"), *args],
+        cwd=BACKEND,
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=180,
+        check=False,
     )
 
 
@@ -80,21 +95,33 @@ async def test_a_scratch_database_can_be_built_checked_torn_down_and_rebuilt(mig
         up = alembic(scratch_url, "upgrade", "head")
         assert up.returncode == 0, up.stderr[-2000:]
         check = alembic(scratch_url, "check")
-        assert check.returncode == 0 and "No new upgrade operations detected" in (check.stdout + check.stderr), check.stdout + check.stderr
+        assert check.returncode == 0 and "No new upgrade operations detected" in (
+            check.stdout + check.stderr
+        ), check.stdout + check.stderr
         heads = alembic(scratch_url, "current")
         assert script_directory().get_current_head() in (heads.stdout + heads.stderr)
-        conn = await asyncpg.connect(base.set(drivername="postgresql", database=scratch).render_as_string(hide_password=False))
+        conn = await asyncpg.connect(
+            base.set(drivername="postgresql", database=scratch).render_as_string(hide_password=False)
+        )
         try:
             n_tables = await conn.fetchval("SELECT count(*) FROM pg_tables WHERE schemaname = 'public'")
             ext = {r["extname"] for r in await conn.fetch("SELECT extname FROM pg_extension")}
-            assert n_tables == len(Base.metadata.sorted_tables) + 1 and {"vector", "pg_trgm", "btree_gist"} <= ext
+            assert (
+                n_tables == len(Base.metadata.sorted_tables) + 1
+                and {"vector", "pg_trgm", "btree_gist"} <= ext
+            )
         finally:
             await conn.close()
         down = alembic(scratch_url, "downgrade", "base")
         assert down.returncode == 0, down.stderr[-2000:]
-        conn = await asyncpg.connect(base.set(drivername="postgresql", database=scratch).render_as_string(hide_password=False))
+        conn = await asyncpg.connect(
+            base.set(drivername="postgresql", database=scratch).render_as_string(hide_password=False)
+        )
         try:
-            left = {r["tablename"] for r in await conn.fetch("SELECT tablename FROM pg_tables WHERE schemaname = 'public'")}
+            left = {
+                r["tablename"]
+                for r in await conn.fetch("SELECT tablename FROM pg_tables WHERE schemaname = 'public'")
+            }
             assert left <= {"alembic_version"}, left
         finally:
             await conn.close()

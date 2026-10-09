@@ -19,7 +19,7 @@ def utcnow() -> datetime:
 
 
 async def paginate(
-    session: AsyncSession, stmt: Select[Any], *, page: int, page_size: int, scalars: bool = True
+    session: AsyncSession, stmt: Select, *, page: int, page_size: int, scalars: bool = True
 ) -> tuple[list[Any], int]:
     """Run ``stmt`` with LIMIT/OFFSET plus a COUNT over the same filters. Returns ``(rows, total)``."""
     count_stmt = select(func.count()).select_from(stmt.order_by(None).subquery())
@@ -44,7 +44,12 @@ def record_audit(
     """Stage an audit event in the caller's transaction (committed together with the business change)."""
     session.add(
         AuditEvent(
-            actor_id=actor_id, action=action, entity_type=entity_type, entity_id=entity_id, company_id=company_id, meta=meta
+            actor_id=actor_id,
+            action=action,
+            entity_type=entity_type,
+            entity_id=entity_id,
+            company_id=company_id,
+            meta=meta,
         )
     )
 

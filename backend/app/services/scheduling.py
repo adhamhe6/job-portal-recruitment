@@ -18,7 +18,12 @@ from app.services.tasks import Dispatcher, TaskService
 logger = logging.getLogger(__name__)
 
 
-async def schedule_candidate_refresh(session: AsyncSession, dispatcher: Dispatcher | None, candidate_id: uuid.UUID, user_id: uuid.UUID | None = None) -> None:
+async def schedule_candidate_refresh(
+    session: AsyncSession,
+    dispatcher: Dispatcher | None,
+    candidate_id: uuid.UUID,
+    user_id: uuid.UUID | None = None,
+) -> None:
     if dispatcher is None:
         return
     try:
@@ -30,7 +35,9 @@ async def schedule_candidate_refresh(session: AsyncSession, dispatcher: Dispatch
             dedupe_key=f"match-candidate:{candidate_id}",
         )
     except ServiceUnavailableError:
-        logger.warning("candidate refresh not queued (queue unavailable)", extra={"candidate_id": str(candidate_id)})
+        logger.warning(
+            "candidate refresh not queued (queue unavailable)", extra={"candidate_id": str(candidate_id)}
+        )
 
 
 async def schedule_job_match(

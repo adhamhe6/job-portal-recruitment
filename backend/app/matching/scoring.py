@@ -120,7 +120,9 @@ def experience_alignment(job: JobFeatures, years: float | None) -> ExperienceRes
         return ExperienceResult(round(score, 4), "BELOW", years, f"{_fmt(years)} years vs {need} required")
     if hi is not None and years > float(hi):
         score = max(0.7, 1.0 - 0.05 * (years - float(hi)))
-        return ExperienceResult(round(score, 4), "ABOVE", years, f"{_fmt(years)} years (above the {need} range)")
+        return ExperienceResult(
+            round(score, 4), "ABOVE", years, f"{_fmt(years)} years (above the {need} range)"
+        )
     return ExperienceResult(1.0, "MEETS", years, f"{_fmt(years)} years vs {need} required")
 
 
@@ -198,7 +200,11 @@ def preference_alignment(job: JobFeatures, c: CandidateFeatures) -> PreferenceRe
     if c.employment_preference:
         eq = c.employment_preference == job.employment_type
         parts.append(1.0 if eq else 0.3)
-        notes["employment"] = "Employment type matches" if eq else f"Candidate prefers {c.employment_preference.replace('_', ' ').lower()}"
+        notes["employment"] = (
+            "Employment type matches"
+            if eq
+            else f"Candidate prefers {c.employment_preference.replace('_', ' ').lower()}"
+        )
     return PreferenceResult(round(sum(parts) / len(parts), 4) if parts else None, notes)
 
 
@@ -275,7 +281,11 @@ def score_pair(job: JobFeatures, cand: CandidateFeatures, raw_cosine: float | No
             "required_max": float(job.max_experience_years) if job.max_experience_years is not None else None,
             "text": exp.text,
         },
-        "education": {"status": edu.status, "candidate_level": edu.candidate_level, "required_level": edu.required_level},
+        "education": {
+            "status": edu.status,
+            "candidate_level": edu.candidate_level,
+            "required_level": edu.required_level,
+        },
         "semantic": {
             "band": semantic_band(semantic) if raw_cosine is not None else "UNKNOWN",
             "score": round(semantic, 4),
@@ -283,7 +293,7 @@ def score_pair(job: JobFeatures, cand: CandidateFeatures, raw_cosine: float | No
         },
         "preferences": prefs.notes,
         "qualification_floor_applied": floor_applied,
-        "weights": {k: v for k, v in WEIGHTS.items()},
+        "weights": dict(WEIGHTS.items()),
     }
     explanation["summary"] = build_summary(job, explanation)
     return MatchResult(
@@ -305,7 +315,10 @@ def build_summary(job: JobFeatures, e: dict[str, Any]) -> str:
     parts: list[str] = [f"{e['band'].title()} match"]
     if req["total"]:
         got = len(req["matched"])
-        parts.append(f"covers {got} of {req['total']} required skills" + (f" (+{len(req['related'])} related)" if req["related"] else ""))
+        parts.append(
+            f"covers {got} of {req['total']} required skills"
+            + (f" (+{len(req['related'])} related)" if req["related"] else "")
+        )
     if e["experience"]["status"] in ("MEETS", "ABOVE"):
         parts.append(f"experience: {e['experience']['text']}")
     elif e["experience"]["status"] == "BELOW":

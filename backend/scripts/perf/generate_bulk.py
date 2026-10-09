@@ -23,14 +23,43 @@ from app.db.database import dispose_engine, get_engine
 from app.matching.embedder import get_embedder
 from app.matching.representation import COMPONENT_WEIGHTS
 
-TITLES = ["Backend Engineer", "Frontend Engineer", "Data Scientist", "DevOps Engineer", "Product Manager", "Data Analyst", "QA Engineer",
-          "Machine Learning Engineer", "Site Reliability Engineer", "Mobile Developer", "Security Engineer", "Marketing Manager",
-          "Financial Analyst", "Registered Nurse", "UX Designer", "Sales Executive", "Customer Success Manager", "HR Business Partner"]
+TITLES = [
+    "Backend Engineer",
+    "Frontend Engineer",
+    "Data Scientist",
+    "DevOps Engineer",
+    "Product Manager",
+    "Data Analyst",
+    "QA Engineer",
+    "Machine Learning Engineer",
+    "Site Reliability Engineer",
+    "Mobile Developer",
+    "Security Engineer",
+    "Marketing Manager",
+    "Financial Analyst",
+    "Registered Nurse",
+    "UX Designer",
+    "Sales Executive",
+    "Customer Success Manager",
+    "HR Business Partner",
+]
 LEVELS = ["Junior", "Senior", "Lead", "Staff", ""]
-CITIES = ["Berlin, Germany", "Munich, Germany", "London, United Kingdom", "Amsterdam, Netherlands", "Boston, USA", "Austin, USA", "Lisbon, Portugal",
-          "Paris, France", "Vienna, Austria", "Remote"]
-FILLER = ("You will work with a cross-functional team to design, build and operate reliable products, collaborate with stakeholders, write clear "
-          "documentation, review code and continuously improve our processes and tooling in a fast-moving environment. ")
+CITIES = [
+    "Berlin, Germany",
+    "Munich, Germany",
+    "London, United Kingdom",
+    "Amsterdam, Netherlands",
+    "Boston, USA",
+    "Austin, USA",
+    "Lisbon, Portugal",
+    "Paris, France",
+    "Vienna, Austria",
+    "Remote",
+]
+FILLER = (
+    "You will work with a cross-functional team to design, build and operate reliable products, collaborate with stakeholders, write clear "
+    "documentation, review code and continuously improve our processes and tooling in a fast-moving environment. "
+)
 
 
 async def main(n_jobs: int, n_cands: int, n_companies: int) -> None:
@@ -39,13 +68,18 @@ async def main(n_jobs: int, n_cands: int, n_companies: int) -> None:
     pw = hash_password("PerfPass123!")
     t0 = time.time()
     async with get_engine().begin() as conn:
-        await conn.execute(text("TRUNCATE users, companies, jobs, candidate_profiles RESTART IDENTITY CASCADE"))
+        await conn.execute(
+            text("TRUNCATE users, companies, jobs, candidate_profiles RESTART IDENTITY CASCADE")
+        )
         skills = (await conn.execute(text("SELECT id, name FROM skills"))).all()
         if not skills:
             raise SystemExit("run the bootstrap first (skills taxonomy is empty)")
         print(f"{len(skills)} skills; creating {n_companies} companies, {n_jobs} jobs, {n_cands} candidates")
         await conn.execute(
-            text("INSERT INTO companies (name, slug) SELECT 'Company '||g, 'company-'||g FROM generate_series(1,:n) g"), {"n": n_companies}
+            text(
+                "INSERT INTO companies (name, slug) SELECT 'Company '||g, 'company-'||g FROM generate_series(1,:n) g"
+            ),
+            {"n": n_companies},
         )
         await conn.execute(
             text(
@@ -156,20 +190,43 @@ async def main(n_jobs: int, n_cands: int, n_companies: int) -> None:
         print(f"candidates done ({time.time() - t0:.0f}s)")
 
         # real embeddings (role / skills / prose components combined exactly like production)
-        w = np.array([COMPONENT_WEIGHTS["role"], COMPONENT_WEIGHTS["skills"], COMPONENT_WEIGHTS["prose"]], dtype=np.float32)
-        for table, role_col, skills_col, prose_col in (("jobs", "title", "skills_text", "description"), ("candidate_profiles", "headline", "skills_text", "summary")):
+        w = np.array(
+            [COMPONENT_WEIGHTS["role"], COMPONENT_WEIGHTS["skills"], COMPONENT_WEIGHTS["prose"]],
+            dtype=np.float32,
+        )
+        for table, role_col, skills_col, prose_col in (
+            ("jobs", "title", "skills_text", "description"),
+            ("candidate_profiles", "headline", "skills_text", "summary"),
+        ):
             ids = [r[0] for r in (await conn.execute(text(f"SELECT id FROM {table}"))).all()]
             done = 0
             for i in range(0, len(ids), 2000):
                 batch = ids[i : i + 2000]
-                rows = (await conn.execute(text(f"SELECT id, {role_col}, coalesce({skills_col}, ''), left({prose_col}, 600) FROM {table} WHERE id = ANY(:ids)"), {"ids": batch})).all()
+                rows = (
+                    await conn.execute(
+                        text(
+                            f"SELECT id, {role_col}, coalesce({skills_col}, ''), left({prose_col}, 600) FROM {table} WHERE id = ANY(:ids)"
+                        ),
+                        {"ids": batch},
+                    )
+                ).all()
                 texts = [[(r[1] or "x"), (r[2] or "x"), (r[3] or "x")] for r in rows]
                 flat = emb.embed([t for tri in texts for t in tri]).reshape(len(rows), 3, -1)
                 vecs = (flat * w[None, :, None]).sum(axis=1)
                 vecs = vecs / np.linalg.norm(vecs, axis=1, keepdims=True)
                 await conn.execute(
-                    text(f"UPDATE {table} SET embedding = CAST(:v AS vector), embedding_model = :m, embedding_version = :ver, embedding_source_hash = 'perf' WHERE id = CAST(:id AS uuid)"),
-                    [{"v": "[" + ",".join(f"{x:.6f}" for x in vec) + "]", "m": emb.name, "ver": emb.version, "id": str(r[0])} for vec, r in zip(vecs, rows, strict=True)],
+                    text(
+                        f"UPDATE {table} SET embedding = CAST(:v AS vector), embedding_model = :m, embedding_version = :ver, embedding_source_hash = 'perf' WHERE id = CAST(:id AS uuid)"
+                    ),
+                    [
+                        {
+                            "v": "[" + ",".join(f"{x:.6f}" for x in vec) + "]",
+                            "m": emb.name,
+                            "ver": emb.version,
+                            "id": str(r[0]),
+                        }
+                        for vec, r in zip(vecs, rows, strict=True)
+                    ],
                 )
                 done += len(batch)
             print(f"{table}: embedded {done} ({time.time() - t0:.0f}s)")
@@ -190,7 +247,10 @@ async def main(n_jobs: int, n_cands: int, n_companies: int) -> None:
             {"n": n_cands * 3, "nc": n_cands},
         )
         await conn.execute(text("ANALYZE"))
-        counts = {t: (await conn.execute(text(f"SELECT count(*) FROM {t}"))).scalar_one() for t in ("jobs", "job_skills", "candidate_profiles", "candidate_skills", "applications")}
+        counts = {
+            t: (await conn.execute(text(f"SELECT count(*) FROM {t}"))).scalar_one()
+            for t in ("jobs", "job_skills", "candidate_profiles", "candidate_skills", "applications")
+        }
         print("row counts:", counts, f"total {time.time() - t0:.0f}s")
     await dispose_engine()
 

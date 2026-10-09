@@ -17,8 +17,12 @@ router = APIRouter(prefix="/notifications", tags=["Notifications"], responses=CO
 async def list_notifications(
     user: CurrentUser, session: SessionDep, p: Pagination, unread_only: Annotated[bool, Query()] = False
 ) -> Page[NotificationOut]:
-    rows, total = await NotificationService(session).list(user, unread_only=unread_only, page=p.page, page_size=p.page_size)
-    return Page.build([NotificationOut.model_validate(n) for n in rows], page=p.page, page_size=p.page_size, total=total)
+    rows, total = await NotificationService(session).list(
+        user, unread_only=unread_only, page=p.page, page_size=p.page_size
+    )
+    return Page.build(
+        [NotificationOut.model_validate(n) for n in rows], page=p.page, page_size=p.page_size, total=total
+    )
 
 
 @router.get("/unread-count", response_model=UnreadCount, summary="Number of unread notifications")
@@ -32,6 +36,8 @@ async def mark_all_read(user: CurrentUser, session: SessionDep) -> UnreadCount:
     return UnreadCount(unread=0)
 
 
-@router.post("/{notification_id}/read", response_model=NotificationOut, summary="Mark one notification as read")
+@router.post(
+    "/{notification_id}/read", response_model=NotificationOut, summary="Mark one notification as read"
+)
 async def mark_read(notification_id: uuid.UUID, user: CurrentUser, session: SessionDep) -> NotificationOut:
     return NotificationOut.model_validate(await NotificationService(session).mark_read(user, notification_id))

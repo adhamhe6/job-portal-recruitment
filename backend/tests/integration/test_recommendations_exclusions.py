@@ -57,7 +57,12 @@ async def test_closing_a_job_removes_it_from_recommendations(client: AsyncClient
 async def test_unpublished_jobs_are_never_recommended(client: AsyncClient, status: str) -> None:
     w = await mini_world(client)
     await set_job_status(w["live"]["id"], status)  # leaves the (now stale) match row behind on purpose
-    assert await scalar("SELECT count(*) FROM candidate_job_matches WHERE job_id = :j", j=uuid.UUID(w["live"]["id"])) == 1
+    assert (
+        await scalar(
+            "SELECT count(*) FROM candidate_job_matches WHERE job_id = :j", j=uuid.UUID(w["live"]["id"])
+        )
+        == 1
+    )
     assert titles(await recs(client, w["cand"])) == ["Second Backend Role"]
 
 
@@ -75,7 +80,9 @@ async def test_pausing_and_resuming_toggles_recommendations(client: AsyncClient)
     assert set(titles(await recs(client, w["cand"]))) == {"Live Backend Role", "Second Backend Role"}
 
 
-async def test_applied_jobs_are_not_recommended_until_the_application_is_withdrawn(client: AsyncClient) -> None:
+async def test_applied_jobs_are_not_recommended_until_the_application_is_withdrawn(
+    client: AsyncClient,
+) -> None:
     w = await mini_world(client)
     app = await apply_job(client, w["cand"], w["live"]["id"])
     assert titles(await recs(client, w["cand"])) == ["Second Backend Role"]
@@ -91,12 +98,16 @@ async def test_opting_out_of_the_marketplace_does_not_switch_recommendations_off
     assert set(titles(await recs(client, w["cand"]))) == {"Live Backend Role", "Second Backend Role"}
 
 
-async def test_jobs_published_after_the_profile_and_profiles_created_after_the_jobs_both_get_scored(client: AsyncClient) -> None:
+async def test_jobs_published_after_the_profile_and_profiles_created_after_the_jobs_both_get_scored(
+    client: AsyncClient,
+) -> None:
     rec = await register_employer(client)
     early_job = await create_job(client, rec, title="Early Backend Role", publish=True)
     cand = await register_candidate(client)
     await fill_backend_profile(client, cand)  # profile completed after the job exists -> candidate-side run
-    late_job = await create_job(client, rec, title="Late Backend Role", publish=True)  # job published after the profile -> job-side run
+    late_job = await create_job(
+        client, rec, title="Late Backend Role", publish=True
+    )  # job published after the profile -> job-side run
     assert set(titles(await recs(client, cand))) == {"Early Backend Role", "Late Backend Role"}
     assert early_job["id"] != late_job["id"]
 
@@ -106,7 +117,12 @@ async def test_a_candidate_without_matches_yet_gets_a_helpful_hint(client: Async
     cand = await register_candidate(client)
     await fill_backend_profile(client, cand)
     body = await recs(client, cand)  # profile ready, but there is no job at all
-    assert body["items"] == [] and body["total"] == 0 and body["meta"]["profile_ready"] is True and body["meta"]["hint"]
+    assert (
+        body["items"] == []
+        and body["total"] == 0
+        and body["meta"]["profile_ready"] is True
+        and body["meta"]["hint"]
+    )
     assert rec
 
 

@@ -86,7 +86,9 @@ _COMPLETION: list[tuple[str, str, int]] = [
 ]
 
 
-def compute_completion(profile: CandidateProfile, *, skills: int, experiences: int, educations: int, has_resume: bool) -> ProfileCompletion:
+def compute_completion(
+    profile: CandidateProfile, *, skills: int, experiences: int, educations: int, has_resume: bool
+) -> ProfileCompletion:
     done = {
         "headline": bool(profile.headline),
         "summary": bool(profile.summary and len(profile.summary) >= 30),
@@ -136,14 +138,18 @@ def skill_out(cs: CandidateSkill) -> CandidateSkillOut:
 
 
 class CandidateService:
-    def __init__(self, session: AsyncSession, dispatcher: Dispatcher | None = None, cache: Cache | None = None) -> None:
+    def __init__(
+        self, session: AsyncSession, dispatcher: Dispatcher | None = None, cache: Cache | None = None
+    ) -> None:
         self.session = session
         self.dispatcher = dispatcher
         self.cache = cache
 
     # --- helpers --------------------------------------------------------------------------------------
     async def profile_for_user(self, user: User) -> CandidateProfile:
-        profile = (await self.session.execute(select(CandidateProfile).where(CandidateProfile.user_id == user.id))).scalar_one_or_none()
+        profile = (
+            await self.session.execute(select(CandidateProfile).where(CandidateProfile.user_id == user.id))
+        ).scalar_one_or_none()
         if profile is None:
             raise NotFoundError("Candidate profile not found", code="CANDIDATE_NOT_FOUND")
         return profile
@@ -175,8 +181,11 @@ class CandidateService:
         active_skills = [s for s in profile.skills if s.status != SkillStatus.REJECTED]
         has_resume = bool(primary and primary[0].status == ResumeStatus.PROCESSED)
         completion = compute_completion(
-            profile, skills=len([s for s in active_skills if s.status == SkillStatus.CONFIRMED]), experiences=len(profile.experiences),
-            educations=len(profile.educations), has_resume=has_resume,
+            profile,
+            skills=len([s for s in active_skills if s.status == SkillStatus.CONFIRMED]),
+            experiences=len(profile.experiences),
+            educations=len(profile.educations),
+            has_resume=has_resume,
         )
         return CandidateProfileOut(
             id=profile.id,
@@ -204,7 +213,13 @@ class CandidateService:
             languages=[LanguageOut.model_validate(lang) for lang in profile.languages],
             completion=completion,
             primary_resume=(
-                ResumeBrief(id=primary[0].id, status=primary[0].status.value, is_primary=True, original_filename=primary[1], created_at=primary[0].created_at)
+                ResumeBrief(
+                    id=primary[0].id,
+                    status=primary[0].status.value,
+                    is_primary=True,
+                    original_filename=primary[1],
+                    created_at=primary[0].created_at,
+                )
                 if primary
                 else None
             ),
@@ -287,7 +302,9 @@ class CandidateService:
         await self._after_change(profile, user)
         return CertificationOut.model_validate(obj)
 
-    async def update_certification(self, user: User, item_id: uuid.UUID, data: CertificationIn) -> CertificationOut:
+    async def update_certification(
+        self, user: User, item_id: uuid.UUID, data: CertificationIn
+    ) -> CertificationOut:
         profile = await self.profile_for_user(user)
         obj = await self._child(Certification, item_id, profile)
         for k, v in data.model_dump().items():
@@ -305,7 +322,10 @@ class CandidateService:
     async def add_language(self, user: User, data: LanguageIn) -> LanguageOut:
         profile = await self.profile_for_user(user)
         exists = await self.session.scalar(
-            select(CandidateLanguage.id).where(CandidateLanguage.candidate_id == profile.id, func.lower(CandidateLanguage.language) == data.language.lower())
+            select(CandidateLanguage.id).where(
+                CandidateLanguage.candidate_id == profile.id,
+                func.lower(CandidateLanguage.language) == data.language.lower(),
+            )
         )
         if exists:
             raise ConflictError("Language already added", code="LANGUAGE_EXISTS")
@@ -333,7 +353,11 @@ class CandidateService:
             assert data.name
             skill = await skills.get_or_create(data.name)
         existing = (
-            await self.session.execute(select(CandidateSkill).where(CandidateSkill.candidate_id == profile.id, CandidateSkill.skill_id == skill.id))
+            await self.session.execute(
+                select(CandidateSkill).where(
+                    CandidateSkill.candidate_id == profile.id, CandidateSkill.skill_id == skill.id
+                )
+            )
         ).scalar_one_or_none()
         if existing and existing.status == SkillStatus.CONFIRMED:
             raise ConflictError("You already have this skill", code="SKILL_ALREADY_ADDED")
@@ -343,8 +367,12 @@ class CandidateService:
             cs = existing
         else:
             cs = CandidateSkill(
-                candidate_id=profile.id, skill_id=skill.id, proficiency=data.proficiency, years_experience=data.years_experience,
-                source=DataSource.USER, status=SkillStatus.CONFIRMED,
+                candidate_id=profile.id,
+                skill_id=skill.id,
+                proficiency=data.proficiency,
+                years_experience=data.years_experience,
+                source=DataSource.USER,
+                status=SkillStatus.CONFIRMED,
             )
             self.session.add(cs)
         await self.session.commit()
@@ -352,17 +380,27 @@ class CandidateService:
         cs.skill = skill
         return skill_out(cs)
 
-    async def update_skill(self, user: User, item_id: uuid.UUID, data: CandidateSkillUpdate) -> CandidateSkillOut:
+    async def update_skill(
+        self, user: User, item_id: uuid.UUID, data: CandidateSkillUpdate
+    ) -> CandidateSkillOut:
         profile = await self.profile_for_user(user)
         cs = await self._child(CandidateSkill, item_id, profile)
         changes = data.model_dump(exclude_unset=True)
         for k, v in changes.items():
             setattr(cs, k, v)
         if changes.get("status") == SkillStatus.CONFIRMED:
-            cs.source = DataSource.USER if cs.source == DataSource.USER else cs.source  # keep provenance of parser suggestions
+            cs.source = (
+                DataSource.USER if cs.source == DataSource.USER else cs.source
+            )  # keep provenance of parser suggestions
         await self.session.commit()
         await self._after_change(profile, user)
-        row = (await self.session.execute(select(CandidateSkill).where(CandidateSkill.id == cs.id).options(selectinload(CandidateSkill.skill)))).scalar_one()
+        row = (
+            await self.session.execute(
+                select(CandidateSkill)
+                .where(CandidateSkill.id == cs.id)
+                .options(selectinload(CandidateSkill.skill))
+            )
+        ).scalar_one()
         return skill_out(row)
 
     async def remove_skill(self, user: User, item_id: uuid.UUID) -> None:
@@ -376,7 +414,9 @@ class CandidateService:
         await self._after_change(profile, user)
 
     # --- staff view --------------------------------------------------------------------------------------------
-    async def staff_view(self, user: User, candidate_id: uuid.UUID, *, job_id: uuid.UUID | None = None) -> CandidateView:
+    async def staff_view(
+        self, user: User, candidate_id: uuid.UUID, *, job_id: uuid.UUID | None = None
+    ) -> CandidateView:
         base = await self.session.get(CandidateProfile, candidate_id)
         if base is None:
             raise NotFoundError("Candidate not found", code="CANDIDATE_NOT_FOUND")
@@ -395,7 +435,15 @@ class CandidateService:
                     .order_by(Resume.created_at.desc())
                 )
             ).all():
-                resumes.append(ResumeBrief(id=r.id, status=r.status.value, is_primary=r.is_primary, original_filename=fname, created_at=r.created_at))
+                resumes.append(
+                    ResumeBrief(
+                        id=r.id,
+                        status=r.status.value,
+                        is_primary=r.is_primary,
+                        original_filename=fname,
+                        created_at=r.created_at,
+                    )
+                )
         apps: list[ApplicationBrief] = []
         if user.company_id:
             for a, title in (
@@ -406,7 +454,15 @@ class CandidateService:
                     .order_by(Application.applied_at.desc())
                 )
             ).all():
-                apps.append(ApplicationBrief(id=a.id, job_id=a.job_id, job_title=title, status=a.status.value, applied_at=a.applied_at))
+                apps.append(
+                    ApplicationBrief(
+                        id=a.id,
+                        job_id=a.job_id,
+                        job_title=title,
+                        status=a.status.value,
+                        applied_at=a.applied_at,
+                    )
+                )
         match = None
         if job_id:
             job = await load_job_for_staff(self.session, user, job_id)

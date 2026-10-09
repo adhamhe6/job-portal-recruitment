@@ -9,7 +9,15 @@ from typing import Any
 import pytest
 from redis.exceptions import RedisError
 
-from app.cache.redis_cache import Cache, CacheDomain, RateLimiter, TokenDenylist, get_cache, get_redis, redis_breaker
+from app.cache.redis_cache import (
+    Cache,
+    CacheDomain,
+    RateLimiter,
+    TokenDenylist,
+    get_cache,
+    get_redis,
+    redis_breaker,
+)
 from tests.helpers_spine import fast_argon  # noqa: F401
 
 pytestmark = pytest.mark.integration
@@ -127,7 +135,9 @@ async def test_invalidating_a_domain_makes_its_entries_unreachable(cache: Cache)
     await cache.get_or_set("a", [CacheDomain.JOBS], jobs)
     await cache.get_or_set("b", [CacheDomain.USERS], users)
     assert (jobs.calls, users.calls) == (2, 1), "only the invalidated namespace is recomputed"
-    assert int(await get_redis().get("cache:ver:jobs")) == 1 and await get_redis().get("cache:ver:users") is None
+    assert (
+        int(await get_redis().get("cache:ver:jobs")) == 1 and await get_redis().get("cache:ver:users") is None
+    )
 
 
 async def test_entries_depending_on_several_domains_die_with_any_of_them(cache: Cache) -> None:
@@ -148,7 +158,10 @@ async def test_entries_depending_on_several_domains_die_with_any_of_them(cache: 
 
 async def test_invalidate_many_at_once_and_repeatedly(cache: Cache) -> None:
     await cache.invalidate(CacheDomain.JOBS, CacheDomain.MATCHES, CacheDomain.JOBS)
-    assert int(await get_redis().get("cache:ver:jobs")) == 1 and int(await get_redis().get("cache:ver:matches")) == 1
+    assert (
+        int(await get_redis().get("cache:ver:jobs")) == 1
+        and int(await get_redis().get("cache:ver:matches")) == 1
+    )
     await cache.invalidate(CacheDomain.JOBS)
     await cache.invalidate(CacheDomain.JOBS)
     assert int(await get_redis().get("cache:ver:jobs")) == 3
@@ -162,7 +175,9 @@ async def test_old_entries_are_not_deleted_just_orphaned(cache: Cache) -> None:
     await cache.invalidate(CacheDomain.JOBS)
     await cache.get_or_set("orphan", [CacheDomain.JOBS], Counter())
     keys = [k async for k in get_redis().scan_iter(match="cache:v1:orphan:*")]
-    assert old in keys and len(keys) == 2 and await get_redis().ttl(old) > 0, "stale entries simply expire through their TTL"
+    assert old in keys and len(keys) == 2 and await get_redis().ttl(old) > 0, (
+        "stale entries simply expire through their TTL"
+    )
 
 
 async def test_a_disabled_cache_always_computes(db: None) -> None:
@@ -314,4 +329,8 @@ async def test_the_process_wide_cache_uses_settings(db: None) -> None:
     from app.core.config import get_settings
 
     cache = get_cache()
-    assert cache.enabled and cache.default_ttl == get_settings().cache_default_ttl_seconds and cache.redis is get_redis()
+    assert (
+        cache.enabled
+        and cache.default_ttl == get_settings().cache_default_ttl_seconds
+        and cache.redis is get_redis()
+    )

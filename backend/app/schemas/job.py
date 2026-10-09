@@ -201,7 +201,9 @@ class JobPublic(JobBase):
     is_saved: bool | None = Field(default=None, description="Present for signed-in candidates")
     my_application_id: uuid.UUID | None = None
     my_application_status: str | None = None
-    match: MatchPreview | None = Field(default=None, description="Present for signed-in candidates with a computed match")
+    match: MatchPreview | None = Field(
+        default=None, description="Present for signed-in candidates with a computed match"
+    )
     can_apply: bool | None = None
     apply_blocked_reason: str | None = None
 

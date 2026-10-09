@@ -48,7 +48,11 @@ class TaskService:
             if existing:
                 return existing, False
         task = BackgroundTask(
-            type=task_type, params=params, created_by_id=created_by_id, company_id=company_id, dedupe_key=dedupe_key
+            type=task_type,
+            params=params,
+            created_by_id=created_by_id,
+            company_id=company_id,
+            dedupe_key=dedupe_key,
         )
         self.session.add(task)
         try:
@@ -64,7 +68,9 @@ class TaskService:
     async def _active_by_key(self, key: str) -> BackgroundTask | None:
         return (
             await self.session.execute(
-                select(BackgroundTask).where(BackgroundTask.dedupe_key == key, BackgroundTask.status.in_(ACTIVE_TASK_STATUSES))
+                select(BackgroundTask).where(
+                    BackgroundTask.dedupe_key == key, BackgroundTask.status.in_(ACTIVE_TASK_STATUSES)
+                )
             )
         ).scalar_one_or_none()
 
@@ -73,7 +79,9 @@ class TaskService:
         try:
             await dispatcher.dispatch(str(task.id))
         except ServiceUnavailableError:
-            await self.fail(task.id, "QUEUE_UNAVAILABLE", "The job queue is unavailable; please retry shortly")
+            await self.fail(
+                task.id, "QUEUE_UNAVAILABLE", "The job queue is unavailable; please retry shortly"
+            )
             raise
 
     async def submit(
@@ -99,7 +107,11 @@ class TaskService:
         visible = task is not None and (
             is_admin(user)
             or task.created_by_id == user.id
-            or (user.company_id is not None and task.company_id == user.company_id and user.role.value == "RECRUITER")
+            or (
+                user.company_id is not None
+                and task.company_id == user.company_id
+                and user.role.value == "RECRUITER"
+            )
         )
         if task is None or not visible:
             raise NotFoundError("Task not found", code="TASK_NOT_FOUND")
@@ -108,8 +120,12 @@ class TaskService:
     async def fail(self, task_id: uuid.UUID | str, code: str, message: str) -> None:
         await self.session.execute(
             update(BackgroundTask)
-            .where(BackgroundTask.id == uuid.UUID(str(task_id)), BackgroundTask.status.in_(ACTIVE_TASK_STATUSES))
-            .values(status=TaskStatus.FAILED, error_code=code, error_message=message[:500], finished_at=utcnow())
+            .where(
+                BackgroundTask.id == uuid.UUID(str(task_id)), BackgroundTask.status.in_(ACTIVE_TASK_STATUSES)
+            )
+            .values(
+                status=TaskStatus.FAILED, error_code=code, error_message=message[:500], finished_at=utcnow()
+            )
         )
         await self.session.commit()
 
@@ -160,7 +176,13 @@ class TaskStore:
             await s.execute(
                 update(BackgroundTask)
                 .where(BackgroundTask.id == task_id)
-                .values(status=TaskStatus.COMPLETED, progress=100, stage="done", result=result, finished_at=utcnow())
+                .values(
+                    status=TaskStatus.COMPLETED,
+                    progress=100,
+                    stage="done",
+                    result=result,
+                    finished_at=utcnow(),
+                )
             )
             await s.commit()
 
@@ -169,7 +191,13 @@ class TaskStore:
             await s.execute(
                 update(BackgroundTask)
                 .where(BackgroundTask.id == task_id)
-                .values(status=TaskStatus.FAILED, error_code=code, error_message=message[:500], stage="failed", finished_at=utcnow())
+                .values(
+                    status=TaskStatus.FAILED,
+                    error_code=code,
+                    error_message=message[:500],
+                    stage="failed",
+                    finished_at=utcnow(),
+                )
             )
             await s.commit()
 

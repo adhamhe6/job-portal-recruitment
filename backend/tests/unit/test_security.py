@@ -317,4 +317,4 @@ def test_least_privilege_ordering() -> None:
 
 
 def test_staff_roles() -> None:
-    assert STAFF_ROLES == {Role.RECRUITER, Role.HIRING_MANAGER}
+    assert {Role.RECRUITER, Role.HIRING_MANAGER} == STAFF_ROLES

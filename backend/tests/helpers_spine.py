@@ -32,7 +32,7 @@ ERROR_KEYS = {"code", "message", "details", "request_id"}
 def fast_argon(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
     """Cheap Argon2 parameters for API tests (unit tests of the real parameters live in tests/unit/test_security.py)."""
     monkeypatch.setattr(security, "_hasher", PasswordHasher(time_cost=1, memory_cost=8, parallelism=1))
-    yield
+    return
 
 
 # --- raw database access ---------------------------------------------------------------------------------------------
@@ -68,7 +68,9 @@ async def set_job_status(job_id: str, status: str) -> None:
 
 async def expire_deadline(job_id: str, days_ago: int = 1) -> None:
     await sql(
-        "UPDATE jobs SET application_deadline = current_date - CAST(:d AS integer) WHERE id = :id", d=days_ago, id=U(job_id)
+        "UPDATE jobs SET application_deadline = current_date - CAST(:d AS integer) WHERE id = :id",
+        d=days_ago,
+        id=U(job_id),
     )
 
 
@@ -155,18 +157,30 @@ async def nurse_profile(client: AsyncClient, cand: dict[str, Any], years: float 
     """A clinical profile: nothing in common with the engineering jobs."""
     h = cand["h"]
     r = await client.patch(
-        f"{API}/candidates/me", headers=h,
-        json={"headline": "ICU nurse", "summary": "Registered nurse in an intensive care unit: patient care, medication administration and life support.",
-              "location": "Hamburg, Germany", "years_experience": years, "remote_preference": "ONSITE"},
+        f"{API}/candidates/me",
+        headers=h,
+        json={
+            "headline": "ICU nurse",
+            "summary": "Registered nurse in an intensive care unit: patient care, medication administration and life support.",
+            "location": "Hamburg, Germany",
+            "years_experience": years,
+            "remote_preference": "ONSITE",
+        },
     )
     assert r.status_code == 200, r.text
     for name in ("Patient Care", "Critical Care", "BLS", "ACLS", "Medication Administration"):
         sr = await client.post(f"{API}/candidates/me/skills", headers=h, json={"name": name})
         assert sr.status_code == 201, sr.text
     er = await client.post(
-        f"{API}/candidates/me/experiences", headers=h,
-        json={"title": "ICU Nurse", "company_name": "City Hospital", "start_date": (date.today() - timedelta(days=int(years * 365))).isoformat(),
-              "is_current": True, "description": "Cared for critically ill patients, administered medication and managed ventilators."},
+        f"{API}/candidates/me/experiences",
+        headers=h,
+        json={
+            "title": "ICU Nurse",
+            "company_name": "City Hospital",
+            "start_date": (date.today() - timedelta(days=int(years * 365))).isoformat(),
+            "is_current": True,
+            "description": "Cared for critically ill patients, administered medication and managed ventilators.",
+        },
     )
     assert er.status_code == 201, er.text
 
@@ -207,8 +221,14 @@ async def backend_world(client: AsyncClient) -> dict[str, Any]:
 
 
 async def insert_imported_candidate(
-    company_id: str, *, name: str = "Imported Person", email: str | None = "imported@sourced.example", skills: str | None = None,
-    headline: str = "Backend developer", years: float = 6.0, location: str = "Berlin, Germany",
+    company_id: str,
+    *,
+    name: str = "Imported Person",
+    email: str | None = "imported@sourced.example",
+    skills: str | None = None,
+    headline: str = "Backend developer",
+    years: float = 6.0,
+    location: str = "Berlin, Germany",
 ) -> str:
     """A company-sourced (IMPORTED) candidate profile, inserted directly (the import pipeline is another module)."""
     first, _, last = name.partition(" ")
@@ -217,16 +237,49 @@ async def insert_imported_candidate(
         "INSERT INTO candidate_profiles (id, source, sourced_by_company_id, first_name, last_name, display_name, contact_email, contact_phone,"
         " headline, summary, location, years_experience, skills_text, is_searchable) VALUES (:id, 'IMPORTED', :c, :f, :l, :d, :e, '+49 170 0000000',"
         " :h, :s, :loc, :y, :sk, true)",
-        id=cid, c=U(company_id), f=first, l=last or "Person", d=name, e=email, h=headline,
-        s="Imported résumé summary with Python and PostgreSQL.", loc=location, y=years, sk=skills,
+        id=cid,
+        c=U(company_id),
+        f=first,
+        l=last or "Person",
+        d=name,
+        e=email,
+        h=headline,
+        s="Imported résumé summary with Python and PostgreSQL.",
+        loc=location,
+        y=years,
+        sk=skills,
     )
     return str(cid)
 
 
 __all__ = [
-    "API", "PASSWORD", "U", "apply_job", "assert_error", "backend_world", "client_from", "company_team", "expire_deadline", "fast_argon",
-    "future", "insert_imported_candidate", "login", "nurse_profile", "publish", "refresh", "refresh_cookie", "scalar", "set_application_status",
-    "reset_database", "seed_search_corpus", "set_cookie_headers", "set_job_status", "shared_world", "sql", "tasks", "walk",
+    "API",
+    "PASSWORD",
+    "U",
+    "apply_job",
+    "assert_error",
+    "backend_world",
+    "client_from",
+    "company_team",
+    "expire_deadline",
+    "fast_argon",
+    "future",
+    "insert_imported_candidate",
+    "login",
+    "nurse_profile",
+    "publish",
+    "refresh",
+    "refresh_cookie",
+    "reset_database",
+    "scalar",
+    "seed_search_corpus",
+    "set_application_status",
+    "set_cookie_headers",
+    "set_job_status",
+    "shared_world",
+    "sql",
+    "tasks",
+    "walk",
 ]
 
 
@@ -238,25 +291,136 @@ async def seed_search_corpus(client: AsyncClient) -> dict[str, Any]:
     rec2 = await register_employer(client, "Boreal Health")
 
     specs: list[tuple[str, dict[str, Any], dict[str, Any]]] = [
-        ("python", rec1, {"title": "Python Developer", "location": "Berlin, Germany", "workplace_type": "REMOTE", "employment_type": "FULL_TIME", "experience_level": "MID",
-                          "salary_min": 60000, "salary_max": 80000, "min_experience_years": 2, "department": "Engineering",
-                          "skills": [{"name": "Python"}, {"name": "Django"}, {"name": "PostgreSQL", "requirement": "PREFERRED"}]}),
-        ("java", rec1, {"title": "Senior Java Engineer", "location": "Munich, Germany", "workplace_type": "HYBRID", "employment_type": "FULL_TIME", "experience_level": "SENIOR",
-                        "salary_min": 90000, "salary_max": 120000, "min_experience_years": 6, "skills": [{"name": "Java"}, {"name": "Spring Boot"}]}),
-        ("frontend", rec1, {"title": "Junior Frontend Developer", "location": "Hamburg, Germany", "workplace_type": "ONSITE", "employment_type": "PART_TIME", "experience_level": "JUNIOR",
-                            "salary_min": 30000, "salary_max": 40000, "min_experience_years": 0, "skills": [{"name": "React"}, {"name": "CSS"}]}),
-        ("analyst", rec1, {"title": "Data Analyst Intern", "location": "Berlin, Germany", "workplace_type": "ONSITE", "employment_type": "INTERNSHIP", "experience_level": "ENTRY",
-                           "salary_min": None, "salary_max": None, "min_experience_years": 0, "skills": [{"name": "SQL"}, {"name": "Excel"}]}),
-        ("office", rec2, {"title": "Office Manager", "location": "Paris, France", "workplace_type": "ONSITE", "employment_type": "CONTRACT", "experience_level": "MID",
-                          "salary_min": 50000, "salary_max": 60000, "min_experience_years": 3,
-                          "description": "Coordinate the office, vendors and travel. Some Python scripting, Python reports and Python automation are a plus, Python Python Python.",
-                          "skills": [{"name": "Project Management"}]}),
-        ("nurse", rec2, {"title": "ICU Nurse", "location": "Hamburg, Germany", "workplace_type": "ONSITE", "employment_type": "FULL_TIME", "experience_level": "MID",
-                         "salary_min": 45000, "salary_max": None, "min_experience_years": 2, "skills": [{"name": "Critical Care"}, {"name": "BLS"}]}),
-        ("devops", rec2, {"title": "DevOps Engineer", "location": "Remote - Europe", "workplace_type": "REMOTE", "employment_type": "CONTRACT", "experience_level": "SENIOR",
-                          "salary_min": None, "salary_max": 100000, "min_experience_years": 5, "skills": [{"name": "Kubernetes"}, {"name": "Docker"}, {"name": "Python", "requirement": "PREFERRED"}]}),
-        ("pct", rec2, {"title": "Sales Representative 100% Commission", "location": "100% Remote_Work", "workplace_type": "REMOTE", "employment_type": "FULL_TIME", "experience_level": "ENTRY",
-                       "salary_min": 20000, "salary_max": 30000, "min_experience_years": 0, "skills": [{"name": "Negotiation"}]}),
+        (
+            "python",
+            rec1,
+            {
+                "title": "Python Developer",
+                "location": "Berlin, Germany",
+                "workplace_type": "REMOTE",
+                "employment_type": "FULL_TIME",
+                "experience_level": "MID",
+                "salary_min": 60000,
+                "salary_max": 80000,
+                "min_experience_years": 2,
+                "department": "Engineering",
+                "skills": [
+                    {"name": "Python"},
+                    {"name": "Django"},
+                    {"name": "PostgreSQL", "requirement": "PREFERRED"},
+                ],
+            },
+        ),
+        (
+            "java",
+            rec1,
+            {
+                "title": "Senior Java Engineer",
+                "location": "Munich, Germany",
+                "workplace_type": "HYBRID",
+                "employment_type": "FULL_TIME",
+                "experience_level": "SENIOR",
+                "salary_min": 90000,
+                "salary_max": 120000,
+                "min_experience_years": 6,
+                "skills": [{"name": "Java"}, {"name": "Spring Boot"}],
+            },
+        ),
+        (
+            "frontend",
+            rec1,
+            {
+                "title": "Junior Frontend Developer",
+                "location": "Hamburg, Germany",
+                "workplace_type": "ONSITE",
+                "employment_type": "PART_TIME",
+                "experience_level": "JUNIOR",
+                "salary_min": 30000,
+                "salary_max": 40000,
+                "min_experience_years": 0,
+                "skills": [{"name": "React"}, {"name": "CSS"}],
+            },
+        ),
+        (
+            "analyst",
+            rec1,
+            {
+                "title": "Data Analyst Intern",
+                "location": "Berlin, Germany",
+                "workplace_type": "ONSITE",
+                "employment_type": "INTERNSHIP",
+                "experience_level": "ENTRY",
+                "salary_min": None,
+                "salary_max": None,
+                "min_experience_years": 0,
+                "skills": [{"name": "SQL"}, {"name": "Excel"}],
+            },
+        ),
+        (
+            "office",
+            rec2,
+            {
+                "title": "Office Manager",
+                "location": "Paris, France",
+                "workplace_type": "ONSITE",
+                "employment_type": "CONTRACT",
+                "experience_level": "MID",
+                "salary_min": 50000,
+                "salary_max": 60000,
+                "min_experience_years": 3,
+                "description": "Coordinate the office, vendors and travel. Some Python scripting, Python reports and Python automation are a plus, Python Python Python.",
+                "skills": [{"name": "Project Management"}],
+            },
+        ),
+        (
+            "nurse",
+            rec2,
+            {
+                "title": "ICU Nurse",
+                "location": "Hamburg, Germany",
+                "workplace_type": "ONSITE",
+                "employment_type": "FULL_TIME",
+                "experience_level": "MID",
+                "salary_min": 45000,
+                "salary_max": None,
+                "min_experience_years": 2,
+                "skills": [{"name": "Critical Care"}, {"name": "BLS"}],
+            },
+        ),
+        (
+            "devops",
+            rec2,
+            {
+                "title": "DevOps Engineer",
+                "location": "Remote - Europe",
+                "workplace_type": "REMOTE",
+                "employment_type": "CONTRACT",
+                "experience_level": "SENIOR",
+                "salary_min": None,
+                "salary_max": 100000,
+                "min_experience_years": 5,
+                "skills": [
+                    {"name": "Kubernetes"},
+                    {"name": "Docker"},
+                    {"name": "Python", "requirement": "PREFERRED"},
+                ],
+            },
+        ),
+        (
+            "pct",
+            rec2,
+            {
+                "title": "Sales Representative 100% Commission",
+                "location": "100% Remote_Work",
+                "workplace_type": "REMOTE",
+                "employment_type": "FULL_TIME",
+                "experience_level": "ENTRY",
+                "salary_min": 20000,
+                "salary_max": 30000,
+                "min_experience_years": 0,
+                "skills": [{"name": "Negotiation"}],
+            },
+        ),
     ]
     out: dict[str, Any] = {"rec1": rec1, "rec2": rec2}
     for key, rec, over in specs:

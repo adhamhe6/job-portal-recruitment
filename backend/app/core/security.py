@@ -136,7 +136,9 @@ def needs_rehash(password_hash: str) -> bool:
 # --- access tokens (JWT) ---------------------------------------------------------------------
 
 
-def create_access_token(subject: uuid.UUID | str, role: str, expires_minutes: int | None = None) -> tuple[str, int]:
+def create_access_token(
+    subject: uuid.UUID | str, role: str, expires_minutes: int | None = None
+) -> tuple[str, int]:
     """Return ``(token, expires_in_seconds)``."""
     settings = get_settings()
     minutes = expires_minutes or settings.access_token_expire_minutes

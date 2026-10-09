@@ -34,7 +34,9 @@ from app.matching.representation import (
 )
 
 
-async def load_job_features(session: AsyncSession, job_ids: Iterable[uuid.UUID]) -> dict[uuid.UUID, JobFeatures]:
+async def load_job_features(
+    session: AsyncSession, job_ids: Iterable[uuid.UUID]
+) -> dict[uuid.UUID, JobFeatures]:
     ids = list(job_ids)
     if not ids:
         return {}
@@ -42,16 +44,22 @@ async def load_job_features(session: AsyncSession, job_ids: Iterable[uuid.UUID])
     skills_by_job: dict[uuid.UUID, list[tuple[JobSkill, Skill]]] = {}
     rows = (
         await session.execute(
-            select(JobSkill, Skill).join(Skill, Skill.id == JobSkill.skill_id).where(JobSkill.job_id.in_(ids)).order_by(Skill.name)
+            select(JobSkill, Skill)
+            .join(Skill, Skill.id == JobSkill.skill_id)
+            .where(JobSkill.job_id.in_(ids))
+            .order_by(Skill.name)
         )
     ).all()
     for js, sk in rows:
         skills_by_job.setdefault(js.job_id, []).append((js, sk))
     out: dict[uuid.UUID, JobFeatures] = {}
     for jid, j in jobs.items():
-        req, pref = [], []
+        req: list[SkillRef] = []
+        pref: list[SkillRef] = []
         for js, sk in skills_by_job.get(jid, []):
-            ref = SkillRef(str(sk.id), sk.name, sk.family, float(js.min_years) if js.min_years is not None else None)
+            ref = SkillRef(
+                str(sk.id), sk.name, sk.family, float(js.min_years) if js.min_years is not None else None
+            )
             (req if js.requirement == SkillRequirement.REQUIRED else pref).append(ref)
         out[jid] = JobFeatures(
             job_id=str(jid),
@@ -63,7 +71,9 @@ async def load_job_features(session: AsyncSession, job_ids: Iterable[uuid.UUID])
             required=req,
             preferred=pref,
             min_experience_years=float(j.min_experience_years or 0),
-            max_experience_years=float(j.max_experience_years) if j.max_experience_years is not None else None,
+            max_experience_years=float(j.max_experience_years)
+            if j.max_experience_years is not None
+            else None,
             experience_level=j.experience_level.value if j.experience_level else None,
             min_education_level=j.min_education_level.value if j.min_education_level else None,
             location=j.location,
@@ -79,7 +89,12 @@ async def load_candidate_features(
     ids = list(candidate_ids)
     if not ids:
         return {}
-    profiles = {p.id: p for p in (await session.execute(select(CandidateProfile).where(CandidateProfile.id.in_(ids)))).scalars()}
+    profiles = {
+        p.id: p
+        for p in (
+            await session.execute(select(CandidateProfile).where(CandidateProfile.id.in_(ids)))
+        ).scalars()
+    }
 
     skills: dict[uuid.UUID, list[SkillRef]] = {}
     for cs, sk in (
@@ -91,21 +106,33 @@ async def load_candidate_features(
         )
     ).all():
         skills.setdefault(cs.candidate_id, []).append(
-            SkillRef(str(sk.id), sk.name, sk.family, float(cs.years_experience) if cs.years_experience is not None else None, cs.source.value)
+            SkillRef(
+                str(sk.id),
+                sk.name,
+                sk.family,
+                float(cs.years_experience) if cs.years_experience is not None else None,
+                cs.source.value,
+            )
         )
 
     experiences: dict[uuid.UUID, list[ExperienceItem]] = {}
     for e in (await session.execute(select(Experience).where(Experience.candidate_id.in_(ids)))).scalars():
-        experiences.setdefault(e.candidate_id, []).append(ExperienceItem(e.title, e.company_name, e.start_date, e.end_date, e.description))
+        experiences.setdefault(e.candidate_id, []).append(
+            ExperienceItem(e.title, e.company_name, e.start_date, e.end_date, e.description)
+        )
 
     edu_levels: dict[uuid.UUID, list[str]] = {}
     edu_text: dict[uuid.UUID, list[str]] = {}
     for ed in (await session.execute(select(Education).where(Education.candidate_id.in_(ids)))).scalars():
         edu_levels.setdefault(ed.candidate_id, []).append(ed.degree_level.value)
-        edu_text.setdefault(ed.candidate_id, []).append(" ".join(p for p in (ed.degree, ed.field_of_study) if p))
+        edu_text.setdefault(ed.candidate_id, []).append(
+            " ".join(p for p in (ed.degree, ed.field_of_study) if p)
+        )
 
     certs: dict[uuid.UUID, list[str]] = {}
-    for c in (await session.execute(select(Certification).where(Certification.candidate_id.in_(ids)))).scalars():
+    for c in (
+        await session.execute(select(Certification).where(Certification.candidate_id.in_(ids)))
+    ).scalars():
         certs.setdefault(c.candidate_id, []).append(c.name)
 
     # Excerpt of the primary, successfully processed résumé (bounded, SQL-side, so we never pull whole documents).
@@ -114,7 +141,11 @@ async def load_candidate_features(
         await session.execute(
             select(Resume.candidate_id, func.left(ResumeProcessingResult.extracted_text, 4000))
             .join(ResumeProcessingResult, ResumeProcessingResult.resume_id == Resume.id)
-            .where(Resume.candidate_id.in_(ids), Resume.is_primary.is_(True), Resume.status == ResumeStatus.PROCESSED)
+            .where(
+                Resume.candidate_id.in_(ids),
+                Resume.is_primary.is_(True),
+                Resume.status == ResumeStatus.PROCESSED,
+            )
         )
     ).all():
         excerpts[cid] = clean(text, MAX_RESUME_EXCERPT_CHARS)

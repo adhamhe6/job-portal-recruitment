@@ -37,7 +37,7 @@ class RetryableError(Exception):
         self.delay_seconds = delay_seconds
 
 
-class TaskFailure(Exception):  # noqa: N818 - reads as a domain term, not an error type
+class TaskFailure(Exception):
     """Expected, non-retryable failure with a *safe* user-facing message."""
 
     def __init__(self, code: str, message: str) -> None:
@@ -96,7 +96,7 @@ def resolve_handler(task_type: TaskType) -> Handler:
     if task_type in _overrides:
         return _overrides[task_type]
     module_name, func_name = HANDLER_PATHS[task_type].split(":")
-    return getattr(importlib.import_module(module_name), func_name)  # type: ignore[no-any-return]
+    return getattr(importlib.import_module(module_name), func_name)
 
 
 async def execute_task(
@@ -123,9 +123,14 @@ async def execute_task(
             cache=cache,
             store=store,
         )
-        logger.info("task started", extra={"task_id": str(tid), "task_type": task.type.value, "attempt": task.attempts})
+        logger.info(
+            "task started",
+            extra={"task_id": str(tid), "task_type": task.type.value, "attempt": task.attempts},
+        )
         try:
-            result = await asyncio.wait_for(resolve_handler(task.type)(ctx), timeout=TASK_TIMEOUTS.get(task.type, 300.0))
+            result = await asyncio.wait_for(
+                resolve_handler(task.type)(ctx), timeout=TASK_TIMEOUTS.get(task.type, 300.0)
+            )
         except TaskFailure as exc:
             await store.fail(tid, exc.code, exc.message)
             logger.warning("task failed", extra={"task_id": str(tid), "code": exc.code})

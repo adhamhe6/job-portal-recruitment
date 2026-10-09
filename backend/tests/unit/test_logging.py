@@ -32,7 +32,12 @@ def _json(rec: logging.LogRecord) -> dict[str, Any]:
 
 def test_json_record_shape() -> None:
     out = _json(_record("started", logging.WARNING, port=8000))
-    assert out["msg"] == "started" and out["level"] == "WARNING" and out["logger"] == "app.test" and out["port"] == 8000
+    assert (
+        out["msg"] == "started"
+        and out["level"] == "WARNING"
+        and out["logger"] == "app.test"
+        and out["port"] == 8000
+    )
     assert out["ts"].endswith("+00:00")
 
 
@@ -50,8 +55,23 @@ def test_json_record_includes_correlation_ids_only_when_set() -> None:
 
 @pytest.mark.parametrize(
     "key",
-    ["password", "new_password", "PASSWORD", "access_token", "refresh_token", "token", "client_secret", "secret_key",
-     "authorization", "Authorization", "api_key", "x_api_key", "cookie", "set_cookie", "token_hash"],
+    [
+        "password",
+        "new_password",
+        "PASSWORD",
+        "access_token",
+        "refresh_token",
+        "token",
+        "client_secret",
+        "secret_key",
+        "authorization",
+        "Authorization",
+        "api_key",
+        "x_api_key",
+        "cookie",
+        "set_cookie",
+        "token_hash",
+    ],
 )
 def test_sensitive_keys_are_redacted(key: str) -> None:
     out = _json(_record(**{key: "super-secret-value"}))
@@ -60,7 +80,11 @@ def test_sensitive_keys_are_redacted(key: str) -> None:
 
 
 def test_nested_dicts_are_redacted() -> None:
-    out = _json(_record(payload={"user": "ada", "password": "hunter2", "nested": {"Authorization": "Bearer abc", "ok": 1}}))
+    out = _json(
+        _record(
+            payload={"user": "ada", "password": "hunter2", "nested": {"Authorization": "Bearer abc", "ok": 1}}
+        )
+    )
     assert out["payload"] == {"user": "ada", "password": "***", "nested": {"Authorization": "***", "ok": 1}}
 
 
@@ -96,10 +120,17 @@ def test_reserved_attributes_are_not_duplicated() -> None:
 def test_text_formatter_redacts_extras_and_prefixes_request_id() -> None:
     token = request_id_ctx.set("abcdef123456")
     try:
-        line = TextFormatter("%(levelname)s %(message)s").format(_record("hi", password="hunter2", plain="ok"))
+        line = TextFormatter("%(levelname)s %(message)s").format(
+            _record("hi", password="hunter2", plain="ok")
+        )
     finally:
         request_id_ctx.reset(token)
-    assert line.startswith("[abcdef12] INFO hi") and "hunter2" not in line and "'password': '***'" in line and "'plain': 'ok'" in line
+    assert (
+        line.startswith("[abcdef12] INFO hi")
+        and "hunter2" not in line
+        and "'password': '***'" in line
+        and "'plain': 'ok'" in line
+    )
 
 
 def test_configure_logging_installs_one_handler_with_the_requested_formatter() -> None:
@@ -107,9 +138,17 @@ def test_configure_logging_installs_one_handler_with_the_requested_formatter() -
     saved_handlers, saved_level = root.handlers[:], root.level
     try:
         configure_logging("debug", json_logs=True)
-        assert len(root.handlers) == 1 and isinstance(root.handlers[0].formatter, JsonFormatter) and root.level == logging.DEBUG
+        assert (
+            len(root.handlers) == 1
+            and isinstance(root.handlers[0].formatter, JsonFormatter)
+            and root.level == logging.DEBUG
+        )
         configure_logging("WARNING", json_logs=False)
-        assert len(root.handlers) == 1 and isinstance(root.handlers[0].formatter, TextFormatter) and root.level == logging.WARNING
+        assert (
+            len(root.handlers) == 1
+            and isinstance(root.handlers[0].formatter, TextFormatter)
+            and root.level == logging.WARNING
+        )
         assert logging.getLogger("uvicorn.access").disabled
     finally:
         root.handlers = saved_handlers

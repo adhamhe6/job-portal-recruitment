@@ -16,12 +16,18 @@ class Skill(UUIDMixin, Base):
     __tablename__ = "skills"
 
     name: Mapped[str] = mapped_column(String(100), nullable=False)  # display name, e.g. "PostgreSQL"
-    normalized_name: Mapped[str] = mapped_column(String(100), nullable=False, unique=True)  # loose key, e.g. "postgresql"
+    normalized_name: Mapped[str] = mapped_column(
+        String(100), nullable=False, unique=True
+    )  # loose key, e.g. "postgresql"
     category: Mapped[str | None] = mapped_column(String(50))  # e.g. "Databases"
     # Skills in the same family are interchangeable-ish (MySQL/PostgreSQL, React/Vue): partial match credit.
     family: Mapped[str | None] = mapped_column(String(50))
-    is_verified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default=text("true"))
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    is_verified: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True, server_default=text("true")
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
 
     aliases: Mapped[list[SkillAlias]] = relationship(
         back_populates="skill", cascade="all, delete-orphan", lazy="raise"

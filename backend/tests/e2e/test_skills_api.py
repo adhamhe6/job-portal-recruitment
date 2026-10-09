@@ -65,7 +65,9 @@ async def test_autocomplete_treats_wildcards_and_punctuation_literally(client: A
     assert await names(client, q="%") == []
     assert await names(client, q="_") == []
     assert await names(client, q="\\") == []
-    assert await names(client, q="...") == [], "punctuation-only input has an empty key and must not match every skill"
+    assert await names(client, q="...") == [], (
+        "punctuation-only input has an empty key and must not match every skill"
+    )
     assert await names(client, q="a%b") == []
     assert "Objective-C" in await names(client, q="objective-c")
 
@@ -87,7 +89,11 @@ async def test_skill_detail_lists_aliases(client: AsyncClient) -> None:
     r = await client.get(f"{API}/skills/{sid}")
     assert r.status_code == 200
     body = r.json()
-    assert body["name"] == "PostgreSQL" and body["family"] == "relational-database" and body["is_verified"] is True
+    assert (
+        body["name"] == "PostgreSQL"
+        and body["family"] == "relational-database"
+        and body["is_verified"] is True
+    )
     assert {"postgres", "psql"} <= set(body["aliases"]) and body["aliases"] == sorted(body["aliases"])
     assert_error(await client.get(f"{API}/skills/{uuid.uuid4()}"), 404, "SKILL_NOT_FOUND")
     assert_error(await client.get(f"{API}/skills/nope"), 422, "VALIDATION_ERROR")
@@ -99,7 +105,9 @@ async def test_skill_detail_lists_aliases(client: AsyncClient) -> None:
 @pytest.mark.parametrize("role", ["candidate", "recruiter"])
 async def test_candidates_and_recruiters_can_propose_new_skills(client: AsyncClient, role: str) -> None:
     actor = await (register_candidate(client) if role == "candidate" else register_employer(client))
-    r = await client.post(f"{API}/skills", headers=actor["h"], json={"name": "  Quantum   Computing ", "category": "Science"})
+    r = await client.post(
+        f"{API}/skills", headers=actor["h"], json={"name": "  Quantum   Computing ", "category": "Science"}
+    )
     assert r.status_code == 201, r.text
     body = r.json()
     assert (body["name"], body["category"], body["is_verified"]) == ("Quantum Computing", "Science", False)
@@ -109,12 +117,21 @@ async def test_candidates_and_recruiters_can_propose_new_skills(client: AsyncCli
 async def test_hiring_managers_and_anonymous_users_cannot_create_skills(client: AsyncClient) -> None:
     rec = await register_employer(client)
     hm = await add_staff(client, rec, "HIRING_MANAGER")
-    assert_error(await client.post(f"{API}/skills", headers=hm["h"], json={"name": "Underwater Basket Weaving"}), 403, "FORBIDDEN")
-    assert_error(await client.post(f"{API}/skills", json={"name": "Underwater Basket Weaving"}), 401, "UNAUTHORIZED")
+    assert_error(
+        await client.post(f"{API}/skills", headers=hm["h"], json={"name": "Underwater Basket Weaving"}),
+        403,
+        "FORBIDDEN",
+    )
+    assert_error(
+        await client.post(f"{API}/skills", json={"name": "Underwater Basket Weaving"}), 401, "UNAUTHORIZED"
+    )
     assert await scalar("SELECT count(*) FROM skills WHERE NOT is_verified") == 0
 
 
-@pytest.mark.parametrize("name", ["Python", "python", "  PYTHON ", "PYTHON3", "py", "postgres", "Postgre SQL", "node js", "Golang", "K8S"])
+@pytest.mark.parametrize(
+    "name",
+    ["Python", "python", "  PYTHON ", "PYTHON3", "py", "postgres", "Postgre SQL", "node js", "Golang", "K8S"],
+)
 async def test_duplicates_and_aliases_are_rejected(client: AsyncClient, name: str) -> None:
     cand = await register_candidate(client)
     r = await client.post(f"{API}/skills", headers=cand["h"], json={"name": name})
@@ -124,12 +141,18 @@ async def test_duplicates_and_aliases_are_rejected(client: AsyncClient, name: st
 
 async def test_a_new_skill_cannot_be_created_twice_even_with_different_spelling(client: AsyncClient) -> None:
     cand = await register_candidate(client)
-    assert (await client.post(f"{API}/skills", headers=cand["h"], json={"name": "Foo-Bar.js"})).status_code == 201
+    assert (
+        await client.post(f"{API}/skills", headers=cand["h"], json={"name": "Foo-Bar.js"})
+    ).status_code == 201
     for variant in ("foo bar js", "FooBar.JS", "foo_bar_js"):
-        assert_error(await client.post(f"{API}/skills", headers=cand["h"], json={"name": variant}), 409, "SKILL_EXISTS")
+        assert_error(
+            await client.post(f"{API}/skills", headers=cand["h"], json={"name": variant}), 409, "SKILL_EXISTS"
+        )
 
 
-@pytest.mark.parametrize("payload", [{"name": ""}, {"name": "   "}, {"name": "x" * 101}, {}, {"name": "ok", "category": "c" * 51}])
+@pytest.mark.parametrize(
+    "payload", [{"name": ""}, {"name": "   "}, {"name": "x" * 101}, {}, {"name": "ok", "category": "c" * 51}]
+)
 async def test_create_validation(client: AsyncClient, payload: dict) -> None:
     cand = await register_candidate(client)
     assert_error(await client.post(f"{API}/skills", headers=cand["h"], json=payload), 422, "VALIDATION_ERROR")
@@ -137,7 +160,9 @@ async def test_create_validation(client: AsyncClient, payload: dict) -> None:
 
 async def test_punctuation_only_skill_names_are_rejected(client: AsyncClient) -> None:
     cand = await register_candidate(client)
-    assert_error(await client.post(f"{API}/skills", headers=cand["h"], json={"name": "..."}), 422, "INVALID_SKILL")
+    assert_error(
+        await client.post(f"{API}/skills", headers=cand["h"], json={"name": "..."}), 422, "INVALID_SKILL"
+    )
 
 
 # --- administration ------------------------------------------------------------------------------------------------------------------
@@ -146,15 +171,27 @@ async def test_punctuation_only_skill_names_are_rejected(client: AsyncClient) ->
 async def test_admin_edits_verifies_and_adds_aliases(client: AsyncClient) -> None:
     admin = await create_admin(client)
     cand = await register_candidate(client)
-    created = (await client.post(f"{API}/skills", headers=cand["h"], json={"name": "Rustlang Tooling"})).json()
+    created = (
+        await client.post(f"{API}/skills", headers=cand["h"], json={"name": "Rustlang Tooling"})
+    ).json()
     sid = created["id"]
     r = await client.patch(
-        f"{API}/skills/{sid}", headers=admin["h"],
-        json={"is_verified": True, "category": "Programming Languages", "family": "systems-programming", "add_aliases": ["Rust Tools", "rt-tooling"]},
+        f"{API}/skills/{sid}",
+        headers=admin["h"],
+        json={
+            "is_verified": True,
+            "category": "Programming Languages",
+            "family": "systems-programming",
+            "add_aliases": ["Rust Tools", "rt-tooling"],
+        },
     )
     assert r.status_code == 200, r.text
     body = r.json()
-    assert body["is_verified"] is True and body["category"] == "Programming Languages" and body["family"] == "systems-programming"
+    assert (
+        body["is_verified"] is True
+        and body["category"] == "Programming Languages"
+        and body["family"] == "systems-programming"
+    )
     assert body["aliases"] == ["Rust Tools", "rt-tooling"]
     # the alias now resolves: autocomplete finds it and adding it by alias lands on the canonical skill
     assert "Rustlang Tooling" in await names(client, q="rt tooling")
@@ -163,17 +200,39 @@ async def test_admin_edits_verifies_and_adds_aliases(client: AsyncClient) -> Non
     # renaming
     r = await client.patch(f"{API}/skills/{sid}", headers=admin["h"], json={"name": "Rust Tooling"})
     assert r.status_code == 200 and r.json()["name"] == "Rust Tooling"
-    assert await names(client, q="rustlang tooling") == [] or "Rustlang Tooling" not in await names(client, q="rustlang tooling")
+    assert await names(client, q="rustlang tooling") == [] or "Rustlang Tooling" not in await names(
+        client, q="rustlang tooling"
+    )
 
 
 async def test_admin_edit_conflicts(client: AsyncClient) -> None:
     admin = await create_admin(client)
     py, pg = await skill_id(client, "Python"), await skill_id(client, "PostgreSQL")
-    assert_error(await client.patch(f"{API}/skills/{py}", headers=admin["h"], json={"name": "PostgreSQL"}), 409, "SKILL_EXISTS")
-    assert_error(await client.patch(f"{API}/skills/{py}", headers=admin["h"], json={"name": "postgres"}), 409, "SKILL_EXISTS")  # an alias of another skill
-    assert_error(await client.patch(f"{API}/skills/{py}", headers=admin["h"], json={"add_aliases": ["psql"]}), 409, "SKILL_EXISTS")
-    assert_error(await client.patch(f"{API}/skills/{uuid.uuid4()}", headers=admin["h"], json={"name": "X Y Z"}), 404, "SKILL_NOT_FOUND")
-    assert_error(await client.patch(f"{API}/skills/{py}", headers=admin["h"], json={"add_aliases": ["a"] * 21}), 422, "VALIDATION_ERROR")
+    assert_error(
+        await client.patch(f"{API}/skills/{py}", headers=admin["h"], json={"name": "PostgreSQL"}),
+        409,
+        "SKILL_EXISTS",
+    )
+    assert_error(
+        await client.patch(f"{API}/skills/{py}", headers=admin["h"], json={"name": "postgres"}),
+        409,
+        "SKILL_EXISTS",
+    )  # an alias of another skill
+    assert_error(
+        await client.patch(f"{API}/skills/{py}", headers=admin["h"], json={"add_aliases": ["psql"]}),
+        409,
+        "SKILL_EXISTS",
+    )
+    assert_error(
+        await client.patch(f"{API}/skills/{uuid.uuid4()}", headers=admin["h"], json={"name": "X Y Z"}),
+        404,
+        "SKILL_NOT_FOUND",
+    )
+    assert_error(
+        await client.patch(f"{API}/skills/{py}", headers=admin["h"], json={"add_aliases": ["a"] * 21}),
+        422,
+        "VALIDATION_ERROR",
+    )
     # re-adding an alias that already points at this skill is harmless
     ok = await client.patch(f"{API}/skills/{pg}", headers=admin["h"], json={"add_aliases": ["Postgres"]})
     assert ok.status_code == 200 and ok.json()["aliases"].count("postgres") == 1
@@ -186,7 +245,11 @@ async def test_only_admins_can_edit_skills(client: AsyncClient) -> None:
     cand = await register_candidate(client)
     sid = await skill_id(client, "Python")
     for actor in (rec, hm, cand):
-        assert_error(await client.patch(f"{API}/skills/{sid}", headers=actor["h"], json={"is_verified": False}), 403, "FORBIDDEN")
+        assert_error(
+            await client.patch(f"{API}/skills/{sid}", headers=actor["h"], json={"is_verified": False}),
+            403,
+            "FORBIDDEN",
+        )
     assert_error(await client.patch(f"{API}/skills/{sid}", json={"is_verified": False}), 401, "UNAUTHORIZED")
     assert (await client.get(f"{API}/skills/{sid}")).json()["is_verified"] is True
 
@@ -204,12 +267,18 @@ async def test_list_is_cached_and_invalidated_by_changes(client: AsyncClient) ->
     assert (await client.get(url, params=params)).json()["total"] == 0  # hit
     assert cache.hits == base_hits + 1
     # creating the skill bumps the namespace: the next read must see it
-    created = (await client.post(f"{API}/skills", headers=cand["h"], json={"name": "Cache Probe Tool"})).json()
+    created = (
+        await client.post(f"{API}/skills", headers=cand["h"], json={"name": "Cache Probe Tool"})
+    ).json()
     after = (await client.get(url, params=params)).json()
     assert [s["name"] for s in after["items"]] == ["Cache Probe Tool"]
     assert (await client.get(url, params=params)).json() == after  # cached again, same payload
     # admin edits invalidate too
-    await client.patch(f"{API}/skills/{created['id']}", headers=admin["h"], json={"name": "Cache Probe Renamed", "is_verified": True})
+    await client.patch(
+        f"{API}/skills/{created['id']}",
+        headers=admin["h"],
+        json={"name": "Cache Probe Renamed", "is_verified": True},
+    )
     renamed = (await client.get(url, params=params)).json()
     assert [(s["name"], s["is_verified"]) for s in renamed["items"]] == [("Cache Probe Renamed", True)]
     # different parameters never share an entry

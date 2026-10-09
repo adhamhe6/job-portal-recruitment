@@ -47,7 +47,10 @@ class MatchRunSummary:
 
 
 def _live_job_filter(today: Any = None) -> Any:
-    return and_(Job.status == JobStatus.PUBLISHED, or_(Job.application_deadline.is_(None), Job.application_deadline >= func.current_date()))
+    return and_(
+        Job.status == JobStatus.PUBLISHED,
+        or_(Job.application_deadline.is_(None), Job.application_deadline >= func.current_date()),
+    )
 
 
 class MatchingService:
@@ -82,14 +85,22 @@ class MatchingService:
         cand.embedding_source_hash, cand.embedding_generated_at = h, utcnow()
         return True
 
-    async def refresh_candidate_text(self, candidate_id: uuid.UUID) -> tuple[CandidateProfile, CandidateFeatures]:
+    async def refresh_candidate_text(
+        self, candidate_id: uuid.UUID
+    ) -> tuple[CandidateProfile, CandidateFeatures]:
         """Rebuild the denormalised search text (cheap, SQL only — safe in the request path). Does not commit."""
         cand = await self.session.get(CandidateProfile, candidate_id)
         if cand is None:
             raise NotFoundError("Candidate not found", code="CANDIDATE_NOT_FOUND")
         features = (await load_candidate_features(self.session, [candidate_id]))[candidate_id]
         cand.skills_text = " ".join(s.name for s in features.skills) or None
-        parts = [features.summary, " ".join(features.recent_titles(6)), " ".join(features.certifications), " ".join(features.education_text), features.resume_excerpt]
+        parts = [
+            features.summary,
+            " ".join(features.recent_titles(6)),
+            " ".join(features.certifications),
+            " ".join(features.education_text),
+            features.resume_excerpt,
+        ]
         cand.search_text = " ".join(p for p in parts if p)[:20000] or None
         return cand, features
 
@@ -99,7 +110,10 @@ class MatchingService:
         try:
             changed = await self.refresh_candidate_embedding(cand, features)
         except EmbeddingError as exc:
-            logger.warning("candidate embedding skipped", extra={"candidate_id": str(candidate_id), "reason": str(exc)[:80]})
+            logger.warning(
+                "candidate embedding skipped",
+                extra={"candidate_id": str(candidate_id), "reason": str(exc)[:80]},
+            )
             changed = False
         await self.session.commit()
         return changed
@@ -132,9 +146,15 @@ class MatchingService:
             chunk = rows[start : start + 500]
             stmt = pg_insert(CandidateJobMatch).values(chunk)
             update_cols = {c: stmt.excluded[c] for c in chunk[0] if c not in ("job_id", "candidate_id")}
-            await self.session.execute(stmt.on_conflict_do_update(constraint="uq_candidate_job_matches_job_candidate", set_=update_cols))
+            await self.session.execute(
+                stmt.on_conflict_do_update(
+                    constraint="uq_candidate_job_matches_job_candidate", set_=update_cols
+                )
+            )
 
-    def _row(self, job: Job, cand: CandidateProfile, jf: JobFeatures, cf: CandidateFeatures, result: MatchResult) -> dict[str, Any]:
+    def _row(
+        self, job: Job, cand: CandidateProfile, jf: JobFeatures, cf: CandidateFeatures, result: MatchResult
+    ) -> dict[str, Any]:
         emb = get_embedder()
         return {
             "job_id": job.id,
@@ -161,18 +181,28 @@ class MatchingService:
 
     async def eligible_candidate_ids_for_job(self, job: Job, limit: int) -> list[uuid.UUID]:
         """Vector retrieval of eligible candidates (marketplace + company-sourced + applicants), then all applicants."""
-        applicants = select(Application.candidate_id).where(Application.job_id == job.id, Application.status != ApplicationStatus.WITHDRAWN)
+        applicants = select(Application.candidate_id).where(
+            Application.job_id == job.id, Application.status != ApplicationStatus.WITHDRAWN
+        )
         ids: list[uuid.UUID] = []
         if job.embedding is not None:
             await self._set_ef_search()
             dist = CandidateProfile.embedding.cosine_distance(job.embedding)
             eligible = or_(
-                and_(CandidateProfile.source == CandidateSource.SELF, CandidateProfile.is_searchable.is_(True)),
-                and_(CandidateProfile.source == CandidateSource.IMPORTED, CandidateProfile.sourced_by_company_id == job.company_id),
+                and_(
+                    CandidateProfile.source == CandidateSource.SELF, CandidateProfile.is_searchable.is_(True)
+                ),
+                and_(
+                    CandidateProfile.source == CandidateSource.IMPORTED,
+                    CandidateProfile.sourced_by_company_id == job.company_id,
+                ),
                 CandidateProfile.id.in_(applicants),
             )
             rows = await self.session.execute(
-                select(CandidateProfile.id).where(CandidateProfile.embedding.is_not(None), eligible).order_by(dist).limit(limit)
+                select(CandidateProfile.id)
+                .where(CandidateProfile.embedding.is_not(None), eligible)
+                .order_by(dist)
+                .limit(limit)
             )
             ids = [r[0] for r in rows.all()]
         seen = set(ids)
@@ -182,7 +212,9 @@ class MatchingService:
                 seen.add(cid)
         return ids
 
-    async def match_job(self, job_id: uuid.UUID, *, notify: bool = False, limit: int | None = None) -> MatchRunSummary:
+    async def match_job(
+        self, job_id: uuid.UUID, *, notify: bool = False, limit: int | None = None
+    ) -> MatchRunSummary:
         """(Re)score a job against its candidate pool and persist the results (idempotent upsert)."""
         job = await self.session.get(Job, job_id)
         if job is None:
@@ -196,9 +228,16 @@ class MatchingService:
         job.skills_text = ", ".join(s.name for s in [*jf.required, *jf.preferred]) or None
         await self.session.commit()
 
-        cand_ids = await self.eligible_candidate_ids_for_job(job, limit or self.settings.match_retrieval_limit)
+        cand_ids = await self.eligible_candidate_ids_for_job(
+            job, limit or self.settings.match_retrieval_limit
+        )
         cfs = await load_candidate_features(self.session, cand_ids)
-        cands = {c.id: c for c in (await self.session.execute(select(CandidateProfile).where(CandidateProfile.id.in_(cand_ids)))).scalars()}
+        cands = {
+            c.id: c
+            for c in (
+                await self.session.execute(select(CandidateProfile).where(CandidateProfile.id.in_(cand_ids)))
+            ).scalars()
+        }
         embedded_c = 0
         rows: list[dict[str, Any]] = []
         results: list[tuple[uuid.UUID, float]] = []
@@ -219,13 +258,17 @@ class MatchingService:
         # whole pool was evaluated (the job has an embedding): without one only applicants are scored and the rest must be kept.
         if job.embedding is not None:
             await self.session.execute(
-                text("DELETE FROM candidate_job_matches WHERE job_id = :j AND candidate_id <> ALL(:ids)"), {"j": job_id, "ids": cand_ids}
+                text("DELETE FROM candidate_job_matches WHERE job_id = :j AND candidate_id <> ALL(:ids)"),
+                {"j": job_id, "ids": cand_ids},
             )
         if notify:
             await self._notify_job_matches(job, sorted(results, key=lambda r: -r[1]))
         await self.session.commit()
         top = max((s for _, s in results), default=None)
-        logger.info("job matched", extra={"job_id": str(job_id), "scored": len(rows), "embedded_candidates": embedded_c})
+        logger.info(
+            "job matched",
+            extra={"job_id": str(job_id), "scored": len(rows), "embedded_candidates": embedded_c},
+        )
         return MatchRunSummary(len(rows), embedded_job, embedded_c, top)
 
     async def _notify_job_matches(self, job: Job, ranked: list[tuple[uuid.UUID, float]]) -> None:
@@ -237,7 +280,11 @@ class MatchingService:
         user_ids = {
             cid: uid
             for cid, uid in (
-                await self.session.execute(select(CandidateProfile.id, CandidateProfile.user_id).where(CandidateProfile.id.in_([c for c, _ in strong])))
+                await self.session.execute(
+                    select(CandidateProfile.id, CandidateProfile.user_id).where(
+                        CandidateProfile.id.in_([c for c, _ in strong])
+                    )
+                )
             ).all()
             if uid is not None
         }
@@ -283,17 +330,24 @@ class MatchingService:
             r[0]
             for r in (
                 await self.session.execute(
-                    select(Job.id).where(Job.embedding.is_not(None), _live_job_filter()).order_by(dist).limit(limit or self.settings.recommendation_limit)
+                    select(Job.id)
+                    .where(Job.embedding.is_not(None), _live_job_filter())
+                    .order_by(dist)
+                    .limit(limit or self.settings.recommendation_limit)
                 )
             ).all()
         ]
         jfs = await load_job_features(self.session, job_ids)
-        jobs = {j.id: j for j in (await self.session.execute(select(Job).where(Job.id.in_(job_ids)))).scalars()}
+        jobs = {
+            j.id: j for j in (await self.session.execute(select(Job).where(Job.id.in_(job_ids)))).scalars()
+        }
         previously_scored = {
             r[0]
             for r in (
                 await self.session.execute(
-                    select(CandidateJobMatch.job_id).where(CandidateJobMatch.candidate_id == candidate_id, CandidateJobMatch.job_id.in_(job_ids))
+                    select(CandidateJobMatch.job_id).where(
+                        CandidateJobMatch.candidate_id == candidate_id, CandidateJobMatch.job_id.in_(job_ids)
+                    )
                 )
             ).all()
         }
@@ -334,7 +388,9 @@ class MatchingService:
         emb = get_embedder()
         existing = (
             await self.session.execute(
-                select(CandidateJobMatch).where(CandidateJobMatch.job_id == job.id, CandidateJobMatch.candidate_id == cand.id)
+                select(CandidateJobMatch).where(
+                    CandidateJobMatch.job_id == job.id, CandidateJobMatch.candidate_id == cand.id
+                )
             )
         ).scalar_one_or_none()
         fresh = (
@@ -382,4 +438,9 @@ class MatchingService:
             done += 1
             if ctx_progress and done % 25 == 0:
                 await ctx_progress(int(done * 100 / total), "embedding candidates")
-        return {"jobs_reembedded": n_jobs, "candidates_reembedded": n_cands, "jobs_total": len(job_ids), "candidates_total": len(cand_ids)}
+        return {
+            "jobs_reembedded": n_jobs,
+            "candidates_reembedded": n_cands,
+            "jobs_total": len(job_ids),
+            "candidates_total": len(cand_ids),
+        }

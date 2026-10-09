@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import math
 import re
-from typing import Annotated, Any, Generic, TypeVar
+from typing import Annotated, Any, TypeVar
 
 from fastapi import Query
 from pydantic import BaseModel, ConfigDict, Field, HttpUrl, ValidationError
@@ -44,7 +44,7 @@ class ORMModel(BaseModel):
     model_config = ConfigDict(from_attributes=True, use_enum_values=False)
 
 
-class Page(BaseModel, Generic[T]):
+class Page[T](BaseModel):
     """Consistent pagination envelope used by every list endpoint."""
 
     items: list[T]
@@ -55,7 +55,13 @@ class Page(BaseModel, Generic[T]):
 
     @classmethod
     def build(cls, items: list[Any], *, page: int, page_size: int, total: int) -> Page[Any]:
-        return cls(items=items, page=page, page_size=page_size, total=total, pages=math.ceil(total / page_size) if total else 0)
+        return cls(
+            items=items,
+            page=page,
+            page_size=page_size,
+            total=total,
+            pages=math.ceil(total / page_size) if total else 0,
+        )
 
 
 class PageParams:

@@ -51,12 +51,16 @@ def test_application_transition_is_accepted_iff_listed(src: A, dst: A) -> None:
         with pytest.raises(InvalidStateTransitionError) as exc:
             apply_transition(session, app, dst, actor_id=uuid.uuid4())  # type: ignore[arg-type]
         assert exc.value.code == "INVALID_STATE_TRANSITION" and exc.value.status_code == 409
-        assert exc.value.details == {"from": src.value, "to": dst.value, "allowed": sorted(s.value for s in TRANSITIONS[src])}
+        assert exc.value.details == {
+            "from": src.value,
+            "to": dst.value,
+            "allowed": sorted(s.value for s in TRANSITIONS[src]),
+        }
         assert app.status == src and session.added == [], "a rejected transition must not mutate anything"
 
 
 def test_terminal_states_are_immutable() -> None:
-    assert TERMINAL == {A.HIRED, A.REJECTED, A.WITHDRAWN}
+    assert {A.HIRED, A.REJECTED, A.WITHDRAWN} == TERMINAL
     for status in TERMINAL:
         assert TRANSITIONS[status] == frozenset()
 
@@ -82,7 +86,9 @@ def test_withdrawal_only_before_shortlisting() -> None:
 
 
 def test_no_backwards_moves_and_no_self_loops() -> None:
-    order = {s: i for i, s in enumerate([A.APPLIED, A.SCREENING, A.SHORTLISTED, A.INTERVIEW, A.OFFER, A.HIRED])}
+    order = {
+        s: i for i, s in enumerate([A.APPLIED, A.SCREENING, A.SHORTLISTED, A.INTERVIEW, A.OFFER, A.HIRED])
+    }
     for src, targets in TRANSITIONS.items():
         assert src not in targets
         for dst in targets:
@@ -111,13 +117,13 @@ def test_rejection_comment_is_kept_as_the_reason_and_truncated() -> None:
 
 
 def test_job_table_exact_shape() -> None:
-    assert JOB_TRANSITIONS == {
+    assert {
         J.DRAFT: {J.PUBLISHED, J.ARCHIVED},
         J.PUBLISHED: {J.PAUSED, J.CLOSED},
         J.PAUSED: {J.PUBLISHED, J.CLOSED},
         J.CLOSED: {J.ARCHIVED},
         J.ARCHIVED: set(),
-    }
+    } == JOB_TRANSITIONS
 
 
 def test_nothing_returns_to_draft_and_archived_is_terminal() -> None:
@@ -145,7 +151,7 @@ def test_every_state_is_reachable_from_draft_and_every_state_can_reach_archived(
 
 
 def test_editable_statuses_are_the_non_final_ones() -> None:
-    assert EDITABLE_STATUSES == {J.DRAFT, J.PUBLISHED, J.PAUSED}
+    assert {J.DRAFT, J.PUBLISHED, J.PAUSED} == EDITABLE_STATUSES
 
 
 @pytest.mark.parametrize("status", list(J))

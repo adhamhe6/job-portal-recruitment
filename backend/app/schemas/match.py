@@ -29,7 +29,9 @@ class MatchedCandidate(BaseModel):
     location: str | None
     years_experience: Decimal | None
     availability: Availability | None
-    overall_score: float = Field(description="0..1 ranking/relevance score — not a probability of being hired")
+    overall_score: float = Field(
+        description="0..1 ranking/relevance score — not a probability of being hired"
+    )
     overall_percent: int
     band: str
     breakdown: ScoreBreakdown

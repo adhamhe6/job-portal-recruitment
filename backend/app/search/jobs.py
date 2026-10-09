@@ -84,15 +84,20 @@ def _tsquery(q: str) -> Any:
 
 
 def build_job_query(
-    f: JobFilters, *, public: bool, company_id: uuid.UUID | None = None, candidate_id: uuid.UUID | None = None, hiring_manager_id: uuid.UUID | None = None
+    f: JobFilters,
+    *,
+    public: bool,
+    company_id: uuid.UUID | None = None,
+    candidate_id: uuid.UUID | None = None,
+    hiring_manager_id: uuid.UUID | None = None,
 ) -> tuple[Select[Any], bool]:
     """Returns ``(statement, has_match_column)``. ``public`` restricts to live, published jobs."""
-    cols: list[Any] = [Job]
     stmt = select(Job).join(Company, Company.id == Job.company_id)
     if public:
         stmt = stmt.where(
             Job.status == JobStatus.PUBLISHED,
-            Company.status == CompanyStatus.ACTIVE,  # a suspended employer's postings are taken off the public site
+            Company.status
+            == CompanyStatus.ACTIVE,  # a suspended employer's postings are taken off the public site
             or_(Job.application_deadline.is_(None), Job.application_deadline >= func.current_date()),
         )
     if company_id is not None:
@@ -132,16 +137,25 @@ def build_job_query(
         stmt = stmt.where(Job.min_experience_years <= f.max_min_experience)
     # Salary overlap: the job's [min, max] range intersects the requested range (NULL bounds are open).
     if f.salary_min is not None:
-        stmt = stmt.where(or_(Job.salary_max.is_(None), Job.salary_max >= f.salary_min), or_(Job.salary_min.is_not(None), Job.salary_max.is_not(None)))
+        stmt = stmt.where(
+            or_(Job.salary_max.is_(None), Job.salary_max >= f.salary_min),
+            or_(Job.salary_min.is_not(None), Job.salary_max.is_not(None)),
+        )
     if f.salary_max is not None:
-        stmt = stmt.where(or_(Job.salary_min.is_(None), Job.salary_min <= f.salary_max), or_(Job.salary_min.is_not(None), Job.salary_max.is_not(None)))
+        stmt = stmt.where(
+            or_(Job.salary_min.is_(None), Job.salary_min <= f.salary_max),
+            or_(Job.salary_min.is_not(None), Job.salary_max.is_not(None)),
+        )
     if f.posted_within_days:
         stmt = stmt.where(Job.published_at >= utcnow() - timedelta(days=f.posted_within_days))
 
     has_match = candidate_id is not None
     match_col: Any = literal(None)
     if candidate_id is not None:
-        stmt = stmt.outerjoin(CandidateJobMatch, and_(CandidateJobMatch.job_id == Job.id, CandidateJobMatch.candidate_id == candidate_id))
+        stmt = stmt.outerjoin(
+            CandidateJobMatch,
+            and_(CandidateJobMatch.job_id == Job.id, CandidateJobMatch.candidate_id == candidate_id),
+        )
         match_col = CandidateJobMatch.overall_score
         if f.only_saved:
             stmt = stmt.join(SavedJob, and_(SavedJob.job_id == Job.id, SavedJob.candidate_id == candidate_id))
@@ -156,9 +170,15 @@ def build_job_query(
     if sort == JobSort.RELEVANCE:
         order = [rank_expr.desc(), Job.published_at.desc().nulls_last()]
     elif sort == JobSort.SALARY_DESC:
-        order = [func.coalesce(Job.salary_max, Job.salary_min).desc().nulls_last(), Job.published_at.desc().nulls_last()]
+        order = [
+            func.coalesce(Job.salary_max, Job.salary_min).desc().nulls_last(),
+            Job.published_at.desc().nulls_last(),
+        ]
     elif sort == JobSort.SALARY_ASC:
-        order = [func.coalesce(Job.salary_min, Job.salary_max).asc().nulls_last(), Job.published_at.desc().nulls_last()]
+        order = [
+            func.coalesce(Job.salary_min, Job.salary_max).asc().nulls_last(),
+            Job.published_at.desc().nulls_last(),
+        ]
     elif sort == JobSort.DEADLINE:
         order = [Job.application_deadline.asc().nulls_last(), Job.published_at.desc().nulls_last()]
     elif sort == JobSort.MATCH:
@@ -189,7 +209,13 @@ class JobSearch:
         hiring_manager_id: uuid.UUID | None = None,
         with_counts: bool = False,
     ) -> tuple[list[JobListItem], int]:
-        stmt, _ = build_job_query(f, public=public, company_id=company_id, candidate_id=candidate_id, hiring_manager_id=hiring_manager_id)
+        stmt, _ = build_job_query(
+            f,
+            public=public,
+            company_id=company_id,
+            candidate_id=candidate_id,
+            hiring_manager_id=hiring_manager_id,
+        )
         rows, total = await paginate(self.session, stmt, page=page, page_size=page_size, scalars=False)
         if not rows:
             return [], total
@@ -199,46 +225,80 @@ class JobSearch:
             j.id: j
             for j in (
                 await self.session.execute(
-                    select(Job).where(Job.id.in_(job_ids)).options(selectinload(Job.company), selectinload(Job.skills).selectinload(JobSkill.skill))
+                    select(Job)
+                    .where(Job.id.in_(job_ids))
+                    .options(selectinload(Job.company), selectinload(Job.skills).selectinload(JobSkill.skill))
                 )
             ).scalars()
         }
         saved: set[uuid.UUID] = set()
         applied: set[uuid.UUID] = set()
         if candidate_id is not None:
-            saved = {r[0] for r in (await self.session.execute(select(SavedJob.job_id).where(SavedJob.candidate_id == candidate_id, SavedJob.job_id.in_(job_ids)))).all()}
+            saved = {
+                r[0]
+                for r in (
+                    await self.session.execute(
+                        select(SavedJob.job_id).where(
+                            SavedJob.candidate_id == candidate_id, SavedJob.job_id.in_(job_ids)
+                        )
+                    )
+                ).all()
+            }
             applied = {
                 r[0]
                 for r in (
                     await self.session.execute(
                         select(Application.job_id).where(
-                            Application.candidate_id == candidate_id, Application.job_id.in_(job_ids), Application.status != ApplicationStatus.WITHDRAWN
+                            Application.candidate_id == candidate_id,
+                            Application.job_id.in_(job_ids),
+                            Application.status != ApplicationStatus.WITHDRAWN,
                         )
                     )
                 ).all()
             }
         counts: dict[uuid.UUID, int] = {}
         if with_counts:
-            counts = {
-                jid: n
-                for jid, n in (
+            counts = dict(
+                (
                     await self.session.execute(
-                        select(Application.job_id, func.count()).where(Application.job_id.in_(job_ids)).group_by(Application.job_id)
+                        select(Application.job_id, func.count())
+                        .where(Application.job_id.in_(job_ids))
+                        .group_by(Application.job_id)
                     )
                 ).all()
-            }
+            )
         items: list[JobListItem] = []
         for row in rows:
             job = jobs[row[0].id]
-            req = [js.skill.name for js in sorted(job.skills, key=lambda x: x.skill.name.lower()) if js.requirement == SkillRequirement.REQUIRED]
+            req = [
+                js.skill.name
+                for js in sorted(job.skills, key=lambda x: x.skill.name.lower())
+                if js.requirement == SkillRequirement.REQUIRED
+            ]
             items.append(
                 JobListItem(
-                    id=job.id, title=job.title, company_id=job.company_id, company_name=job.company.name, company_logo_url=job.company.logo_url,
-                    department=job.department, location=job.location, employment_type=job.employment_type, workplace_type=job.workplace_type,
-                    experience_level=job.experience_level, min_experience_years=job.min_experience_years, salary_min=job.salary_min,
-                    salary_max=job.salary_max, salary_currency=job.salary_currency, skills=req[:6], status=job.status, published_at=job.published_at,
-                    application_deadline=job.application_deadline, created_at=job.created_at, updated_at=job.updated_at,
-                    is_saved=(job.id in saved) if candidate_id else None, has_applied=(job.id in applied) if candidate_id else None,
+                    id=job.id,
+                    title=job.title,
+                    company_id=job.company_id,
+                    company_name=job.company.name,
+                    company_logo_url=job.company.logo_url,
+                    department=job.department,
+                    location=job.location,
+                    employment_type=job.employment_type,
+                    workplace_type=job.workplace_type,
+                    experience_level=job.experience_level,
+                    min_experience_years=job.min_experience_years,
+                    salary_min=job.salary_min,
+                    salary_max=job.salary_max,
+                    salary_currency=job.salary_currency,
+                    skills=req[:6],
+                    status=job.status,
+                    published_at=job.published_at,
+                    application_deadline=job.application_deadline,
+                    created_at=job.created_at,
+                    updated_at=job.updated_at,
+                    is_saved=(job.id in saved) if candidate_id else None,
+                    has_applied=(job.id in applied) if candidate_id else None,
                     match_score=float(row.match_score) if row.match_score is not None else None,
                     application_count=counts.get(job.id, 0) if with_counts else None,
                 )

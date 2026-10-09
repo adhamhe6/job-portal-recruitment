@@ -87,7 +87,9 @@ class Settings(BaseSettings):
     def _split_origins(cls, value: object) -> object:
         if isinstance(value, str):
             text = value.strip()
-            if text.startswith("["):  # JSON array (NoDecode means pydantic-settings no longer parses it for us)
+            if text.startswith(
+                "["
+            ):  # JSON array (NoDecode means pydantic-settings no longer parses it for us)
                 return json.loads(text)
             return [v.strip() for v in text.split(",") if v.strip()]
         return value
@@ -101,7 +103,9 @@ class Settings(BaseSettings):
             if self.first_admin_password.get_secret_value() in _PUBLISHED_PASSWORDS:
                 raise ValueError("FIRST_ADMIN_PASSWORD must not be a published default in production")
             if self.seed_demo_data:
-                raise ValueError("SEED_DEMO_DATA must be false in production (demo accounts share a published password)")
+                raise ValueError(
+                    "SEED_DEMO_DATA must be false in production (demo accounts share a published password)"
+                )
             if self.debug:
                 raise ValueError("DEBUG must be false in production")
             if "*" in self.cors_origins:

@@ -164,7 +164,9 @@ class CandidateSkillIn(BaseModel):
 class CandidateSkillUpdate(BaseModel):
     proficiency: SkillProficiency | None = None
     years_experience: Decimal | None = Field(default=None, ge=0, le=70, max_digits=4, decimal_places=1)
-    status: SkillStatus | None = Field(default=None, description="CONFIRMED to accept a suggested skill, REJECTED to dismiss it")
+    status: SkillStatus | None = Field(
+        default=None, description="CONFIRMED to accept a suggested skill, REJECTED to dismiss it"
+    )
 
 
 class CandidateSkillOut(BaseModel):
@@ -264,7 +266,9 @@ class CandidateView(BaseModel):
     certifications: list[CertificationOut]
     languages: list[LanguageOut]
     resumes: list[ResumeBrief] = Field(default_factory=list, description="Only when access = FULL")
-    applications: list[ApplicationBrief] = Field(default_factory=list, description="Applications to the caller's company")
+    applications: list[ApplicationBrief] = Field(
+        default_factory=list, description="Applications to the caller's company"
+    )
     updated_at: datetime
     match: dict[str, Any] | None = Field(default=None, description="Present when ?job_id= is supplied")
 

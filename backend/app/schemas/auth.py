@@ -88,7 +88,9 @@ class RegisterEmployerRequest(_NameFields):
 
 
 class LoginRequest(BaseModel):
-    model_config = ConfigDict(json_schema_extra={"example": {"email": "recruiter@demo.example", "password": "DemoPass123!"}})
+    model_config = ConfigDict(
+        json_schema_extra={"example": {"email": "recruiter@demo.example", "password": "DemoPass123!"}}
+    )
     email: EmailStr
     password: str = Field(min_length=1, max_length=128)
 

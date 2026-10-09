@@ -36,7 +36,10 @@ class Company(UUIDMixin, TimestampMixin, Base):
     size: Mapped[CompanySize | None] = mapped_column(pg_enum(CompanySize, "company_size"))
     logo_url: Mapped[str | None] = mapped_column(String(500))
     status: Mapped[CompanyStatus] = mapped_column(
-        pg_enum(CompanyStatus, "company_status"), nullable=False, default=CompanyStatus.ACTIVE, server_default="ACTIVE"
+        pg_enum(CompanyStatus, "company_status"),
+        nullable=False,
+        default=CompanyStatus.ACTIVE,
+        server_default="ACTIVE",
     )
 
     __table_args__ = (Index("uq_companies_name_lower", func.lower(name), unique=True),)
@@ -109,4 +112,6 @@ class RefreshToken(UUIDMixin, Base):
     user_agent: Mapped[str | None] = mapped_column(String(255))
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )

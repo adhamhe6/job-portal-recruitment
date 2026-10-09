@@ -37,13 +37,21 @@ class Resume(UUIDMixin, TimestampMixin, Base):
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL")
     )
     status: Mapped[ResumeStatus] = mapped_column(
-        pg_enum(ResumeStatus, "resume_status"), nullable=False, default=ResumeStatus.UPLOADED, server_default="UPLOADED"
+        pg_enum(ResumeStatus, "resume_status"),
+        nullable=False,
+        default=ResumeStatus.UPLOADED,
+        server_default="UPLOADED",
     )
-    is_primary: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=text("false"))
+    is_primary: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=text("false")
+    )
 
     candidate: Mapped[CandidateProfile] = relationship(lazy="raise")
     documents: Mapped[list[ResumeDocument]] = relationship(
-        back_populates="resume", cascade="all, delete-orphan", lazy="raise", order_by="ResumeDocument.created_at.desc()"
+        back_populates="resume",
+        cascade="all, delete-orphan",
+        lazy="raise",
+        order_by="ResumeDocument.created_at.desc()",
     )
     result: Mapped[ResumeProcessingResult | None] = relationship(
         back_populates="resume", cascade="all, delete-orphan", uselist=False, lazy="raise"
@@ -69,7 +77,9 @@ class ResumeDocument(UUIDMixin, Base):
     content_type: Mapped[str] = mapped_column(String(100), nullable=False)
     size_bytes: Mapped[int] = mapped_column(Integer, nullable=False)
     sha256: Mapped[str] = mapped_column(String(64), nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
 
     resume: Mapped[Resume] = relationship(back_populates="documents", lazy="raise")
 
@@ -102,7 +112,9 @@ class ResumeProcessingResult(UUIDMixin, TimestampMixin, Base):
     extracted_text: Mapped[str | None] = mapped_column(Text)  # sensitive: never logged
     text_char_count: Mapped[int | None] = mapped_column(Integer)
     page_count: Mapped[int | None] = mapped_column(Integer)
-    was_truncated: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=text("false"))
+    was_truncated: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=text("false")
+    )
     parsed_data: Mapped[dict[str, Any] | None] = mapped_column(JSONB)  # parser *suggestions*, not user data
 
     embedding: Mapped[list[float] | None] = mapped_column(Vector(EMBEDDING_DIM))
@@ -110,6 +122,8 @@ class ResumeProcessingResult(UUIDMixin, TimestampMixin, Base):
     embedding_version: Mapped[str | None] = mapped_column(String(20))
 
     error_code: Mapped[str | None] = mapped_column(String(50))
-    error_message: Mapped[str | None] = mapped_column(String(500))  # safe, user-facing; never raw document content
+    error_message: Mapped[str | None] = mapped_column(
+        String(500)
+    )  # safe, user-facing; never raw document content
 
     resume: Mapped[Resume] = relationship(back_populates="result", lazy="raise")

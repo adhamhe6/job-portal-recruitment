@@ -37,7 +37,9 @@ class Application(UUIDMixin, TimestampMixin, Base):
         server_default="APPLIED",
     )
     source: Mapped[str] = mapped_column(String(30), nullable=False, default="DIRECT", server_default="DIRECT")
-    applied_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    applied_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
     status_changed_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
@@ -79,10 +81,16 @@ class ApplicationStatusHistory(UUIDMixin, Base):
     from_status: Mapped[ApplicationStatus | None] = mapped_column(
         pg_enum(ApplicationStatus, "history_from_status")
     )
-    to_status: Mapped[ApplicationStatus] = mapped_column(pg_enum(ApplicationStatus, "history_to_status"), nullable=False)
-    actor_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"))
+    to_status: Mapped[ApplicationStatus] = mapped_column(
+        pg_enum(ApplicationStatus, "history_to_status"), nullable=False
+    )
+    actor_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL")
+    )
     comment: Mapped[str | None] = mapped_column(Text)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
 
     application: Mapped[Application] = relationship(back_populates="history", lazy="raise")
     actor: Mapped[User | None] = relationship(lazy="raise")
@@ -98,9 +106,13 @@ class ApplicationNote(UUIDMixin, Base):
     application_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("applications.id", ondelete="CASCADE"), nullable=False
     )
-    author_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"))
+    author_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL")
+    )
     body: Mapped[str] = mapped_column(Text, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
 
     author: Mapped[User | None] = relationship(lazy="raise")
 

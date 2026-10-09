@@ -51,7 +51,9 @@ class Interview(UUIDMixin, TimestampMixin, Base):
     company_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False
     )
-    interview_type: Mapped[InterviewType] = mapped_column(pg_enum(InterviewType, "interview_type"), nullable=False)
+    interview_type: Mapped[InterviewType] = mapped_column(
+        pg_enum(InterviewType, "interview_type"), nullable=False
+    )
     start_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     end_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     timezone: Mapped[str] = mapped_column(String(64), nullable=False, default="UTC", server_default="UTC")
@@ -68,7 +70,9 @@ class Interview(UUIDMixin, TimestampMixin, Base):
     created_by_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL")
     )
-    during: Mapped[Any] = mapped_column(TSTZRANGE, Computed("tstzrange(start_at, end_at, '[)')", persisted=True))
+    during: Mapped[Any] = mapped_column(
+        TSTZRANGE, Computed("tstzrange(start_at, end_at, '[)')", persisted=True)
+    )
 
     application: Mapped[Application] = relationship(lazy="raise")
     participants: Mapped[list[InterviewParticipant]] = relationship(
@@ -83,7 +87,10 @@ class Interview(UUIDMixin, TimestampMixin, Base):
         CheckConstraint("end_at - start_at <= interval '12 hours'", name="max_duration"),
         # A candidate cannot be double-booked: enforced by the database, so it holds under concurrency.
         ExcludeConstraint(
-            ("candidate_id", "="), ("during", "&&"), name="ex_interviews_candidate_no_overlap", where=text(_ACTIVE)
+            ("candidate_id", "="),
+            ("during", "&&"),
+            name="ex_interviews_candidate_no_overlap",
+            where=text(_ACTIVE),
         ),
         Index("ix_interviews_company_start", "company_id", "start_at"),
         Index("ix_interviews_candidate_start", "candidate_id", "start_at"),
@@ -105,7 +112,9 @@ class InterviewParticipant(UUIDMixin, Base):
     )
     # Mirrors the interview's slot while it is active (kept in sync by InterviewService in the same
     # transaction) so an interviewer cannot be double-booked.
-    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default=text("true"))
+    is_active: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True, server_default=text("true")
+    )
     during: Mapped[Any] = mapped_column(TSTZRANGE, nullable=False)
 
     interview: Mapped[Interview] = relationship(back_populates="participants", lazy="raise")
@@ -141,7 +150,9 @@ class InterviewFeedback(UUIDMixin, Base):
     strengths: Mapped[str | None] = mapped_column(Text)
     weaknesses: Mapped[str | None] = mapped_column(Text)
     notes: Mapped[str | None] = mapped_column(Text)
-    submitted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    submitted_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
 
     interview: Mapped[Interview] = relationship(back_populates="feedback", lazy="raise")
     author: Mapped[User] = relationship(lazy="raise")

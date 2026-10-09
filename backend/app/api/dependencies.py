@@ -21,7 +21,9 @@ from app.db.models import User, UserStatus
 from app.schemas.common import PageParams
 from app.services.tasks import Dispatcher
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/token", auto_error=False, description="Bearer access token")
+oauth2_scheme = OAuth2PasswordBearer(
+    tokenUrl="/api/v1/auth/token", auto_error=False, description="Bearer access token"
+)
 
 SessionDep = Annotated[AsyncSession, Depends(session_scope)]
 Pagination = Annotated[PageParams, Depends()]
@@ -35,7 +37,7 @@ CacheDep = Annotated[Cache, Depends(get_cache_dep)]
 
 
 def get_dispatcher(request: Request) -> Dispatcher:
-    return request.app.state.dispatcher  # type: ignore[no-any-return]
+    return request.app.state.dispatcher
 
 
 DispatcherDep = Annotated[Dispatcher, Depends(get_dispatcher)]
@@ -60,9 +62,7 @@ async def _load_user(token: str | None, session: AsyncSession, denylist: TokenDe
     return user
 
 
-async def get_current_user(
-    session: SessionDep, token: Annotated[str | None, Depends(oauth2_scheme)]
-) -> User:
+async def get_current_user(session: SessionDep, token: Annotated[str | None, Depends(oauth2_scheme)]) -> User:
     return await _load_user(token, session, get_denylist())
 
 
@@ -137,8 +137,12 @@ def rate_limit(
 
 login_limit = rate_limit("login", "login_rate_limit_attempts", "login_rate_limit_window_seconds")
 register_limit = rate_limit("register", "register_rate_limit_attempts", "register_rate_limit_window_seconds")
-upload_limit = rate_limit("upload", "upload_rate_limit_attempts", "upload_rate_limit_window_seconds", per_user=True)
+upload_limit = rate_limit(
+    "upload", "upload_rate_limit_attempts", "upload_rate_limit_window_seconds", per_user=True
+)
 expensive_limit = rate_limit(
     "expensive", "expensive_rate_limit_attempts", "expensive_rate_limit_window_seconds", per_user=True
 )
-search_limit = rate_limit("search", "search_rate_limit_attempts", "search_rate_limit_window_seconds", per_user=True)
+search_limit = rate_limit(
+    "search", "search_rate_limit_attempts", "search_rate_limit_window_seconds", per_user=True
+)

@@ -34,7 +34,9 @@ async def test_opting_out_and_back_in_is_reflected_immediately(client: AsyncClie
     assert cand["candidate_id"] in await found(client, rec, q="fastapi")
 
 
-async def test_an_application_makes_an_opted_out_candidate_visible_to_that_company_only(client: AsyncClient) -> None:
+async def test_an_application_makes_an_opted_out_candidate_visible_to_that_company_only(
+    client: AsyncClient,
+) -> None:
     rec, other = await register_employer(client), await register_employer(client)
     job = await create_job(client, rec, publish=True)
     cand = await register_candidate(client)
@@ -61,12 +63,17 @@ async def test_profile_edits_change_what_the_candidate_can_be_found_by(client: A
 
 
 async def test_rejected_resume_suggestions_are_not_searchable_skills(client: AsyncClient) -> None:
-    from tests.helpers_spine import scalar, sql
     import uuid
+
+    from tests.helpers_spine import scalar, sql
 
     rec = await register_employer(client)
     cand = await register_candidate(client)
     cid = uuid.UUID(cand["candidate_id"])
     sid = await scalar("SELECT id FROM skills WHERE name = 'Terraform'")
-    await sql("INSERT INTO candidate_skills (candidate_id, skill_id, source, status) VALUES (:c, :s, 'RESUME', 'REJECTED')", c=cid, s=sid)
+    await sql(
+        "INSERT INTO candidate_skills (candidate_id, skill_id, source, status) VALUES (:c, :s, 'RESUME', 'REJECTED')",
+        c=cid,
+        s=sid,
+    )
     assert cand["candidate_id"] not in await found(client, rec, skill=["terraform"])

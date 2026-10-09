@@ -209,7 +209,7 @@ async def cleanup_old_records(ctx: dict[str, Any]) -> None:
             )
         )
         await s.commit()
-    logger.info("housekeeping done", extra={"refresh_tokens": t.rowcount, "tasks": k.rowcount})  # type: ignore[attr-defined]
+    logger.info("housekeeping done", extra={"refresh_tokens": t.rowcount, "tasks": k.rowcount})
 
 
 class WorkerSettings:

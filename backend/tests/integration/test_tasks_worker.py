@@ -34,10 +34,18 @@ def _restore_handlers() -> Any:
     register_handler(TYPE, None)
 
 
-async def new_task(*, key: str | None = None, params: dict[str, Any] | None = None, created_by: uuid.UUID | None = None, company: uuid.UUID | None = None,
-                   task_type: TaskType = TYPE) -> BackgroundTask:
+async def new_task(
+    *,
+    key: str | None = None,
+    params: dict[str, Any] | None = None,
+    created_by: uuid.UUID | None = None,
+    company: uuid.UUID | None = None,
+    task_type: TaskType = TYPE,
+) -> BackgroundTask:
     async with get_sessionmaker()() as s:
-        task, created = await TaskService(s).create(task_type, params or {}, created_by_id=created_by, company_id=company, dedupe_key=key)
+        task, created = await TaskService(s).create(
+            task_type, params or {}, created_by_id=created_by, company_id=company, dedupe_key=key
+        )
         assert created
         return task
 
@@ -108,7 +116,9 @@ async def test_submit_runs_new_tasks_and_skips_existing_ones(db: None) -> None:
         svc = TaskService(s)
         task, created = await svc.submit(TYPE, {}, InlineDispatcher(), dedupe_key="once")
         assert created and task.status == TaskStatus.COMPLETED and task.result == {"ok": True}
-        again, created2 = await svc.submit(TYPE, {}, InlineDispatcher(), dedupe_key="once")  # the first is finished: a new run is allowed
+        again, created2 = await svc.submit(
+            TYPE, {}, InlineDispatcher(), dedupe_key="once"
+        )  # the first is finished: a new run is allowed
         assert created2 and again.id != task.id
     assert len(runs) == 2
 
@@ -123,16 +133,30 @@ async def test_only_one_of_two_concurrent_claims_wins(db: None) -> None:
     winners = [r for r in results if r is not None]
     assert len(winners) == 1
     row = await fetch(task.id)
-    assert (row.status, row.attempts, row.progress, row.stage) == (TaskStatus.RUNNING, 1, 0, "starting") and row.started_at is not None
+    assert (row.status, row.attempts, row.progress, row.stage) == (
+        TaskStatus.RUNNING,
+        1,
+        0,
+        "starting",
+    ) and row.started_at is not None
     assert await store.claim(task.id) is None, "a RUNNING task cannot be claimed again"
     assert await store.claim(uuid.uuid4()) is None
 
 
 async def test_claiming_resets_previous_error_state_and_counts_attempts(db: None) -> None:
     task = await new_task()
-    await sql("UPDATE background_tasks SET error_code = 'X', error_message = 'old', progress = 77, stage = 'retrying', attempts = 1 WHERE id = :i", i=task.id)
+    await sql(
+        "UPDATE background_tasks SET error_code = 'X', error_message = 'old', progress = 77, stage = 'retrying', attempts = 1 WHERE id = :i",
+        i=task.id,
+    )
     claimed = await TaskStore(get_sessionmaker()).claim(task.id)
-    assert claimed is not None and (claimed.attempts, claimed.progress, claimed.error_code, claimed.error_message, claimed.stage) == (2, 0, None, None, "starting")
+    assert claimed is not None and (
+        claimed.attempts,
+        claimed.progress,
+        claimed.error_code,
+        claimed.error_message,
+        claimed.stage,
+    ) == (2, 0, None, None, "starting")
 
 
 @pytest.mark.parametrize("status", ["RUNNING", "COMPLETED", "FAILED"])
@@ -150,7 +174,15 @@ async def test_success_stores_the_result(db: None) -> None:
     seen: dict[str, Any] = {}
 
     async def handler(ctx: TaskContext) -> dict[str, Any]:
-        seen.update(params=ctx.params, attempt=ctx.attempt, user=ctx.created_by_id, company=ctx.company_id, type=ctx.type, job_ctx=job_id_ctx.get(), task=ctx.task_id)
+        seen.update(
+            params=ctx.params,
+            attempt=ctx.attempt,
+            user=ctx.created_by_id,
+            company=ctx.company_id,
+            type=ctx.type,
+            job_ctx=job_id_ctx.get(),
+            task=ctx.task_id,
+        )
         await ctx.progress(40, "halfway")
         mid = await fetch(ctx.task_id)
         seen["mid"] = (mid.status, mid.progress, mid.stage)
@@ -159,23 +191,47 @@ async def test_success_stores_the_result(db: None) -> None:
     register_handler(TYPE, handler)
     uid, cid = uuid.uuid4(), uuid.uuid4()
     async with get_sessionmaker()() as s:  # real owners so the foreign keys hold
-        from app.db.models import Company, User
         from app.core.security import Role
+        from app.db.models import Company, User
 
         company = Company(name="Task Co", slug="task-co")
         s.add(company)
         await s.flush()
-        user = User(email="t@test.example", password_hash="x", first_name="T", last_name="U", role=Role.RECRUITER, company_id=company.id)
+        user = User(
+            email="t@test.example",
+            password_hash="x",
+            first_name="T",
+            last_name="U",
+            role=Role.RECRUITER,
+            company_id=company.id,
+        )
         s.add(user)
         await s.commit()
         uid, cid = user.id, company.id
     task = await new_task(params={"x": 1}, created_by=uid, company=cid)
     assert await run(task) is None
     row = await fetch(task.id)
-    assert (row.status, row.progress, row.stage, row.result, row.error_code, row.error_message) == (TaskStatus.COMPLETED, 100, "done", {"answer": 42}, None, None)
+    assert (row.status, row.progress, row.stage, row.result, row.error_code, row.error_message) == (
+        TaskStatus.COMPLETED,
+        100,
+        "done",
+        {"answer": 42},
+        None,
+        None,
+    )
     assert row.started_at and row.finished_at and row.finished_at >= row.started_at and row.attempts == 1
-    assert seen["params"] == {"x": 1} and seen["attempt"] == 1 and seen["user"] == uid and seen["company"] == cid and seen["type"] == TYPE
-    assert seen["mid"] == (TaskStatus.RUNNING, 40, "halfway") and seen["job_ctx"] == str(task.id) and seen["task"] == task.id
+    assert (
+        seen["params"] == {"x": 1}
+        and seen["attempt"] == 1
+        and seen["user"] == uid
+        and seen["company"] == cid
+        and seen["type"] == TYPE
+    )
+    assert (
+        seen["mid"] == (TaskStatus.RUNNING, 40, "halfway")
+        and seen["job_ctx"] == str(task.id)
+        and seen["task"] == task.id
+    )
     assert job_id_ctx.get() is None, "the correlation id is reset afterwards"
 
 
@@ -212,11 +268,19 @@ async def test_task_failure_records_its_safe_message_and_does_not_retry(db: None
     task = await new_task()
     assert await run(task) is None
     row = await fetch(task.id)
-    assert (row.status, row.error_code, row.error_message, row.stage, row.attempts) == (TaskStatus.FAILED, "BAD_DOCUMENT", "The file could not be read", "failed", 1)
+    assert (row.status, row.error_code, row.error_message, row.stage, row.attempts) == (
+        TaskStatus.FAILED,
+        "BAD_DOCUMENT",
+        "The file could not be read",
+        "failed",
+        1,
+    )
     assert row.finished_at is not None and row.result is None
 
 
-async def test_unexpected_exceptions_become_a_generic_internal_error_without_leaking_text(db: None, caplog: pytest.LogCaptureFixture) -> None:
+async def test_unexpected_exceptions_become_a_generic_internal_error_without_leaking_text(
+    db: None, caplog: pytest.LogCaptureFixture
+) -> None:
     secret = "SECRET-DOCUMENT-CONTENT jane.doe@example.com"
 
     async def handler(ctx: TaskContext) -> None:
@@ -234,7 +298,9 @@ async def test_unexpected_exceptions_become_a_generic_internal_error_without_lea
     assert crashed and crashed[0].exc_info, "the traceback goes to the log, never into the task record"
 
 
-async def test_retryable_errors_are_retried_a_bounded_number_of_times(db: None, monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_retryable_errors_are_retried_a_bounded_number_of_times(
+    db: None, monkeypatch: pytest.MonkeyPatch
+) -> None:
     calls: list[int] = []
 
     async def handler(ctx: TaskContext) -> None:
@@ -246,7 +312,12 @@ async def test_retryable_errors_are_retried_a_bounded_number_of_times(db: None, 
     task = await new_task()
     delay1 = await run(task)
     mid = await fetch(task.id)
-    assert delay1 == 7 and (mid.status, mid.stage, mid.attempts, mid.error_message) == (TaskStatus.PENDING, "retrying", 1, "embedding model unavailable")
+    assert delay1 == 7 and (mid.status, mid.stage, mid.attempts, mid.error_message) == (
+        TaskStatus.PENDING,
+        "retrying",
+        1,
+        "embedding model unavailable",
+    )
     delay2 = await run(task)
     assert delay2 == 14, "back-off grows with the attempt number"
     delay3 = await run(task)
@@ -258,7 +329,9 @@ async def test_retryable_errors_are_retried_a_bounded_number_of_times(db: None, 
     assert await run(task) is None and calls == [1, 2, 3], "a failed task is never run again"
 
 
-async def test_the_inline_dispatcher_honours_the_retry_bound(db: None, monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_the_inline_dispatcher_honours_the_retry_bound(
+    db: None, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from app.workers.dispatch import InlineDispatcher
 
     calls: list[int] = []
@@ -275,7 +348,9 @@ async def test_the_inline_dispatcher_honours_the_retry_bound(db: None, monkeypat
     assert calls == [1, 2] and (row.status, row.error_code) == (TaskStatus.FAILED, "RETRIES_EXHAUSTED")
 
 
-async def test_a_retry_that_eventually_succeeds_completes_cleanly(db: None, monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_a_retry_that_eventually_succeeds_completes_cleanly(
+    db: None, monkeypatch: pytest.MonkeyPatch
+) -> None:
     async def handler(ctx: TaskContext) -> dict[str, int]:
         if ctx.attempt < 2:
             raise RetryableError("try again", delay_seconds=1)
@@ -287,7 +362,13 @@ async def test_a_retry_that_eventually_succeeds_completes_cleanly(db: None, monk
     assert await run(task) == 1
     assert await run(task) is None
     row = await fetch(task.id)
-    assert (row.status, row.result, row.attempts, row.error_code, row.error_message) == (TaskStatus.COMPLETED, {"attempt": 2}, 2, None, None)
+    assert (row.status, row.result, row.attempts, row.error_code, row.error_message) == (
+        TaskStatus.COMPLETED,
+        {"attempt": 2},
+        2,
+        None,
+        None,
+    )
 
 
 async def test_timeouts_fail_the_task(db: None, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -299,7 +380,11 @@ async def test_timeouts_fail_the_task(db: None, monkeypatch: pytest.MonkeyPatch)
     task = await new_task()
     assert await run(task) is None
     row = await fetch(task.id)
-    assert (row.status, row.error_code, row.error_message) == (TaskStatus.FAILED, "TIMEOUT", "The operation took too long and was stopped")
+    assert (row.status, row.error_code, row.error_message) == (
+        TaskStatus.FAILED,
+        "TIMEOUT",
+        "The operation took too long and was stopped",
+    )
 
 
 async def test_duplicate_delivery_runs_the_handler_once(db: None) -> None:
@@ -342,7 +427,9 @@ async def test_every_task_type_has_a_handler_path_and_a_timeout() -> None:
 # --- visibility through the API ---------------------------------------------------------------------------------------------------------------------------------------
 
 
-async def test_task_status_is_visible_to_creator_admin_and_company_recruiters_only(client: AsyncClient) -> None:
+async def test_task_status_is_visible_to_creator_admin_and_company_recruiters_only(
+    client: AsyncClient,
+) -> None:
     rec = await register_employer(client)
     rec2 = await add_staff(client, rec, "RECRUITER")
     hm = await add_staff(client, rec, "HIRING_MANAGER")
@@ -355,7 +442,9 @@ async def test_task_status_is_visible_to_creator_admin_and_company_recruiters_on
     orphan = await new_task(key="vis-3")
     url = lambda t: f"{API}/tasks/{t.id}"  # noqa: E731
     for viewer in (rec, rec2, admin):
-        assert (await client.get(url(company_task), headers=viewer["h"])).status_code == 200, viewer["user"]["role"]
+        assert (await client.get(url(company_task), headers=viewer["h"])).status_code == 200, viewer["user"][
+            "role"
+        ]
     for viewer in (hm, outsider, cand, other_cand):
         assert_error(await client.get(url(company_task), headers=viewer["h"]), 404, "TASK_NOT_FOUND")
     assert (await client.get(url(personal), headers=cand["h"])).status_code == 200
@@ -371,10 +460,33 @@ async def test_task_status_is_visible_to_creator_admin_and_company_recruiters_on
 
 async def test_task_status_payload_shape(client: AsyncClient) -> None:
     rec = await register_employer(client)
-    task = await new_task(created_by=uuid.UUID(rec["user"]["id"]), company=uuid.UUID(rec["company_id"]), params={"private": "x"}, key="shape")
+    task = await new_task(
+        created_by=uuid.UUID(rec["user"]["id"]),
+        company=uuid.UUID(rec["company_id"]),
+        params={"private": "x"},
+        key="shape",
+    )
     body = (await client.get(f"{API}/tasks/{task.id}", headers=rec["h"])).json()
-    assert set(body) == {"id", "type", "status", "progress", "stage", "result", "error_code", "error_message", "attempts", "created_at", "started_at", "finished_at"}
-    assert body["status"] == "PENDING" and body["progress"] == 0 and body["attempts"] == 0 and body["started_at"] is None
+    assert set(body) == {
+        "id",
+        "type",
+        "status",
+        "progress",
+        "stage",
+        "result",
+        "error_code",
+        "error_message",
+        "attempts",
+        "created_at",
+        "started_at",
+        "finished_at",
+    }
+    assert (
+        body["status"] == "PENDING"
+        and body["progress"] == 0
+        and body["attempts"] == 0
+        and body["started_at"] is None
+    )
     assert "private" not in str(body) and "shape" not in str(body)
 
 
@@ -394,7 +506,10 @@ async def aged_task(status: str, *, started_ago: int | None = None, created_ago:
     await sql(
         "INSERT INTO background_tasks (id, type, status, params, created_at, started_at) VALUES (:i, 'MATCH_JOB', :s, '{}'::jsonb, now() - make_interval(secs => :c), "
         "CASE WHEN CAST(:st AS integer) IS NULL THEN NULL ELSE now() - make_interval(secs => CAST(:st AS integer)) END)",
-        i=tid, s=status, c=created_ago, st=started_ago,
+        i=tid,
+        s=status,
+        c=created_ago,
+        st=started_ago,
     )
     return tid
 
@@ -406,9 +521,15 @@ async def test_running_tasks_without_a_heartbeat_are_failed_as_worker_lost(db: N
     await get_redis().set(W.heartbeat_key(str(alive)), b"1", ex=30)
     await W.reap_stale_tasks(reaper_ctx())
     d = await fetch(dead)
-    assert (d.status, d.error_code, d.error_message) == (TaskStatus.FAILED, "WORKER_LOST", "The worker stopped while processing; please retry") and d.finished_at is not None
+    assert (d.status, d.error_code, d.error_message) == (
+        TaskStatus.FAILED,
+        "WORKER_LOST",
+        "The worker stopped while processing; please retry",
+    ) and d.finished_at is not None
     assert (await fetch(alive)).status == TaskStatus.RUNNING, "a live heartbeat protects the task"
-    assert (await fetch(fresh)).status == TaskStatus.RUNNING, "inside the grace period nothing is concluded yet"
+    assert (await fetch(fresh)).status == TaskStatus.RUNNING, (
+        "inside the grace period nothing is concluded yet"
+    )
 
 
 async def test_running_past_the_absolute_maximum_is_failed_even_with_a_heartbeat(db: None) -> None:
@@ -422,10 +543,16 @@ async def test_pending_tasks_whose_queue_message_is_gone_are_failed(db: None) ->
     lost = await aged_task("PENDING", created_ago=W.QUEUED_GRACE_SECONDS + 60)
     queued = await aged_task("PENDING", created_ago=W.QUEUED_GRACE_SECONDS + 60)
     young = await aged_task("PENDING", created_ago=30)
-    await get_redis().set(f"arq:job:{queued}:abc123", b"payload")  # the ARQ message for this task still exists
+    await get_redis().set(
+        f"arq:job:{queued}:abc123", b"payload"
+    )  # the ARQ message for this task still exists
     await W.reap_stale_tasks(reaper_ctx())
     row = await fetch(lost)
-    assert (row.status, row.error_code, row.error_message) == (TaskStatus.FAILED, "WORKER_LOST", "The job queue lost this task before it started; please retry")
+    assert (row.status, row.error_code, row.error_message) == (
+        TaskStatus.FAILED,
+        "WORKER_LOST",
+        "The job queue lost this task before it started; please retry",
+    )
     assert (await fetch(queued)).status == TaskStatus.PENDING
     assert (await fetch(young)).status == TaskStatus.PENDING
 
@@ -451,7 +578,9 @@ async def test_nothing_is_reaped_when_redis_cannot_be_asked(db: None) -> None:
         await W.reap_stale_tasks(Ctx(redis=broken, sessionmaker=get_sessionmaker()))
     finally:
         await broken.aclose()
-    assert (await fetch(dead)).status == TaskStatus.RUNNING and (await fetch(lost)).status == TaskStatus.PENDING, "no evidence of a dead worker is not evidence of one"
+    assert (await fetch(dead)).status == TaskStatus.RUNNING and (
+        await fetch(lost)
+    ).status == TaskStatus.PENDING, "no evidence of a dead worker is not evidence of one"
 
 
 # --- the run_task wrapper ---------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -489,7 +618,9 @@ def worker_ctx(redis: Any) -> Ctx:
     return Ctx(redis=redis, sessionmaker=get_sessionmaker(), cache=get_cache())
 
 
-async def test_run_task_keeps_a_heartbeat_while_the_handler_runs(db: None, monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_run_task_keeps_a_heartbeat_while_the_handler_runs(
+    db: None, monkeypatch: pytest.MonkeyPatch
+) -> None:
     redis = RecordingRedis()
     monkeypatch.setattr(W, "HEARTBEAT_INTERVAL_SECONDS", 0.005)
     observed: dict[str, Any] = {}
@@ -497,7 +628,9 @@ async def test_run_task_keeps_a_heartbeat_while_the_handler_runs(db: None, monke
     async def handler(ctx: TaskContext) -> dict[str, bool]:
         key = W.heartbeat_key(str(ctx.task_id))
         observed["during"] = bool(await redis.exists(key))
-        await asyncio.wait_for(redis.beat.wait(), timeout=5)  # returns once the heartbeat has been refreshed twice more
+        await asyncio.wait_for(
+            redis.beat.wait(), timeout=5
+        )  # returns once the heartbeat has been refreshed twice more
         return {"done": True}
 
     register_handler(TYPE, handler)
@@ -507,7 +640,11 @@ async def test_run_task_keeps_a_heartbeat_while_the_handler_runs(db: None, monke
     assert observed["during"] is True and len(redis.sets) >= 3 and set(redis.sets) == {key}
     assert not await redis.exists(key), "the heartbeat disappears with the task"
     assert (await fetch(task.id)).status == TaskStatus.COMPLETED and redis.enqueued == []
-    assert not [t for t in asyncio.all_tasks() if getattr(t.get_coro(), "__qualname__", "").endswith("run_task.<locals>.beat")], "the heartbeat coroutine was cancelled"
+    assert not [
+        t
+        for t in asyncio.all_tasks()
+        if getattr(t.get_coro(), "__qualname__", "").endswith("run_task.<locals>.beat")
+    ], "the heartbeat coroutine was cancelled"
 
 
 async def test_run_task_requeues_retryable_failures_with_a_delay(db: None) -> None:
@@ -521,7 +658,11 @@ async def test_run_task_requeues_retryable_failures_with_a_delay(db: None) -> No
     await W.run_task(worker_ctx(redis), str(task.id))
     assert (await fetch(task.id)).status == TaskStatus.PENDING
     [(args, kwargs)] = redis.enqueued
-    assert args == ("run_task", str(task.id)) and kwargs["_defer_by"] == 12 and kwargs["_job_id"].startswith(f"{task.id}:12:")
+    assert (
+        args == ("run_task", str(task.id))
+        and kwargs["_defer_by"] == 12
+        and kwargs["_job_id"].startswith(f"{task.id}:12:")
+    )
 
 
 async def test_run_task_fails_the_task_when_the_requeue_is_impossible(db: None) -> None:
@@ -534,7 +675,11 @@ async def test_run_task_fails_the_task_when_the_requeue_is_impossible(db: None) 
     task = await new_task()
     await W.run_task(worker_ctx(redis), str(task.id))
     row = await fetch(task.id)
-    assert (row.status, row.error_code, row.error_message) == (TaskStatus.FAILED, "QUEUE_UNAVAILABLE", "Could not re-queue the task") and row.finished_at is not None
+    assert (row.status, row.error_code, row.error_message) == (
+        TaskStatus.FAILED,
+        "QUEUE_UNAVAILABLE",
+        "Could not re-queue the task",
+    ) and row.finished_at is not None
 
 
 async def test_run_task_survives_a_dead_heartbeat_store(db: None) -> None:
@@ -551,7 +696,9 @@ async def test_run_task_survives_a_dead_heartbeat_store(db: None) -> None:
         await W.run_task(worker_ctx(broken), str(task.id))
     finally:
         await broken.aclose()
-    assert (await fetch(task.id)).status == TaskStatus.COMPLETED, "losing the heartbeat must not lose the work"
+    assert (await fetch(task.id)).status == TaskStatus.COMPLETED, (
+        "losing the heartbeat must not lose the work"
+    )
 
 
 # --- housekeeping + sweep --------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -563,14 +710,33 @@ async def test_cleanup_removes_only_old_finished_tasks_and_expired_tokens(client
     old = datetime.now(UTC) - timedelta(days=45)
     recent = datetime.now(UTC) - timedelta(days=2)
     rows = {}
-    for name, status, finished in (("old_done", "COMPLETED", old), ("old_failed", "FAILED", old), ("recent_done", "COMPLETED", recent), ("old_running", "RUNNING", None)):
+    for name, status, finished in (
+        ("old_done", "COMPLETED", old),
+        ("old_failed", "FAILED", old),
+        ("recent_done", "COMPLETED", recent),
+        ("old_running", "RUNNING", None),
+    ):
         rows[name] = uuid.uuid4()
-        await sql("INSERT INTO background_tasks (id, type, status, params, finished_at) VALUES (:i, 'MATCH_JOB', :s, '{}'::jsonb, :f)", i=rows[name], s=status, f=finished)
-    await sql("INSERT INTO refresh_tokens (user_id, family_id, token_hash, expires_at) VALUES (:u, :f, 'h-old', :e), (:u, :f, 'h-new', :n)", u=uid, f=uuid.uuid4(), e=old, n=datetime.now(UTC) + timedelta(days=5))
+        await sql(
+            "INSERT INTO background_tasks (id, type, status, params, finished_at) VALUES (:i, 'MATCH_JOB', :s, '{}'::jsonb, :f)",
+            i=rows[name],
+            s=status,
+            f=finished,
+        )
+    await sql(
+        "INSERT INTO refresh_tokens (user_id, family_id, token_hash, expires_at) VALUES (:u, :f, 'h-old', :e), (:u, :f, 'h-new', :n)",
+        u=uid,
+        f=uuid.uuid4(),
+        e=old,
+        n=datetime.now(UTC) + timedelta(days=5),
+    )
     await W.cleanup_old_records(reaper_ctx())
     remaining = {r[0] for r in await sql("SELECT id FROM background_tasks")}
     assert remaining == {rows["recent_done"], rows["old_running"]}
-    assert {r[0] for r in await sql("SELECT token_hash FROM refresh_tokens WHERE token_hash IN ('h-old', 'h-new')")} == {"h-new"}
+    assert {
+        r[0]
+        for r in await sql("SELECT token_hash FROM refresh_tokens WHERE token_hash IN ('h-old', 'h-new')")
+    } == {"h-new"}
 
 
 async def test_the_nightly_sweep_queues_one_deduplicated_match_per_live_job(client: AsyncClient) -> None:
@@ -587,11 +753,15 @@ async def test_the_nightly_sweep_queues_one_deduplicated_match_per_live_job(clie
     try:
         await W.sweep_matches(Ctx(redis=pool, sessionmaker=get_sessionmaker()))
         rows = await tasks_by_type("MATCH_JOB")
-        assert sorted(r[1] for r in rows) == sorted(f"match-job:{j['id']}" for j in live) and {r[0] for r in rows} == {"PENDING"}
+        assert sorted(r[1] for r in rows) == sorted(f"match-job:{j['id']}" for j in live) and {
+            r[0] for r in rows
+        } == {"PENDING"}
         queued = [k async for k in get_redis().scan_iter(match="arq:job:*")]
         assert len(queued) == 2, "one queue message per job"
         await W.sweep_matches(Ctx(redis=pool, sessionmaker=get_sessionmaker()))
-        assert len(await tasks_by_type("MATCH_JOB")) == 2, "running the sweep again while the first batch is pending adds nothing"
+        assert len(await tasks_by_type("MATCH_JOB")) == 2, (
+            "running the sweep again while the first batch is pending adds nothing"
+        )
     finally:
         await pool.aclose()
 

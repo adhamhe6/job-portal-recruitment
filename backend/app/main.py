@@ -29,17 +29,41 @@ from app.schemas.common import ErrorResponse
 logger = logging.getLogger("app.request")
 
 OPENAPI_TAGS = [
-    {"name": "Authentication", "description": "Register, sign in, rotate refresh tokens. Access tokens are short-lived JWTs sent as `Authorization: Bearer …`; the refresh token lives in an HttpOnly cookie."},
+    {
+        "name": "Authentication",
+        "description": "Register, sign in, rotate refresh tokens. Access tokens are short-lived JWTs sent as `Authorization: Bearer …`; the refresh token lives in an HttpOnly cookie.",
+    },
     {"name": "Users (admin)", "description": "Platform user administration. **ADMIN only.**"},
-    {"name": "Companies", "description": "Tenants. Recruiters can only see and change their own company's data."},
+    {
+        "name": "Companies",
+        "description": "Tenants. Recruiters can only see and change their own company's data.",
+    },
     {"name": "Skills", "description": "Structured skill taxonomy with aliases and related-skill families."},
-    {"name": "Candidates", "description": "Candidate profile, experience, education, skills and recruiter-facing candidate views."},
-    {"name": "Jobs", "description": "Job postings and their lifecycle (DRAFT → PUBLISHED ⇄ PAUSED → CLOSED → ARCHIVED)."},
-    {"name": "Search", "description": "Public job search and recruiter candidate search (PostgreSQL FTS + trigram + filters + vectors)."},
-    {"name": "Resumes", "description": "Résumé upload, validation, asynchronous processing and extracted-data review."},
+    {
+        "name": "Candidates",
+        "description": "Candidate profile, experience, education, skills and recruiter-facing candidate views.",
+    },
+    {
+        "name": "Jobs",
+        "description": "Job postings and their lifecycle (DRAFT → PUBLISHED ⇄ PAUSED → CLOSED → ARCHIVED).",
+    },
+    {
+        "name": "Search",
+        "description": "Public job search and recruiter candidate search (PostgreSQL FTS + trigram + filters + vectors).",
+    },
+    {
+        "name": "Resumes",
+        "description": "Résumé upload, validation, asynchronous processing and extracted-data review.",
+    },
     {"name": "Applications", "description": "Applications, the stage workflow, history and internal notes."},
-    {"name": "Interviews", "description": "Interview scheduling, participants, conflicts and structured feedback."},
-    {"name": "Matches", "description": "Semantic candidate↔job matching: ranked candidates and score explanations."},
+    {
+        "name": "Interviews",
+        "description": "Interview scheduling, participants, conflicts and structured feedback.",
+    },
+    {
+        "name": "Matches",
+        "description": "Semantic candidate↔job matching: ranked candidates and score explanations.",
+    },
     {"name": "Recommendations", "description": "Recommended jobs for the signed-in candidate."},
     {"name": "Notifications", "description": "In-app notification centre."},
     {"name": "Reports", "description": "Dashboards, funnel and analytics reports (CSV export available)."},
@@ -52,7 +76,9 @@ OPENAPI_TAGS = [
 def _error_response(
     status_code: int, code: str, message: str, details: Any = None, headers: dict[str, str] | None = None
 ) -> JSONResponse:
-    body = {"error": {"code": code, "message": message, "details": details, "request_id": request_id_ctx.get()}}
+    body = {
+        "error": {"code": code, "message": message, "details": details, "request_id": request_id_ctx.get()}
+    }
     return JSONResponse(status_code=status_code, content=body, headers=headers)
 
 
@@ -144,7 +170,11 @@ def create_app() -> FastAPI:
     @app.exception_handler(RequestValidationError)
     async def validation_handler(_: Request, exc: RequestValidationError) -> JSONResponse:
         details = [
-            {"field": ".".join(str(p) for p in e["loc"] if p not in ("body", "query", "path")), "message": e["msg"], "type": e["type"]}
+            {
+                "field": ".".join(str(p) for p in e["loc"] if p not in ("body", "query", "path")),
+                "message": e["msg"],
+                "type": e["type"],
+            }
             for e in exc.errors()
         ]
         return _error_response(422, "VALIDATION_ERROR", "Request validation failed", details)
@@ -152,17 +182,29 @@ def create_app() -> FastAPI:
     @app.exception_handler(StarletteHTTPException)
     async def http_exception_handler(_: Request, exc: StarletteHTTPException) -> JSONResponse:
         codes = {
-            400: "BAD_REQUEST", 401: "UNAUTHORIZED", 403: "FORBIDDEN", 404: "NOT_FOUND", 405: "METHOD_NOT_ALLOWED",
-            413: "PAYLOAD_TOO_LARGE", 415: "UNSUPPORTED_MEDIA_TYPE", 429: "RATE_LIMITED",
+            400: "BAD_REQUEST",
+            401: "UNAUTHORIZED",
+            403: "FORBIDDEN",
+            404: "NOT_FOUND",
+            405: "METHOD_NOT_ALLOWED",
+            413: "PAYLOAD_TOO_LARGE",
+            415: "UNSUPPORTED_MEDIA_TYPE",
+            429: "RATE_LIMITED",
         }
         # Keep protocol headers such as ``Allow`` (405) and ``WWW-Authenticate`` (401) that the framework attached.
         return _error_response(
-            exc.status_code, codes.get(exc.status_code, "HTTP_ERROR"), str(exc.detail), headers=dict(exc.headers) if exc.headers else None
+            exc.status_code,
+            codes.get(exc.status_code, "HTTP_ERROR"),
+            str(exc.detail),
+            headers=dict(exc.headers) if exc.headers else None,
         )
 
     @app.exception_handler(OperationalError)
     async def db_unavailable_handler(_: Request, exc: OperationalError) -> JSONResponse:
-        logger.error("database unavailable", extra={"error": type(exc.orig).__name__ if exc.orig else "OperationalError"})
+        logger.error(
+            "database unavailable",
+            extra={"error": type(exc.orig).__name__ if exc.orig else "OperationalError"},
+        )
         return _error_response(503, "SERVICE_UNAVAILABLE", "The database is temporarily unavailable")
 
     @app.exception_handler(DBAPIError)
@@ -174,7 +216,9 @@ def create_app() -> FastAPI:
         if sqlstate.startswith("22"):
             logger.warning("rejected unstorable input", extra={"sqlstate": sqlstate})
             return _error_response(
-                422, "VALIDATION_ERROR", "A submitted value cannot be stored (for example it contains NUL characters or is out of range)"
+                422,
+                "VALIDATION_ERROR",
+                "A submitted value cannot be stored (for example it contains NUL characters or is out of range)",
             )
         logger.error("database error", extra={"error": type(exc.orig).__name__ if exc.orig else "DBAPIError"})
         return _error_response(500, "INTERNAL_ERROR", "An unexpected error occurred")
@@ -194,10 +238,14 @@ def create_app() -> FastAPI:
         if "ErrorResponse" in schema.get("components", {}).get("schemas", {}):
             for item in schema["paths"].values():
                 for operation in item.values():
-                    response = operation.get("responses", {}).get("422") if isinstance(operation, dict) else None
+                    response = (
+                        operation.get("responses", {}).get("422") if isinstance(operation, dict) else None
+                    )
                     if response and "content" in response:
                         response["description"] = "Validation or business-rule failure"
-                        response["content"]["application/json"]["schema"] = {"$ref": "#/components/schemas/ErrorResponse"}
+                        response["content"]["application/json"]["schema"] = {
+                            "$ref": "#/components/schemas/ErrorResponse"
+                        }
             for unused in ("HTTPValidationError", "ValidationError"):
                 schema["components"]["schemas"].pop(unused, None)
         return schema
@@ -221,7 +269,9 @@ def create_app() -> FastAPI:
         try:
             async with get_engine().connect() as conn:
                 await conn.execute(text("SELECT 1"))
-                ext = (await conn.execute(text("SELECT 1 FROM pg_extension WHERE extname = 'vector'"))).scalar()
+                ext = (
+                    await conn.execute(text("SELECT 1 FROM pg_extension WHERE extname = 'vector'"))
+                ).scalar()
                 checks["database"] = "ok"
                 checks["pgvector"] = "ok" if ext else "missing"
                 ok = ok and bool(ext)
@@ -230,7 +280,10 @@ def create_app() -> FastAPI:
             ok = False
         checks["redis"] = "ok" if await get_cache().ping() else "unavailable (degraded: cache/queue disabled)"
         # Redis is an optimisation, not a source of truth; readiness depends only on PostgreSQL.
-        return JSONResponse(status_code=200 if ok else 503, content={"status": "ready" if ok else "not_ready", "checks": checks})
+        return JSONResponse(
+            status_code=200 if ok else 503,
+            content={"status": "ready" if ok else "not_ready", "checks": checks},
+        )
 
     return app
 

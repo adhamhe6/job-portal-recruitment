@@ -39,7 +39,10 @@ def test_a_correct_production_configuration_is_accepted() -> None:
         ({"secret": "x"}, None),  # unknown settings are ignored, not an error
         ({"secret_key": "short-but-random-9f3a"}, "SECRET_KEY"),  # < 32 characters
         ({"secret_key": "k" * 31}, "SECRET_KEY"),
-        ({"secret_key": "Change-Me-" + "z" * 40}, "SECRET_KEY"),  # looks like the placeholder even though long
+        (
+            {"secret_key": "Change-Me-" + "z" * 40},
+            "SECRET_KEY",
+        ),  # looks like the placeholder even though long
         ({"first_admin_password": "ChangeMe123!"}, "FIRST_ADMIN_PASSWORD"),
         ({"first_admin_password": "DemoPass123!"}, "FIRST_ADMIN_PASSWORD"),
         ({"seed_demo_data": True}, "SEED_DEMO_DATA"),
@@ -65,14 +68,26 @@ def test_boundary_secret_length_is_32() -> None:
 def test_the_same_values_are_fine_outside_production() -> None:
     for env in ("development", "test"):
         s = Settings(
-            _env_file=None, environment=env, secret_key="change-me", first_admin_password="ChangeMe123!",
-            seed_demo_data=True, debug=True, cors_origins=["*"], refresh_cookie_secure=False,
+            _env_file=None,
+            environment=env,
+            secret_key="change-me",
+            first_admin_password="ChangeMe123!",
+            seed_demo_data=True,
+            debug=True,
+            cors_origins=["*"],
+            refresh_cookie_secure=False,
         )  # type: ignore[arg-type]
         assert s.environment == env
 
 
 def test_defaults_are_safe_for_local_development(monkeypatch: pytest.MonkeyPatch) -> None:
-    for var in ("ENVIRONMENT", "JOB_BACKEND", "CORS_ORIGINS", "DEBUG", "SEED_DEMO_DATA"):  # the harness pins some of these
+    for var in (
+        "ENVIRONMENT",
+        "JOB_BACKEND",
+        "CORS_ORIGINS",
+        "DEBUG",
+        "SEED_DEMO_DATA",
+    ):  # the harness pins some of these
         monkeypatch.delenv(var, raising=False)
     s = Settings(_env_file=None)
     assert s.environment == "development"
@@ -100,8 +115,14 @@ def test_environment_must_be_a_known_value() -> None:
     ("raw", "expected"),
     [
         ("https://a.example.com", ["https://a.example.com"]),
-        ("https://a.example.com, https://b.example.com ,", ["https://a.example.com", "https://b.example.com"]),
-        ('["https://a.example.com","https://b.example.com"]', ["https://a.example.com", "https://b.example.com"]),
+        (
+            "https://a.example.com, https://b.example.com ,",
+            ["https://a.example.com", "https://b.example.com"],
+        ),
+        (
+            '["https://a.example.com","https://b.example.com"]',
+            ["https://a.example.com", "https://b.example.com"],
+        ),
         ("", []),
     ],
 )
@@ -114,7 +135,9 @@ def test_cors_origins_are_read_from_the_environment(monkeypatch: pytest.MonkeyPa
     assert Settings(_env_file=None).cors_origins == ["https://x.example.com", "https://y.example.com"]
 
 
-def test_production_settings_can_be_loaded_from_environment_variables(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_production_settings_can_be_loaded_from_environment_variables(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setenv("ENVIRONMENT", "production")
     monkeypatch.setenv("SECRET_KEY", GOOD_SECRET)
     monkeypatch.setenv("FIRST_ADMIN_PASSWORD", GOOD_PASSWORD)

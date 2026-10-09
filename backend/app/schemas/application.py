@@ -12,10 +12,17 @@ from app.schemas.common import ORMModel
 
 class ApplicationCreate(BaseModel):
     model_config = ConfigDict(
-        json_schema_extra={"example": {"job_id": "00000000-0000-0000-0000-000000000000", "cover_letter": "I would love to join…"}}
+        json_schema_extra={
+            "example": {
+                "job_id": "00000000-0000-0000-0000-000000000000",
+                "cover_letter": "I would love to join…",
+            }
+        }
     )
     job_id: uuid.UUID
-    resume_id: uuid.UUID | None = Field(default=None, description="Defaults to the candidate's primary résumé")
+    resume_id: uuid.UUID | None = Field(
+        default=None, description="Defaults to the candidate's primary résumé"
+    )
     cover_letter: str | None = Field(default=None, max_length=8000)
     source: str = Field(default="DIRECT", pattern="^(DIRECT|RECOMMENDATION|SEARCH|REFERRAL)$")
 
@@ -46,7 +53,9 @@ class HistoryEntry(BaseModel):
     from_status: ApplicationStatus | None
     to_status: ApplicationStatus
     actor_name: str | None
-    comment: str | None = Field(description="Visible to candidates only for their own withdrawal / rejection reason")
+    comment: str | None = Field(
+        description="Visible to candidates only for their own withdrawal / rejection reason"
+    )
     created_at: datetime
 
 

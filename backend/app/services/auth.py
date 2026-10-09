@@ -96,18 +96,28 @@ class AuthService:
                     contact_phone=None,
                 )
             )
-            record_audit(self.session, actor_id=user.id, action="user.registered", entity_type="user", entity_id=user.id)
+            record_audit(
+                self.session,
+                actor_id=user.id,
+                action="user.registered",
+                entity_type="user",
+                entity_id=user.id,
+            )
             await self.session.commit()
         except IntegrityError as exc:
             await self.session.rollback()
-            raise ConflictError("An account with this email already exists", code="EMAIL_ALREADY_REGISTERED") from exc
+            raise ConflictError(
+                "An account with this email already exists", code="EMAIL_ALREADY_REGISTERED"
+            ) from exc
         return user
 
     async def register_employer(self, data: RegisterEmployerRequest) -> User:
         email = data.email.lower()
         if await email_taken(self.session, email):
             raise ConflictError("An account with this email already exists", code="EMAIL_ALREADY_REGISTERED")
-        if await self.session.scalar(select(Company.id).where(func.lower(Company.name) == data.company_name.lower())):
+        if await self.session.scalar(
+            select(Company.id).where(func.lower(Company.name) == data.company_name.lower())
+        ):
             raise ConflictError("A company with this name already exists", code="COMPANY_NAME_TAKEN")
         try:
             company = Company(
@@ -131,7 +141,9 @@ class AuthService:
             )
             self.session.add(user)
             await self.session.flush()
-            self.session.add(RecruiterProfile(user_id=user.id, job_title=data.job_title, is_company_admin=True))
+            self.session.add(
+                RecruiterProfile(user_id=user.id, job_title=data.job_title, is_company_admin=True)
+            )
             record_audit(
                 self.session,
                 actor_id=user.id,
@@ -143,7 +155,9 @@ class AuthService:
             await self.session.commit()
         except IntegrityError as exc:
             await self.session.rollback()
-            raise ConflictError("Email or company name already in use", code="EMAIL_ALREADY_REGISTERED") from exc
+            raise ConflictError(
+                "Email or company name already in use", code="EMAIL_ALREADY_REGISTERED"
+            ) from exc
         return user
 
     # --- login / refresh / logout --------------------------------------------------------------------
@@ -162,7 +176,9 @@ class AuthService:
         # Always verify (against a dummy hash for unknown emails) so response time does not reveal account existence.
         ok = verify_password(password, user.password_hash if user else None)
         if not ok or user is None:
-            await limiter.hit(bucket, settings.login_rate_limit_attempts, settings.login_rate_limit_window_seconds)
+            await limiter.hit(
+                bucket, settings.login_rate_limit_attempts, settings.login_rate_limit_window_seconds
+            )
             logger.warning("login failed", extra={"reason": "bad_credentials"})
             raise AuthenticationError("Incorrect email or password", code="INVALID_CREDENTIALS")
         if user.status != UserStatus.ACTIVE:
@@ -196,7 +212,9 @@ class AuthService:
             raise AuthenticationError("Missing refresh token", code="INVALID_REFRESH_TOKEN")
         token = (
             await self.session.execute(
-                select(RefreshToken).where(RefreshToken.token_hash == hash_refresh_token(raw_token)).with_for_update()
+                select(RefreshToken)
+                .where(RefreshToken.token_hash == hash_refresh_token(raw_token))
+                .with_for_update()
             )
         ).scalar_one_or_none()
         if token is None:
@@ -217,7 +235,9 @@ class AuthService:
         await self.session.commit()
         return tokens
 
-    async def logout(self, raw_refresh: str | None, access_jti: str | None = None, access_exp_seconds: int = 0) -> None:
+    async def logout(
+        self, raw_refresh: str | None, access_jti: str | None = None, access_exp_seconds: int = 0
+    ) -> None:
         if raw_refresh:
             token = (
                 await self.session.execute(
@@ -249,5 +269,11 @@ class AuthService:
             raise AuthenticationError("Current password is incorrect", code="INVALID_CREDENTIALS")
         user.password_hash = hash_password(new)
         await self.revoke_all_for_user(user.id)
-        record_audit(self.session, actor_id=user.id, action="user.password_changed", entity_type="user", entity_id=user.id)
+        record_audit(
+            self.session,
+            actor_id=user.id,
+            action="user.password_changed",
+            entity_type="user",
+            entity_id=user.id,
+        )
         await self.session.commit()

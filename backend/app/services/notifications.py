@@ -51,8 +51,14 @@ class NotificationService:
         )
         await self.session.execute(stmt)
 
-    async def list(self, user: User, *, unread_only: bool, page: int, page_size: int) -> tuple[list[Notification], int]:
-        stmt = select(Notification).where(Notification.user_id == user.id).order_by(Notification.created_at.desc(), Notification.id)
+    async def list(
+        self, user: User, *, unread_only: bool, page: int, page_size: int
+    ) -> tuple[list[Notification], int]:
+        stmt = (
+            select(Notification)
+            .where(Notification.user_id == user.id)
+            .order_by(Notification.created_at.desc(), Notification.id)
+        )
         if unread_only:
             stmt = stmt.where(Notification.is_read.is_(False))
         return await paginate(self.session, stmt, page=page, page_size=page_size)
@@ -60,7 +66,9 @@ class NotificationService:
     async def unread_count(self, user: User) -> int:
         return int(
             await self.session.scalar(
-                select(func.count()).select_from(Notification).where(Notification.user_id == user.id, Notification.is_read.is_(False))
+                select(func.count())
+                .select_from(Notification)
+                .where(Notification.user_id == user.id, Notification.is_read.is_(False))
             )
             or 0
         )

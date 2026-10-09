@@ -25,49 +25,103 @@ def unique_email(prefix: str = "user") -> str:
     return f"{prefix}{next(_counter)}-{uuid.uuid4().hex[:6]}@test.example"
 
 
-async def register_candidate(client: AsyncClient, email: str | None = None, first: str = "Casey", last: str = "Candidate") -> dict[str, Any]:
+async def register_candidate(
+    client: AsyncClient, email: str | None = None, first: str = "Casey", last: str = "Candidate"
+) -> dict[str, Any]:
     email = email or unique_email("cand")
-    r = await client.post("/api/v1/auth/register", json={"email": email, "password": PASSWORD, "first_name": first, "last_name": last})
+    r = await client.post(
+        "/api/v1/auth/register",
+        json={"email": email, "password": PASSWORD, "first_name": first, "last_name": last},
+    )
     assert r.status_code == 201, r.text
     body = r.json()
-    return {"token": body["access_token"], "user": body["user"], "email": email, "candidate_id": body["user"]["candidate_id"], "h": auth(body["access_token"])}
+    return {
+        "token": body["access_token"],
+        "user": body["user"],
+        "email": email,
+        "candidate_id": body["user"]["candidate_id"],
+        "h": auth(body["access_token"]),
+    }
 
 
-async def register_employer(client: AsyncClient, company: str | None = None, email: str | None = None) -> dict[str, Any]:
+async def register_employer(
+    client: AsyncClient, company: str | None = None, email: str | None = None
+) -> dict[str, Any]:
     email = email or unique_email("rec")
     company = company or f"Company {uuid.uuid4().hex[:6]}"
     r = await client.post(
         "/api/v1/auth/register/employer",
-        json={"email": email, "password": PASSWORD, "first_name": "Riley", "last_name": "Recruiter", "company_name": company, "company_industry": "Software"},
+        json={
+            "email": email,
+            "password": PASSWORD,
+            "first_name": "Riley",
+            "last_name": "Recruiter",
+            "company_name": company,
+            "company_industry": "Software",
+        },
     )
     assert r.status_code == 201, r.text
     body = r.json()
-    return {"token": body["access_token"], "user": body["user"], "email": email, "company_id": body["user"]["company_id"], "h": auth(body["access_token"])}
+    return {
+        "token": body["access_token"],
+        "user": body["user"],
+        "email": email,
+        "company_id": body["user"]["company_id"],
+        "h": auth(body["access_token"]),
+    }
 
 
-async def add_staff(client: AsyncClient, recruiter: dict[str, Any], role: str = "HIRING_MANAGER", email: str | None = None) -> dict[str, Any]:
+async def add_staff(
+    client: AsyncClient, recruiter: dict[str, Any], role: str = "HIRING_MANAGER", email: str | None = None
+) -> dict[str, Any]:
     email = email or unique_email("staff")
     r = await client.post(
         f"/api/v1/companies/{recruiter['company_id']}/members",
         headers=recruiter["h"],
-        json={"email": email, "password": PASSWORD, "first_name": "Sam", "last_name": role.title(), "role": role},
+        json={
+            "email": email,
+            "password": PASSWORD,
+            "first_name": "Sam",
+            "last_name": role.title(),
+            "role": role,
+        },
     )
     assert r.status_code == 201, r.text
     member = r.json()
     login = await client.post("/api/v1/auth/login", json={"email": email, "password": PASSWORD})
     assert login.status_code == 200, login.text
     tok = login.json()["access_token"]
-    return {"token": tok, "user": login.json()["user"], "id": member["id"], "email": email, "company_id": recruiter["company_id"], "h": auth(tok)}
+    return {
+        "token": tok,
+        "user": login.json()["user"],
+        "id": member["id"],
+        "email": email,
+        "company_id": recruiter["company_id"],
+        "h": auth(tok),
+    }
 
 
 async def create_admin(client: AsyncClient) -> dict[str, Any]:
     email = unique_email("admin")
     async with get_sessionmaker()() as s:
-        s.add(User(email=email, password_hash=hash_password(PASSWORD), first_name="Ada", last_name="Admin", role=Role.ADMIN))
+        s.add(
+            User(
+                email=email,
+                password_hash=hash_password(PASSWORD),
+                first_name="Ada",
+                last_name="Admin",
+                role=Role.ADMIN,
+            )
+        )
         await s.commit()
     r = await client.post("/api/v1/auth/login", json={"email": email, "password": PASSWORD})
     assert r.status_code == 200, r.text
-    return {"token": r.json()["access_token"], "user": r.json()["user"], "email": email, "h": auth(r.json()["access_token"])}
+    return {
+        "token": r.json()["access_token"],
+        "user": r.json()["user"],
+        "email": email,
+        "h": auth(r.json()["access_token"]),
+    }
 
 
 def job_payload(title: str = "Backend Engineer", **overrides: Any) -> dict[str, Any]:
@@ -98,7 +152,9 @@ def job_payload(title: str = "Backend Engineer", **overrides: Any) -> dict[str, 
     return body
 
 
-async def create_job(client: AsyncClient, recruiter: dict[str, Any], publish: bool = False, **overrides: Any) -> dict[str, Any]:
+async def create_job(
+    client: AsyncClient, recruiter: dict[str, Any], publish: bool = False, **overrides: Any
+) -> dict[str, Any]:
     r = await client.post("/api/v1/jobs", headers=recruiter["h"], json=job_payload(**overrides))
     assert r.status_code == 201, r.text
     job = r.json()
@@ -113,38 +169,66 @@ async def fill_backend_profile(client: AsyncClient, cand: dict[str, Any], years:
     """A strong backend-engineer profile entered through the profile API."""
     h = cand["h"]
     r = await client.patch(
-        "/api/v1/candidates/me", headers=h,
-        json={"headline": "Backend engineer", "summary": "Backend engineer building Python APIs with FastAPI and PostgreSQL, deployed with Docker.",
-              "location": "Berlin, Germany", "years_experience": years, "remote_preference": "HYBRID"},
+        "/api/v1/candidates/me",
+        headers=h,
+        json={
+            "headline": "Backend engineer",
+            "summary": "Backend engineer building Python APIs with FastAPI and PostgreSQL, deployed with Docker.",
+            "location": "Berlin, Germany",
+            "years_experience": years,
+            "remote_preference": "HYBRID",
+        },
     )
     assert r.status_code == 200, r.text
     for name in ("Python", "FastAPI", "PostgreSQL", "Docker", "Redis"):
         sr = await client.post("/api/v1/candidates/me/skills", headers=h, json={"name": name})
         assert sr.status_code == 201, sr.text
     er = await client.post(
-        "/api/v1/candidates/me/experiences", headers=h,
-        json={"title": "Backend Engineer", "company_name": "Initech", "start_date": (date.today() - timedelta(days=int(years * 365))).isoformat(),
-              "is_current": True, "description": "Built REST APIs in Python with FastAPI backed by PostgreSQL and Redis; containerised with Docker."},
+        "/api/v1/candidates/me/experiences",
+        headers=h,
+        json={
+            "title": "Backend Engineer",
+            "company_name": "Initech",
+            "start_date": (date.today() - timedelta(days=int(years * 365))).isoformat(),
+            "is_current": True,
+            "description": "Built REST APIs in Python with FastAPI backed by PostgreSQL and Redis; containerised with Docker.",
+        },
     )
     assert er.status_code == 201, er.text
-    ed = await client.post("/api/v1/candidates/me/educations", headers=h, json={"institution": "TU Berlin", "degree_level": "BACHELOR", "field_of_study": "Computer Science"})
+    ed = await client.post(
+        "/api/v1/candidates/me/educations",
+        headers=h,
+        json={"institution": "TU Berlin", "degree_level": "BACHELOR", "field_of_study": "Computer Science"},
+    )
     assert ed.status_code == 201, ed.text
 
 
 async def fill_frontend_profile(client: AsyncClient, cand: dict[str, Any], years: float = 3.0) -> None:
     h = cand["h"]
     r = await client.patch(
-        "/api/v1/candidates/me", headers=h,
-        json={"headline": "Frontend engineer", "summary": "Frontend engineer crafting responsive React and TypeScript interfaces with Tailwind CSS.",
-              "location": "Berlin, Germany", "years_experience": years, "remote_preference": "REMOTE"},
+        "/api/v1/candidates/me",
+        headers=h,
+        json={
+            "headline": "Frontend engineer",
+            "summary": "Frontend engineer crafting responsive React and TypeScript interfaces with Tailwind CSS.",
+            "location": "Berlin, Germany",
+            "years_experience": years,
+            "remote_preference": "REMOTE",
+        },
     )
     assert r.status_code == 200, r.text
     for name in ("React", "TypeScript", "Next.js", "Tailwind CSS", "CSS"):
         sr = await client.post("/api/v1/candidates/me/skills", headers=h, json={"name": name})
         assert sr.status_code == 201, sr.text
     er = await client.post(
-        "/api/v1/candidates/me/experiences", headers=h,
-        json={"title": "Frontend Developer", "company_name": "Globex", "start_date": (date.today() - timedelta(days=int(years * 365))).isoformat(),
-              "is_current": True, "description": "Built component libraries and single-page apps with React, TypeScript and Tailwind."},
+        "/api/v1/candidates/me/experiences",
+        headers=h,
+        json={
+            "title": "Frontend Developer",
+            "company_name": "Globex",
+            "start_date": (date.today() - timedelta(days=int(years * 365))).isoformat(),
+            "is_current": True,
+            "description": "Built component libraries and single-page apps with React, TypeScript and Tailwind.",
+        },
     )
     assert er.status_code == 201, er.text

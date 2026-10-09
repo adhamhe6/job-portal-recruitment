@@ -303,7 +303,7 @@ def test_candidate_components_never_leak_contact_data() -> None:
 
 def test_candidate_components_do_not_carry_any_identity_field() -> None:
     cand = candidate()
-    fields = {f for f in type(cand).__dataclass_fields__}
+    fields = set(type(cand).__dataclass_fields__)
     assert not (
         {"name", "first_name", "last_name", "display_name", "email", "phone", "gender", "age", "photo"}
         & fields

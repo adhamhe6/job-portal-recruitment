@@ -15,7 +15,6 @@ from sqlalchemy import (
     Integer,
     SmallInteger,
     String,
-    Text,
     UniqueConstraint,
     func,
     text,
@@ -33,23 +32,33 @@ class Notification(UUIDMixin, Base):
     user_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
     )
-    type: Mapped[NotificationType] = mapped_column(pg_enum(NotificationType, "notification_type"), nullable=False)
+    type: Mapped[NotificationType] = mapped_column(
+        pg_enum(NotificationType, "notification_type"), nullable=False
+    )
     title: Mapped[str] = mapped_column(String(200), nullable=False)
     message: Mapped[str] = mapped_column(String(1000), nullable=False)
     # Typed references (real foreign keys) instead of a polymorphic id: a notification can never point at a
     # resource that does not exist.
-    job_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("jobs.id", ondelete="CASCADE"))
+    job_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("jobs.id", ondelete="CASCADE")
+    )
     application_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("applications.id", ondelete="CASCADE")
     )
     interview_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("interviews.id", ondelete="CASCADE")
     )
-    resume_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("resumes.id", ondelete="CASCADE"))
-    is_read: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=text("false"))
+    resume_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("resumes.id", ondelete="CASCADE")
+    )
+    is_read: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=text("false")
+    )
     read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     dedupe_key: Mapped[str | None] = mapped_column(String(160))
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
 
     __table_args__ = (
         # Idempotency: the same event can be delivered twice (worker retry) without duplicating the notification.
@@ -66,7 +75,10 @@ class BackgroundTask(UUIDMixin, TimestampMixin, Base):
 
     type: Mapped[TaskType] = mapped_column(pg_enum(TaskType, "task_type"), nullable=False)
     status: Mapped[TaskStatus] = mapped_column(
-        pg_enum(TaskStatus, "task_status"), nullable=False, default=TaskStatus.PENDING, server_default="PENDING"
+        pg_enum(TaskStatus, "task_status"),
+        nullable=False,
+        default=TaskStatus.PENDING,
+        server_default="PENDING",
     )
     progress: Mapped[int] = mapped_column(SmallInteger, nullable=False, default=0, server_default="0")
     stage: Mapped[str | None] = mapped_column(String(60))
@@ -115,7 +127,10 @@ class BulkImportBatch(UUIDMixin, TimestampMixin, Base):
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     items: Mapped[list[BulkImportItem]] = relationship(
-        back_populates="batch", cascade="all, delete-orphan", lazy="raise", order_by="BulkImportItem.created_at"
+        back_populates="batch",
+        cascade="all, delete-orphan",
+        lazy="raise",
+        order_by="BulkImportItem.created_at",
     )
 
     __table_args__ = (CheckConstraint("total_files > 0", name="total_positive"),)
@@ -140,10 +155,14 @@ class BulkImportItem(UUIDMixin, Base):
     candidate_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("candidate_profiles.id", ondelete="SET NULL")
     )
-    resume_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("resumes.id", ondelete="SET NULL"))
+    resume_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("resumes.id", ondelete="SET NULL")
+    )
     error_code: Mapped[str | None] = mapped_column(String(50))
     error_message: Mapped[str | None] = mapped_column(String(500))
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
 
     batch: Mapped[BulkImportBatch] = relationship(back_populates="items", lazy="raise")
 
@@ -155,7 +174,9 @@ class AuditEvent(UUIDMixin, Base):
 
     __tablename__ = "audit_events"
 
-    actor_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"))
+    actor_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL")
+    )
     company_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("companies.id", ondelete="SET NULL")
     )
@@ -163,7 +184,9 @@ class AuditEvent(UUIDMixin, Base):
     entity_type: Mapped[str] = mapped_column(String(50), nullable=False)
     entity_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
     meta: Mapped[dict[str, Any] | None] = mapped_column("metadata", JSONB)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
 
     __table_args__ = (
         Index("ix_audit_events_created", text("created_at DESC")),

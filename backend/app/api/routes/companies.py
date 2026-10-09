@@ -26,7 +26,9 @@ from app.services.companies import CompanyService
 router = APIRouter(prefix="/companies", tags=["Companies"])
 
 
-@router.get("", response_model=Page[CompanyOut], summary="List all companies (admin)", responses=COMMON_ERRORS)
+@router.get(
+    "", response_model=Page[CompanyOut], summary="List all companies (admin)", responses=COMMON_ERRORS
+)
 async def list_companies(
     session: SessionDep,
     p: Pagination,
@@ -35,11 +37,17 @@ async def list_companies(
     status_: Annotated[CompanyStatus | None, Query(alias="status")] = None,
 ) -> Page[CompanyOut]:
     rows, total = await CompanyService(session).list(q=q, status=status_, page=p.page, page_size=p.page_size)
-    return Page.build([CompanyOut.model_validate(c) for c in rows], page=p.page, page_size=p.page_size, total=total)
+    return Page.build(
+        [CompanyOut.model_validate(c) for c in rows], page=p.page, page_size=p.page_size, total=total
+    )
 
 
 @router.post(
-    "", response_model=CompanyOut, status_code=status.HTTP_201_CREATED, summary="Create a company (admin)", responses=COMMON_ERRORS
+    "",
+    response_model=CompanyOut,
+    status_code=status.HTTP_201_CREATED,
+    summary="Create a company (admin)",
+    responses=COMMON_ERRORS,
 )
 async def create_company(
     data: CompanyCreate,
@@ -76,7 +84,9 @@ async def update_company(
     return CompanyOut.model_validate(await CompanyService(session, cache).update(user, company_id, data))
 
 
-@router.get("/{company_id}/members", response_model=list[MemberOut], summary="Company staff", responses=COMMON_ERRORS)
+@router.get(
+    "/{company_id}/members", response_model=list[MemberOut], summary="Company staff", responses=COMMON_ERRORS
+)
 async def list_members(company_id: uuid.UUID, user: CurrentUser, session: SessionDep) -> list[MemberOut]:
     return await CompanyService(session).list_members(user, company_id)
 
@@ -89,11 +99,18 @@ async def list_members(company_id: uuid.UUID, user: CurrentUser, session: Sessio
     description="Company administrators create staff accounts directly (no e-mail invitation flow).",
     responses=COMMON_ERRORS,
 )
-async def add_member(company_id: uuid.UUID, data: MemberCreate, user: CurrentUser, session: SessionDep) -> MemberOut:
+async def add_member(
+    company_id: uuid.UUID, data: MemberCreate, user: CurrentUser, session: SessionDep
+) -> MemberOut:
     return await CompanyService(session).add_member(user, company_id, data)
 
 
-@router.patch("/{company_id}/members/{user_id}", response_model=MemberOut, summary="Update a member", responses=COMMON_ERRORS)
+@router.patch(
+    "/{company_id}/members/{user_id}",
+    response_model=MemberOut,
+    summary="Update a member",
+    responses=COMMON_ERRORS,
+)
 async def update_member(
     company_id: uuid.UUID, user_id: uuid.UUID, data: MemberUpdate, user: CurrentUser, session: SessionDep
 ) -> MemberOut:

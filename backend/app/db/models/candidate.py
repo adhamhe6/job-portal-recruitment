@@ -74,7 +74,9 @@ class CandidateProfile(UUIDMixin, TimestampMixin, Base):
     location: Mapped[str | None] = mapped_column(String(200))
     years_experience: Mapped[Decimal | None] = mapped_column(Numeric(4, 1))
     expected_salary: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
-    salary_currency: Mapped[str] = mapped_column(String(3), nullable=False, default="USD", server_default="USD")
+    salary_currency: Mapped[str] = mapped_column(
+        String(3), nullable=False, default="USD", server_default="USD"
+    )
     remote_preference: Mapped[RemotePreference | None] = mapped_column(
         pg_enum(RemotePreference, "remote_preference")
     )
@@ -85,7 +87,9 @@ class CandidateProfile(UUIDMixin, TimestampMixin, Base):
     portfolio_url: Mapped[str | None] = mapped_column(String(500))
     linkedin_url: Mapped[str | None] = mapped_column(String(500))
     github_url: Mapped[str | None] = mapped_column(String(500))
-    is_searchable: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default=text("true"))
+    is_searchable: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True, server_default=text("true")
+    )
 
     # --- search & semantic index (maintained by CandidateIndexService, never by the client) -----------
     skills_text: Mapped[str | None] = mapped_column(Text)  # canonical skill names, space separated
@@ -111,10 +115,16 @@ class CandidateProfile(UUIDMixin, TimestampMixin, Base):
         back_populates="candidate", cascade="all, delete-orphan", lazy="raise"
     )
     experiences: Mapped[list[Experience]] = relationship(
-        back_populates="candidate", cascade="all, delete-orphan", lazy="raise", order_by="Experience.start_date.desc()"
+        back_populates="candidate",
+        cascade="all, delete-orphan",
+        lazy="raise",
+        order_by="Experience.start_date.desc()",
     )
     educations: Mapped[list[Education]] = relationship(
-        back_populates="candidate", cascade="all, delete-orphan", lazy="raise", order_by="Education.end_year.desc().nulls_first()"
+        back_populates="candidate",
+        cascade="all, delete-orphan",
+        lazy="raise",
+        order_by="Education.end_year.desc().nulls_first()",
     )
     certifications: Mapped[list[Certification]] = relationship(
         back_populates="candidate", cascade="all, delete-orphan", lazy="raise"
@@ -124,7 +134,10 @@ class CandidateProfile(UUIDMixin, TimestampMixin, Base):
     )
 
     __table_args__ = (
-        CheckConstraint("years_experience IS NULL OR (years_experience >= 0 AND years_experience <= 70)", name="years_experience_range"),
+        CheckConstraint(
+            "years_experience IS NULL OR (years_experience >= 0 AND years_experience <= 70)",
+            name="years_experience_range",
+        ),
         CheckConstraint("expected_salary IS NULL OR expected_salary >= 0", name="expected_salary_positive"),
         # A profile is either a registered user's or a company-sourced one with its own identity.
         CheckConstraint(
@@ -181,10 +194,15 @@ class CandidateSkill(UUIDMixin, Base):
     skill_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("skills.id", ondelete="RESTRICT"), nullable=False
     )
-    proficiency: Mapped[SkillProficiency | None] = mapped_column(pg_enum(SkillProficiency, "skill_proficiency"))
+    proficiency: Mapped[SkillProficiency | None] = mapped_column(
+        pg_enum(SkillProficiency, "skill_proficiency")
+    )
     years_experience: Mapped[Decimal | None] = mapped_column(Numeric(4, 1))
     source: Mapped[DataSource] = mapped_column(
-        pg_enum(DataSource, "candidate_skill_source"), nullable=False, default=DataSource.USER, server_default="USER"
+        pg_enum(DataSource, "candidate_skill_source"),
+        nullable=False,
+        default=DataSource.USER,
+        server_default="USER",
     )
     status: Mapped[SkillStatus] = mapped_column(
         pg_enum(SkillStatus, "candidate_skill_status"),
@@ -193,14 +211,19 @@ class CandidateSkill(UUIDMixin, Base):
         server_default="CONFIRMED",
     )
     confidence: Mapped[float | None] = mapped_column(Numeric(3, 2))
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
 
     candidate: Mapped[CandidateProfile] = relationship(back_populates="skills", lazy="raise")
     skill: Mapped[Skill] = relationship(lazy="raise")
 
     __table_args__ = (
         UniqueConstraint("candidate_id", "skill_id", name="uq_candidate_skills_candidate_skill"),
-        CheckConstraint("years_experience IS NULL OR (years_experience >= 0 AND years_experience <= 70)", name="years_range"),
+        CheckConstraint(
+            "years_experience IS NULL OR (years_experience >= 0 AND years_experience <= 70)",
+            name="years_range",
+        ),
         Index("ix_candidate_skills_skill_candidate", "skill_id", "candidate_id"),
     )
 
@@ -209,17 +232,25 @@ class Experience(UUIDMixin, TimestampMixin, Base):
     __tablename__ = "experiences"
 
     candidate_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("candidate_profiles.id", ondelete="CASCADE"), nullable=False, index=True
+        UUID(as_uuid=True),
+        ForeignKey("candidate_profiles.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     title: Mapped[str] = mapped_column(String(200), nullable=False)
     company_name: Mapped[str] = mapped_column(String(200), nullable=False)
     location: Mapped[str | None] = mapped_column(String(200))
     start_date: Mapped[date] = mapped_column(Date, nullable=False)
     end_date: Mapped[date | None] = mapped_column(Date)
-    is_current: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=text("false"))
+    is_current: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=text("false")
+    )
     description: Mapped[str | None] = mapped_column(Text)
     source: Mapped[DataSource] = mapped_column(
-        pg_enum(DataSource, "experience_source"), nullable=False, default=DataSource.USER, server_default="USER"
+        pg_enum(DataSource, "experience_source"),
+        nullable=False,
+        default=DataSource.USER,
+        server_default="USER",
     )
 
     candidate: Mapped[CandidateProfile] = relationship(back_populates="experiences", lazy="raise")
@@ -234,16 +265,24 @@ class Education(UUIDMixin, TimestampMixin, Base):
     __tablename__ = "educations"
 
     candidate_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("candidate_profiles.id", ondelete="CASCADE"), nullable=False, index=True
+        UUID(as_uuid=True),
+        ForeignKey("candidate_profiles.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     institution: Mapped[str] = mapped_column(String(200), nullable=False)
-    degree_level: Mapped[EducationLevel] = mapped_column(pg_enum(EducationLevel, "degree_level"), nullable=False)
+    degree_level: Mapped[EducationLevel] = mapped_column(
+        pg_enum(EducationLevel, "degree_level"), nullable=False
+    )
     degree: Mapped[str | None] = mapped_column(String(200))
     field_of_study: Mapped[str | None] = mapped_column(String(200))
     start_year: Mapped[int | None] = mapped_column(SmallInteger)
     end_year: Mapped[int | None] = mapped_column(SmallInteger)
     source: Mapped[DataSource] = mapped_column(
-        pg_enum(DataSource, "education_source"), nullable=False, default=DataSource.USER, server_default="USER"
+        pg_enum(DataSource, "education_source"),
+        nullable=False,
+        default=DataSource.USER,
+        server_default="USER",
     )
 
     candidate: Mapped[CandidateProfile] = relationship(back_populates="educations", lazy="raise")
@@ -251,7 +290,9 @@ class Education(UUIDMixin, TimestampMixin, Base):
     __table_args__ = (
         CheckConstraint("start_year IS NULL OR (start_year BETWEEN 1950 AND 2100)", name="start_year_range"),
         CheckConstraint("end_year IS NULL OR (end_year BETWEEN 1950 AND 2100)", name="end_year_range"),
-        CheckConstraint("start_year IS NULL OR end_year IS NULL OR end_year >= start_year", name="years_ordered"),
+        CheckConstraint(
+            "start_year IS NULL OR end_year IS NULL OR end_year >= start_year", name="years_ordered"
+        ),
     )
 
 
@@ -259,7 +300,10 @@ class Certification(UUIDMixin, TimestampMixin, Base):
     __tablename__ = "certifications"
 
     candidate_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("candidate_profiles.id", ondelete="CASCADE"), nullable=False, index=True
+        UUID(as_uuid=True),
+        ForeignKey("candidate_profiles.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     issuer: Mapped[str | None] = mapped_column(String(200))
@@ -267,13 +311,18 @@ class Certification(UUIDMixin, TimestampMixin, Base):
     expires_on: Mapped[date | None] = mapped_column(Date)
     credential_url: Mapped[str | None] = mapped_column(String(500))
     source: Mapped[DataSource] = mapped_column(
-        pg_enum(DataSource, "certification_source"), nullable=False, default=DataSource.USER, server_default="USER"
+        pg_enum(DataSource, "certification_source"),
+        nullable=False,
+        default=DataSource.USER,
+        server_default="USER",
     )
 
     candidate: Mapped[CandidateProfile] = relationship(back_populates="certifications", lazy="raise")
 
     __table_args__ = (
-        CheckConstraint("issued_on IS NULL OR expires_on IS NULL OR expires_on >= issued_on", name="dates_ordered"),
+        CheckConstraint(
+            "issued_on IS NULL OR expires_on IS NULL OR expires_on >= issued_on", name="dates_ordered"
+        ),
     )
 
 
@@ -281,7 +330,10 @@ class CandidateLanguage(UUIDMixin, Base):
     __tablename__ = "candidate_languages"
 
     candidate_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("candidate_profiles.id", ondelete="CASCADE"), nullable=False, index=True
+        UUID(as_uuid=True),
+        ForeignKey("candidate_profiles.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     language: Mapped[str] = mapped_column(String(60), nullable=False)
     proficiency: Mapped[LanguageProficiency] = mapped_column(
@@ -290,4 +342,6 @@ class CandidateLanguage(UUIDMixin, Base):
 
     candidate: Mapped[CandidateProfile] = relationship(back_populates="languages", lazy="raise")
 
-    __table_args__ = (Index("uq_candidate_languages_lang", "candidate_id", func.lower(language), unique=True),)
+    __table_args__ = (
+        Index("uq_candidate_languages_lang", "candidate_id", func.lower(language), unique=True),
+    )

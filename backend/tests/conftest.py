@@ -29,14 +29,14 @@ os.environ["UPLOAD_RATE_LIMIT_ATTEMPTS"] = "1000"
 os.environ["EXPENSIVE_RATE_LIMIT_ATTEMPTS"] = "1000"
 os.environ["SEARCH_RATE_LIMIT_ATTEMPTS"] = "100000"
 
-from collections.abc import AsyncIterator  # noqa: E402
+from collections.abc import AsyncIterator
 
-import pytest  # noqa: E402
-from httpx import ASGITransport, AsyncClient  # noqa: E402
-from sqlalchemy import text  # noqa: E402
+import pytest
+from httpx import ASGITransport, AsyncClient
+from sqlalchemy import text
 
-from app.cache.redis_cache import get_cache, get_redis  # noqa: E402
-from app.db.database import Base, get_engine, get_sessionmaker  # noqa: E402
+from app.cache.redis_cache import get_cache, get_redis
+from app.db.database import Base, get_engine, get_sessionmaker
 
 
 def _run_migrations() -> None:
@@ -75,10 +75,12 @@ async def db(migrated_db: None, seeded_ontology: None) -> AsyncIterator[None]:
     tables = ", ".join(f'"{t.name}"' for t in Base.metadata.sorted_tables if t.name not in keep)
     async with get_engine().begin() as conn:
         await conn.execute(text(f"TRUNCATE {tables} RESTART IDENTITY CASCADE"))
-        await conn.execute(text("DELETE FROM skills WHERE NOT is_verified"))  # user-created skills from a previous test
+        await conn.execute(
+            text("DELETE FROM skills WHERE NOT is_verified")
+        )  # user-created skills from a previous test
     await get_redis().flushdb()
     get_cache()._down_until = 0.0  # reset circuit breaker between tests
-    yield
+    return
 
 
 @pytest.fixture

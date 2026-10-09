@@ -108,9 +108,13 @@ def evaluate() -> dict:
     per_job: dict[str, dict[str, list[str]]] = {}
     evaluable = [jk for jk, g in ds.LABELS.items() if any(v >= 2 for v in g.values())]
     for name, fn in rankers.items():
-        agg: dict[str, list[float]] = (
-            {f"P@{k}": [] for k in ks} | {f"R@{k}": [] for k in ks} | {"NDCG@5": [], "MRR": [], "MAP": []}
-        )
+        agg: dict[str, list[float]] = {
+            **{f"P@{k}": [] for k in ks},
+            **{f"R@{k}": [] for k in ks},
+            "NDCG@5": [],
+            "MRR": [],
+            "MAP": [],
+        }
         for jk in evaluable:
             g = ds.LABELS[jk]
             if name.startswith("Random"):

@@ -48,13 +48,21 @@ def _set_refresh_cookie(response: Response, token: str) -> None:
 
 def _clear_refresh_cookie(response: Response) -> None:
     s = get_settings()
-    response.delete_cookie(s.refresh_cookie_name, path=_REFRESH_PATH, httponly=True, samesite="strict", secure=s.refresh_cookie_secure)
+    response.delete_cookie(
+        s.refresh_cookie_name,
+        path=_REFRESH_PATH,
+        httponly=True,
+        samesite="strict",
+        secure=s.refresh_cookie_secure,
+    )
 
 
 async def _token_response(session: SessionDep, issued: IssuedTokens, response: Response) -> TokenResponse:
     _set_refresh_cookie(response, issued.refresh_token)
     return TokenResponse(
-        access_token=issued.access_token, expires_in=issued.expires_in, user=await build_me(session, issued.user)
+        access_token=issued.access_token,
+        expires_in=issued.expires_in,
+        user=await build_me(session, issued.user),
     )
 
 
@@ -99,10 +107,17 @@ async def register_employer(
     summary="Sign in with email and password",
     description="Returns a short-lived access token (JSON) and sets an HttpOnly, SameSite=Strict refresh cookie.",
     dependencies=[Depends(login_limit)],
-    responses={401: {"description": "INVALID_CREDENTIALS / ACCOUNT_SUSPENDED"}, 429: {"description": "RATE_LIMITED"}},
+    responses={
+        401: {"description": "INVALID_CREDENTIALS / ACCOUNT_SUSPENDED"},
+        429: {"description": "RATE_LIMITED"},
+    },
 )
-async def login(data: LoginRequest, request: Request, response: Response, session: SessionDep) -> TokenResponse:
-    issued = await AuthService(session).login(data.email, data.password, user_agent=request.headers.get("user-agent"))
+async def login(
+    data: LoginRequest, request: Request, response: Response, session: SessionDep
+) -> TokenResponse:
+    issued = await AuthService(session).login(
+        data.email, data.password, user_agent=request.headers.get("user-agent")
+    )
     return await _token_response(session, issued, response)
 
 
@@ -113,9 +128,14 @@ async def login(data: LoginRequest, request: Request, response: Response, sessio
     dependencies=[Depends(login_limit)],
 )
 async def oauth_token(
-    form: Annotated[OAuth2PasswordRequestForm, Depends()], request: Request, response: Response, session: SessionDep
+    form: Annotated[OAuth2PasswordRequestForm, Depends()],
+    request: Request,
+    response: Response,
+    session: SessionDep,
 ) -> TokenResponse:
-    issued = await AuthService(session).login(form.username, form.password, user_agent=request.headers.get("user-agent"))
+    issued = await AuthService(session).login(
+        form.username, form.password, user_agent=request.headers.get("user-agent")
+    )
     return await _token_response(session, issued, response)
 
 
@@ -137,7 +157,14 @@ async def refresh(request: Request, response: Response, session: SessionDep) -> 
         # error envelope is built here to be able to expire the dead cookie in the same response.
         failure = JSONResponse(
             status_code=exc.status_code,
-            content={"error": {"code": exc.code, "message": exc.message, "details": exc.details, "request_id": request_id_ctx.get()}},
+            content={
+                "error": {
+                    "code": exc.code,
+                    "message": exc.message,
+                    "details": exc.details,
+                    "request_id": request_id_ctx.get(),
+                }
+            },
             headers={"WWW-Authenticate": "Bearer"},
         )
         _clear_refresh_cookie(failure)
@@ -147,7 +174,10 @@ async def refresh(request: Request, response: Response, session: SessionDep) -> 
 
 @router.post("/logout", response_model=MessageResponse, summary="Revoke the session")
 async def logout(
-    request: Request, response: Response, session: SessionDep, token: Annotated[str | None, Depends(oauth2_scheme)]
+    request: Request,
+    response: Response,
+    session: SessionDep,
+    token: Annotated[str | None, Depends(oauth2_scheme)],
 ) -> MessageResponse:
     jti, ttl = None, 0
     if token:
@@ -195,7 +225,9 @@ async def update_me(data: UpdateMeRequest, user: CurrentUser, session: SessionDe
     summary="Change password (revokes all sessions)",
     responses=COMMON_ERRORS,
 )
-async def change_password(data: ChangePasswordRequest, user: CurrentUser, session: SessionDep, response: Response) -> MessageResponse:
+async def change_password(
+    data: ChangePasswordRequest, user: CurrentUser, session: SessionDep, response: Response
+) -> MessageResponse:
     await AuthService(session).change_password(user, data.current_password, data.new_password)
     _clear_refresh_cookie(response)
     return MessageResponse(message="Password updated; please sign in again")

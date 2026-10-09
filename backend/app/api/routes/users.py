@@ -33,10 +33,14 @@ async def list_users(
     rows, total = await UserService(session).list(
         q=q, role=role, status=status_, company_id=company_id, page=p.page, page_size=p.page_size
     )
-    return Page.build([UserOut.model_validate(u) for u in rows], page=p.page, page_size=p.page_size, total=total)
+    return Page.build(
+        [UserOut.model_validate(u) for u in rows], page=p.page, page_size=p.page_size, total=total
+    )
 
 
-@router.post("", response_model=UserOut, status_code=status.HTTP_201_CREATED, summary="Create a user with any role")
+@router.post(
+    "", response_model=UserOut, status_code=status.HTTP_201_CREATED, summary="Create a user with any role"
+)
 async def create_user(data: AdminUserCreate, admin: AdminUser, session: SessionDep) -> UserOut:
     user = await UserService(session).create(
         admin,
@@ -57,6 +61,8 @@ async def get_user(user_id: uuid.UUID, admin: AdminUser, session: SessionDep) ->
 
 
 @router.patch("/{user_id}", response_model=UserOut, summary="Update role, status or company of a user")
-async def update_user(user_id: uuid.UUID, data: AdminUserUpdate, admin: AdminUser, session: SessionDep) -> UserOut:
+async def update_user(
+    user_id: uuid.UUID, data: AdminUserUpdate, admin: AdminUser, session: SessionDep
+) -> UserOut:
     user = await UserService(session).update(admin, user_id, data.model_dump(exclude_unset=True))
     return UserOut.model_validate(user)

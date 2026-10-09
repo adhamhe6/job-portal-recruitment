@@ -37,14 +37,18 @@ def titles(body: dict[str, Any]) -> list[str]:
 
 async def test_posted_within_days(client: AsyncClient) -> None:
     c = await seed_search_corpus(client)
-    await sql("UPDATE jobs SET published_at = now() - interval '10 days' WHERE id = :i", i=uuid.UUID(c["java"]["id"]))
-    await sql("UPDATE jobs SET published_at = now() - interval '40 days' WHERE id = :i", i=uuid.UUID(c["nurse"]["id"]))
+    await sql(
+        "UPDATE jobs SET published_at = now() - interval '10 days' WHERE id = :i",
+        i=uuid.UUID(c["java"]["id"]),
+    )
+    await sql(
+        "UPDATE jobs SET published_at = now() - interval '40 days' WHERE id = :i",
+        i=uuid.UUID(c["nurse"]["id"]),
+    )
     assert (await search(client, posted_within_days=7))["total"] == 6
     assert (await search(client, posted_within_days=30))["total"] == 7
     assert (await search(client, posted_within_days=365))["total"] == 8
     assert "Senior Java Engineer" not in titles(await search(client, posted_within_days=7, page_size=100))
-
-
 
 
 # --- visibility -------------------------------------------------------------------------------------------------------------------------------------------
@@ -68,13 +72,15 @@ async def test_only_published_and_still_open_jobs_are_listed(client: AsyncClient
     assert live["id"] in {j["id"] for j in body["items"]}
 
 
-
-
 async def test_sorts(client: AsyncClient) -> None:
     c = await seed_search_corpus(client)
     order = ["python", "java", "frontend", "analyst", "office", "nurse", "devops", "pct"]  # publication order
     for i, key in enumerate(order):
-        await sql("UPDATE jobs SET published_at = now() - make_interval(days => :d) WHERE id = :i", d=len(order) - i, i=uuid.UUID(c[key]["id"]))
+        await sql(
+            "UPDATE jobs SET published_at = now() - make_interval(days => :d) WHERE id = :i",
+            d=len(order) - i,
+            i=uuid.UUID(c[key]["id"]),
+        )
     newest = [j["id"] for j in (await search(client, sort="newest", page_size=100))["items"]]
     assert newest == [c[k]["id"] for k in reversed(order)]
     title_sorted = titles(await search(client, sort="title", page_size=100))
@@ -89,18 +95,30 @@ async def test_sorts(client: AsyncClient) -> None:
     assert known == sorted(known) and lows[-1] is None
     # deadline: sooner first, jobs without a deadline last
     await sql("UPDATE jobs SET application_deadline = NULL")
-    await sql("UPDATE jobs SET application_deadline = current_date + 3 WHERE id = :i", i=uuid.UUID(c["java"]["id"]))
-    await sql("UPDATE jobs SET application_deadline = current_date + 9 WHERE id = :i", i=uuid.UUID(c["python"]["id"]))
+    await sql(
+        "UPDATE jobs SET application_deadline = current_date + 3 WHERE id = :i", i=uuid.UUID(c["java"]["id"])
+    )
+    await sql(
+        "UPDATE jobs SET application_deadline = current_date + 9 WHERE id = :i",
+        i=uuid.UUID(c["python"]["id"]),
+    )
     dl = [j["id"] for j in (await search(client, sort="deadline", page_size=100))["items"]]
     assert dl[:2] == [c["java"]["id"], c["python"]["id"]]
 
 
-async def test_relevance_without_a_query_falls_back_to_newest_and_match_needs_a_candidate(client: AsyncClient) -> None:
+async def test_relevance_without_a_query_falls_back_to_newest_and_match_needs_a_candidate(
+    client: AsyncClient,
+) -> None:
     c = await seed_search_corpus(client)
-    await sql("UPDATE jobs SET published_at = now() - interval '5 days' WHERE id = :i", i=uuid.UUID(c["python"]["id"]))
+    await sql(
+        "UPDATE jobs SET published_at = now() - interval '5 days' WHERE id = :i",
+        i=uuid.UUID(c["python"]["id"]),
+    )
     base = [j["id"] for j in (await search(client, sort="newest"))["items"]]
     assert [j["id"] for j in (await search(client, sort="relevance"))["items"]] == base
-    assert [j["id"] for j in (await search(client, sort="match"))["items"]] == base, "anonymous callers have no match scores"
+    assert [j["id"] for j in (await search(client, sort="match"))["items"]] == base, (
+        "anonymous callers have no match scores"
+    )
     assert base[-1] == c["python"]["id"]
 
 
@@ -112,17 +130,25 @@ async def test_sort_by_match_for_a_signed_in_candidate(client: AsyncClient) -> N
     scores = [j["match_score"] for j in body["items"]]
     known = [s for s in scores if s is not None]
     assert known and known == sorted(known, reverse=True), scores
-    assert body["items"][0]["id"] in {c["python"]["id"], c["devops"]["id"]}, "the best match is a backend-ish job"
+    assert body["items"][0]["id"] in {c["python"]["id"], c["devops"]["id"]}, (
+        "the best match is a backend-ish job"
+    )
     assert scores.index(None) >= len(known) if None in scores else True, "unscored jobs sort last"
-    assert titles(body)[-1] in {"ICU Nurse", "Sales Representative 100% Commission", "Junior Frontend Developer", "Office Manager", "Data Analyst Intern"}
-
-
+    assert titles(body)[-1] in {
+        "ICU Nurse",
+        "Sales Representative 100% Commission",
+        "Junior Frontend Developer",
+        "Office Manager",
+        "Data Analyst Intern",
+    }
 
 
 # --- caching ---------------------------------------------------------------------------------------------------------------------------------------------------------
 
 
-async def test_identical_anonymous_queries_are_served_from_cache_until_jobs_change(client: AsyncClient) -> None:
+async def test_identical_anonymous_queries_are_served_from_cache_until_jobs_change(
+    client: AsyncClient,
+) -> None:
     c = await seed_search_corpus(client)
     cache = get_cache()
     hits, misses = cache.hits, cache.misses
@@ -136,7 +162,9 @@ async def test_identical_anonymous_queries_are_served_from_cache_until_jobs_chan
     # pagination parameters are part of the key
     assert (await search(client, q="python", page_size=1))["page_size"] == 1
     # editing a job invalidates the namespace
-    await client.patch(f"{API}/jobs/{c['python']['id']}", headers=c["rec1"]["h"], json={"title": "Python Wizard"})
+    await client.patch(
+        f"{API}/jobs/{c['python']['id']}", headers=c["rec1"]["h"], json={"title": "Python Wizard"}
+    )
     after = await search(client, q="python")
     assert "Python Wizard" in titles(after) and "Python Developer" not in titles(after)
 
@@ -157,7 +185,9 @@ async def test_company_changes_invalidate_cached_listings(client: AsyncClient) -
     rec = await register_employer(client, "Old Name Ltd")
     await create_job(client, rec, publish=True)
     assert (await search(client))["items"][0]["company_name"] == "Old Name Ltd"
-    await client.patch(f"{API}/companies/{rec['company_id']}", headers=rec["h"], json={"name": "New Name Ltd"})
+    await client.patch(
+        f"{API}/companies/{rec['company_id']}", headers=rec["h"], json={"name": "New Name Ltd"}
+    )
     assert (await search(client))["items"][0]["company_name"] == "New Name Ltd"
 
 
@@ -172,7 +202,11 @@ async def test_personalised_results_are_never_shared_through_the_cache(client: A
     assert (mine["is_saved"], mine["has_applied"]) == (True, True)
     # the personalised answer neither leaked into the shared entry ...
     anon_again = (await search(client))["items"][0]
-    assert anon_again["is_saved"] is None and anon_again["has_applied"] is None and anon_first["items"][0]["is_saved"] is None
+    assert (
+        anon_again["is_saved"] is None
+        and anon_again["has_applied"] is None
+        and anon_first["items"][0]["is_saved"] is None
+    )
     # ... nor is it served to a different candidate
     theirs = (await search(client, other))["items"][0]
     assert (theirs["is_saved"], theirs["has_applied"]) == (False, False)
@@ -183,7 +217,9 @@ async def test_personalised_results_are_never_shared_through_the_cache(client: A
     assert (cache.hits, cache.misses) == before
 
 
-async def test_search_fails_open_without_a_cache(client: AsyncClient, monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_search_fails_open_without_a_cache(
+    client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
     await seed_search_corpus(client)
     monkeypatch.setattr(get_cache(), "enabled", False)
     assert (await search(client))["total"] == 8

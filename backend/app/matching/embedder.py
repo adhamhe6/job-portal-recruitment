@@ -104,7 +104,9 @@ _lock = threading.Lock()
 def _build() -> Embedder:
     s = get_settings()
     if s.embedding_backend == "sentence-transformers":
-        return SentenceTransformerEmbedder(s.sentence_transformer_model, s.embedding_dim, s.embedding_model_name, s.embedding_version)
+        return SentenceTransformerEmbedder(
+            s.sentence_transformer_model, s.embedding_dim, s.embedding_model_name, s.embedding_version
+        )
     return WordLlamaEmbedder(s.embedding_dim, s.embedding_model_name, s.embedding_version)
 
 

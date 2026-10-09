@@ -50,7 +50,9 @@ def clean(text: str | None, limit: int | None = None) -> str:
 
 
 def _hash(payload: Any) -> str:
-    return hashlib.sha256(json.dumps(payload, sort_keys=True, default=str, ensure_ascii=False).encode()).hexdigest()
+    return hashlib.sha256(
+        json.dumps(payload, sort_keys=True, default=str, ensure_ascii=False).encode()
+    ).hexdigest()
 
 
 def _names(skills: list[SkillRef]) -> list[str]:

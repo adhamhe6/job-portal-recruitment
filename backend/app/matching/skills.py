@@ -97,7 +97,7 @@ Sass | Frontend | | scss
 Tailwind CSS | Frontend | css-framework | tailwind, tailwindcss
 Bootstrap | Frontend | css-framework |
 Material UI | Frontend | css-framework | mui, material-ui
-Webpack | Frontend | | 
+Webpack | Frontend | |
 Vite | Frontend | |
 React Native | Mobile | mobile-cross-platform | react-native
 Flutter | Mobile | mobile-cross-platform |
@@ -281,10 +281,10 @@ def _parse() -> tuple[OntologySkill, ...]:
             )
         )
     # Stripping a trailing "~" that landed in the alias column (when the family/alias columns are empty).
-    cleaned = []
+    cleaned: list[OntologySkill] = []
     for s in skills:
-        aliases = tuple(a.rstrip(" ~") for a in s.aliases if a.strip("~ "))
-        cleaned.append(OntologySkill(s.name, s.category, s.family, aliases, s.ambiguous))
+        cleaned_aliases = tuple(a.rstrip(" ~") for a in s.aliases if a.strip("~ "))
+        cleaned.append(OntologySkill(s.name, s.category, s.family, cleaned_aliases, s.ambiguous))
     return tuple(cleaned)
 
 

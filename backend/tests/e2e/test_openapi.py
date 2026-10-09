@@ -15,8 +15,22 @@ pytestmark = pytest.mark.e2e
 
 METHODS = ("get", "post", "put", "patch", "delete")
 FORBIDDEN_RESPONSE_FIELDS = {
-    "password", "password_hash", "hashed_password", "token_hash", "refresh_token", "embedding", "search_tsv", "skills_text", "search_text", "dedupe_key",
-    "embedding_source_hash", "raw_cosine", "job_hash", "candidate_hash", "family_id", "storage_key",
+    "password",
+    "password_hash",
+    "hashed_password",
+    "token_hash",
+    "refresh_token",
+    "embedding",
+    "search_tsv",
+    "skills_text",
+    "search_text",
+    "dedupe_key",
+    "embedding_source_hash",
+    "raw_cosine",
+    "job_hash",
+    "candidate_hash",
+    "family_id",
+    "storage_key",
 }
 
 
@@ -26,7 +40,12 @@ def spec() -> dict[str, Any]:
 
 
 def operations(spec: dict[str, Any]) -> list[tuple[str, str, dict[str, Any]]]:
-    return [(m.upper(), path, op) for path, item in spec["paths"].items() for m, op in item.items() if m in METHODS]
+    return [
+        (m.upper(), path, op)
+        for path, item in spec["paths"].items()
+        for m, op in item.items()
+        if m in METHODS
+    ]
 
 
 def resolve(spec: dict[str, Any], node: Any) -> Any:
@@ -57,9 +76,17 @@ def reachable_property_names(spec: dict[str, Any], node: Any, seen: set[str] | N
 
 def test_the_document_builds_and_describes_the_service(spec: dict[str, Any]) -> None:
     assert spec["openapi"].startswith("3.")
-    assert spec["info"]["title"] == "TalentLens API" and spec["info"]["version"] and "not an automated hiring decision" in spec["info"]["description"]
+    assert (
+        spec["info"]["title"] == "TalentLens API"
+        and spec["info"]["version"]
+        and "not an automated hiring decision" in spec["info"]["description"]
+    )
     assert len(operations(spec)) >= 100
-    assert "/health" in spec["paths"] and "/health/ready" in spec["paths"] and "/api/v1/auth/login" in spec["paths"]
+    assert (
+        "/health" in spec["paths"]
+        and "/health/ready" in spec["paths"]
+        and "/api/v1/auth/login" in spec["paths"]
+    )
     json.dumps(spec)  # serialisable
 
 
@@ -83,11 +110,15 @@ def test_every_operation_has_a_summary_and_a_known_tag(spec: dict[str, Any]) -> 
     assert problems == []
 
 
-def test_operation_ids_are_unique_and_every_operation_documents_a_success_response(spec: dict[str, Any]) -> None:
+def test_operation_ids_are_unique_and_every_operation_documents_a_success_response(
+    spec: dict[str, Any],
+) -> None:
     ids = [op["operationId"] for _, _, op in operations(spec)]
     assert len(ids) == len(set(ids))
     for method, path, op in operations(spec):
-        assert any(code.startswith("2") for code in op["responses"]), f"{method} {path} documents no success response"
+        assert any(code.startswith("2") for code in op["responses"]), (
+            f"{method} {path} documents no success response"
+        )
 
 
 def test_every_declared_tag_is_used_and_described(spec: dict[str, Any]) -> None:
@@ -112,7 +143,9 @@ def test_documented_validation_errors_use_the_real_envelope(spec: dict[str, Any]
     for method, path, op in operations(spec):
         for code, response in op["responses"].items():
             if code in ("422",) and "content" in response:
-                assert response["content"]["application/json"]["schema"] == {"$ref": "#/components/schemas/ErrorResponse"}, (method, path)
+                assert response["content"]["application/json"]["schema"] == {
+                    "$ref": "#/components/schemas/ErrorResponse"
+                }, (method, path)
                 checked += 1
             if code.startswith(("4", "5")) and "content" in response:
                 ref = response["content"]["application/json"]["schema"].get("$ref", "")
@@ -150,18 +183,47 @@ def test_authentication_is_described_as_a_bearer_flow(spec: dict[str, Any]) -> N
 
 
 def test_list_endpoints_share_the_pagination_envelope(spec: dict[str, Any]) -> None:
-    paged = ["/api/v1/users", "/api/v1/companies", "/api/v1/skills", "/api/v1/jobs", "/api/v1/search/jobs", "/api/v1/search/candidates", "/api/v1/applications", "/api/v1/notifications"]
+    paged = [
+        "/api/v1/users",
+        "/api/v1/companies",
+        "/api/v1/skills",
+        "/api/v1/jobs",
+        "/api/v1/search/jobs",
+        "/api/v1/search/candidates",
+        "/api/v1/applications",
+        "/api/v1/notifications",
+    ]
     for path in paged:
-        schema = resolve(spec, spec["paths"][path]["get"]["responses"]["200"]["content"]["application/json"]["schema"])
+        schema = resolve(
+            spec, spec["paths"][path]["get"]["responses"]["200"]["content"]["application/json"]["schema"]
+        )
         assert {"items", "page", "page_size", "total", "pages"} <= set(schema["properties"]), path
         params = {p["name"]: p for p in spec["paths"][path]["get"].get("parameters", [])}
-        assert params["page"]["schema"]["minimum"] == 1 and params["page_size"]["schema"]["maximum"] == 100, path
+        assert params["page"]["schema"]["minimum"] == 1 and params["page_size"]["schema"]["maximum"] == 100, (
+            path
+        )
 
 
 def test_enumerated_inputs_are_documented_as_enums(spec: dict[str, Any]) -> None:
     params = {p["name"]: p for p in spec["paths"]["/api/v1/search/jobs"]["get"]["parameters"]}
-    assert set(resolve(spec, params["sort"]["schema"])["enum"]) >= {"relevance", "newest", "salary_desc", "salary_asc", "deadline", "match", "title"}
+    assert set(resolve(spec, params["sort"]["schema"])["enum"]) >= {
+        "relevance",
+        "newest",
+        "salary_desc",
+        "salary_asc",
+        "deadline",
+        "match",
+        "title",
+    }
     emp = params["employment_type"]["schema"]["items"]
-    assert set(resolve(spec, emp)["enum"]) == {"FULL_TIME", "PART_TIME", "CONTRACT", "INTERNSHIP", "TEMPORARY"}
+    assert set(resolve(spec, emp)["enum"]) == {
+        "FULL_TIME",
+        "PART_TIME",
+        "CONTRACT",
+        "INTERNSHIP",
+        "TEMPORARY",
+    }
     rec = {p["name"]: p for p in spec["paths"]["/api/v1/recommendations/jobs"]["get"]["parameters"]}
-    assert "enum" in resolve(spec, rec["workplace_type"]["schema"]["items"]), "recommendation filters are validated, not free text"
+    assert "enum" in resolve(spec, rec["workplace_type"]["schema"]["items"]), (
+        "recommendation filters are validated, not free text"
+    )

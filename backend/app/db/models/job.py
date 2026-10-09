@@ -67,10 +67,16 @@ class Job(UUIDMixin, TimestampMixin, Base):
     )
     salary_min: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
     salary_max: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
-    salary_currency: Mapped[str] = mapped_column(String(3), nullable=False, default="USD", server_default="USD")
-    min_experience_years: Mapped[Decimal] = mapped_column(Numeric(4, 1), nullable=False, default=0, server_default="0")
+    salary_currency: Mapped[str] = mapped_column(
+        String(3), nullable=False, default="USD", server_default="USD"
+    )
+    min_experience_years: Mapped[Decimal] = mapped_column(
+        Numeric(4, 1), nullable=False, default=0, server_default="0"
+    )
     max_experience_years: Mapped[Decimal | None] = mapped_column(Numeric(4, 1))
-    experience_level: Mapped[ExperienceLevel | None] = mapped_column(pg_enum(ExperienceLevel, "experience_level"))
+    experience_level: Mapped[ExperienceLevel | None] = mapped_column(
+        pg_enum(ExperienceLevel, "experience_level")
+    )
     min_education_level: Mapped[EducationLevel | None] = mapped_column(
         pg_enum(EducationLevel, "job_min_education_level")
     )
@@ -102,14 +108,22 @@ class Job(UUIDMixin, TimestampMixin, Base):
     company: Mapped[Company] = relationship(lazy="raise")
     created_by: Mapped[User | None] = relationship(foreign_keys=[created_by_id], lazy="raise")
     hiring_manager: Mapped[User | None] = relationship(foreign_keys=[hiring_manager_id], lazy="raise")
-    skills: Mapped[list[JobSkill]] = relationship(back_populates="job", cascade="all, delete-orphan", lazy="raise")
+    skills: Mapped[list[JobSkill]] = relationship(
+        back_populates="job", cascade="all, delete-orphan", lazy="raise"
+    )
 
     __table_args__ = (
         CheckConstraint("salary_min IS NULL OR salary_min >= 0", name="salary_min_positive"),
-        CheckConstraint("salary_max IS NULL OR salary_min IS NULL OR salary_max >= salary_min", name="salary_range_ordered"),
-        CheckConstraint("min_experience_years >= 0 AND min_experience_years <= 70", name="min_experience_range"),
         CheckConstraint(
-            "max_experience_years IS NULL OR max_experience_years >= min_experience_years", name="experience_range_ordered"
+            "salary_max IS NULL OR salary_min IS NULL OR salary_max >= salary_min",
+            name="salary_range_ordered",
+        ),
+        CheckConstraint(
+            "min_experience_years >= 0 AND min_experience_years <= 70", name="min_experience_range"
+        ),
+        CheckConstraint(
+            "max_experience_years IS NULL OR max_experience_years >= min_experience_years",
+            name="experience_range_ordered",
         ),
         CheckConstraint(
             "status = 'DRAFT' OR published_at IS NOT NULL OR status = 'ARCHIVED'", name="published_at_set"
@@ -118,8 +132,15 @@ class Job(UUIDMixin, TimestampMixin, Base):
         Index("ix_jobs_published", text("published_at DESC"), postgresql_where=text("status = 'PUBLISHED'")),
         Index("ix_jobs_company_status", "company_id", "status", text("updated_at DESC")),
         Index("ix_jobs_search_tsv", "search_tsv", postgresql_using="gin"),
-        Index("ix_jobs_title_trgm", "title", postgresql_using="gin", postgresql_ops={"title": "gin_trgm_ops"}),
-        Index("ix_jobs_location_trgm", "location", postgresql_using="gin", postgresql_ops={"location": "gin_trgm_ops"}),
+        Index(
+            "ix_jobs_title_trgm", "title", postgresql_using="gin", postgresql_ops={"title": "gin_trgm_ops"}
+        ),
+        Index(
+            "ix_jobs_location_trgm",
+            "location",
+            postgresql_using="gin",
+            postgresql_ops={"location": "gin_trgm_ops"},
+        ),
         Index(
             "ix_jobs_embedding_hnsw",
             "embedding",
@@ -173,7 +194,9 @@ class SavedJob(Base):
     job_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("jobs.id", ondelete="CASCADE"), primary_key=True
     )
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
 
     job: Mapped[Job] = relationship(lazy="raise")
     candidate: Mapped[CandidateProfile] = relationship(lazy="raise")

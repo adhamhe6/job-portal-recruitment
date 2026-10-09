@@ -13,7 +13,9 @@ router = APIRouter(prefix="/tasks", tags=["Tasks"], responses=COMMON_ERRORS)
 
 
 @router.get(
-    "/{task_id}", response_model=TaskOut, summary="Background task status",
+    "/{task_id}",
+    response_model=TaskOut,
+    summary="Background task status",
     description="Poll until `status` is COMPLETED or FAILED. `progress` (0-100) and `stage` are written by the worker as it runs. "
     "(Named *tasks* because `/jobs` is the job-posting resource.)",
 )

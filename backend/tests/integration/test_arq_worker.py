@@ -46,20 +46,44 @@ async def test_profile_edit_is_processed_by_a_real_arq_worker(client):
         await fill_backend_profile(client, cand)
 
         async with get_sessionmaker()() as s:
-            pending = (await s.execute(select(BackgroundTask).where(BackgroundTask.type == TaskType.MATCH_CANDIDATE))).scalars().all()
+            pending = (
+                (
+                    await s.execute(
+                        select(BackgroundTask).where(BackgroundTask.type == TaskType.MATCH_CANDIDATE)
+                    )
+                )
+                .scalars()
+                .all()
+            )
             assert pending, "profile edits must enqueue a task"
-            assert all(t.status == TaskStatus.PENDING for t in pending), "nothing runs until a worker picks the message up"
-            embedding_before = (await s.execute(select(CandidateProfile.embedding).where(CandidateProfile.user_id.is_not(None)))).scalar_one()
+            assert all(t.status == TaskStatus.PENDING for t in pending), (
+                "nothing runs until a worker picks the message up"
+            )
+            embedding_before = (
+                await s.execute(
+                    select(CandidateProfile.embedding).where(CandidateProfile.user_id.is_not(None))
+                )
+            ).scalar_one()
             assert embedding_before is None
 
         await _run_worker_burst()
 
         async with get_sessionmaker()() as s:
-            tasks = (await s.execute(select(BackgroundTask).where(BackgroundTask.type == TaskType.MATCH_CANDIDATE))).scalars().all()
+            tasks = (
+                (
+                    await s.execute(
+                        select(BackgroundTask).where(BackgroundTask.type == TaskType.MATCH_CANDIDATE)
+                    )
+                )
+                .scalars()
+                .all()
+            )
             assert [t.status for t in tasks] == [TaskStatus.COMPLETED]
             assert tasks[0].progress == 100 and tasks[0].started_at and tasks[0].finished_at
             profile = (await s.execute(select(CandidateProfile))).scalar_one()
-            assert profile.embedding is not None and profile.embedding_model  # the worker generated the embedding
+            assert (
+                profile.embedding is not None and profile.embedding_model
+            )  # the worker generated the embedding
         r = await client.get(f"/api/v1/tasks/{tasks[0].id}", headers=cand["h"])
         assert r.status_code == 200 and r.json()["status"] == "COMPLETED"
     finally:
@@ -77,7 +101,15 @@ async def test_duplicate_delivery_is_harmless(client):
         cand = await register_candidate(client)
         await fill_backend_profile(client, cand)
         async with get_sessionmaker()() as s:
-            task = (await s.execute(select(BackgroundTask).where(BackgroundTask.type == TaskType.MATCH_CANDIDATE))).scalars().first()
+            task = (
+                (
+                    await s.execute(
+                        select(BackgroundTask).where(BackgroundTask.type == TaskType.MATCH_CANDIDATE)
+                    )
+                )
+                .scalars()
+                .first()
+            )
             assert task is not None
             await dispatcher.dispatch(str(task.id))  # a second, duplicate message
         await _run_worker_burst()

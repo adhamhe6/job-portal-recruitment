@@ -9,7 +9,9 @@ test.describe('workflow 5 · interviews: scheduling conflicts, candidate confirm
   }) => {
     // Alex Rivera's seeded phone screen (Riley Recruiter + Hannah Manager) is the slot we try to collide with.
     const token = await apiToken(request, ACCOUNTS.recruiter)
-    const list = await request.get('/api/v1/interviews?upcoming_only=true&page_size=50', { headers: bearer(token) })
+    const list = await request.get('/api/v1/interviews?upcoming_only=true&page_size=50', {
+      headers: bearer(token),
+    })
     expect(list.ok()).toBeTruthy()
     const existing = (await list.json()).items.find(
       (i: { candidate_name?: string; candidate?: { display_name?: string } }) =>
@@ -24,6 +26,7 @@ test.describe('workflow 5 · interviews: scheduling conflicts, candidate confirm
     await login(page, ACCOUNTS.recruiter)
     await page.goto('/interviews')
     await expect(page.getByRole('link', { name: /Alex Rivera/ })).toBeVisible()
+    const ninaBefore = await page.getByRole('link', { name: /Nina Petrova/ }).count()
     await page.getByRole('button', { name: 'Schedule interview' }).first().click()
     await page.getByRole('combobox', { name: 'Application' }).click()
     await page.getByRole('option', { name: /Nina Petrova/ }).click()
@@ -37,11 +40,16 @@ test.describe('workflow 5 · interviews: scheduling conflicts, candidate confirm
     await expect(form).toBeVisible()
 
     // --- a free slot is accepted
-    const free = new Date(start.getTime() + 3 * 24 * 3600_000)
+    // a slot nobody holds: random day and minute so repeated runs against the same database never collide
+    const free = new Date(
+      start.getTime() +
+        (4 + Math.floor(Math.random() * 50)) * 24 * 3600_000 +
+        Math.floor(Math.random() * 600) * 60_000,
+    )
     await form.getByLabel('Starts').fill(local(free))
     await form.getByLabel('Ends').fill(local(new Date(free.getTime() + 45 * 60_000)))
     await form.getByRole('button', { name: 'Schedule interview' }).click()
-    await expect(page.getByRole('link', { name: /Nina Petrova/ })).toBeVisible()
+    await expect(page.getByRole('link', { name: /Nina Petrova/ })).toHaveCount(ninaBefore + 1)
 
     // --- the candidate sees their interview and confirms attendance
     const cand = await (await browser.newContext({ baseURL: 'http://localhost:8080' })).newPage()
@@ -54,9 +62,14 @@ test.describe('workflow 5 · interviews: scheduling conflicts, candidate confirm
     await cand.context().close()
   })
 
-  test('feedback is internal: staff can read it, the candidate never receives it', async ({ page, request }) => {
+  test('feedback is internal: staff can read it, the candidate never receives it', async ({
+    page,
+    request,
+  }) => {
     const token = await apiToken(request, ACCOUNTS.recruiter)
-    const done = await request.get('/api/v1/interviews?status=COMPLETED&page_size=5', { headers: bearer(token) })
+    const done = await request.get('/api/v1/interviews?status=COMPLETED&page_size=5', {
+      headers: bearer(token),
+    })
     const completed = (await done.json()).items[0]
     expect(completed, 'the seed provides completed interviews with feedback').toBeTruthy()
 
@@ -68,7 +81,9 @@ test.describe('workflow 5 · interviews: scheduling conflicts, candidate confirm
 
     // the API refuses the candidate role outright
     const candToken = await apiToken(request, ACCOUNTS.candidate)
-    const res = await request.get(`/api/v1/interviews/${completed.id}/feedback`, { headers: bearer(candToken) })
+    const res = await request.get(`/api/v1/interviews/${completed.id}/feedback`, {
+      headers: bearer(candToken),
+    })
     expect([403, 404]).toContain(res.status())
   })
 })

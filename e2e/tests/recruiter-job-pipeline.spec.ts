@@ -18,12 +18,17 @@ test.describe('workflows 2–3 · a recruiter publishes a job and works the appl
     await page.getByLabel('Employment type').selectOption('Full-time')
     await page
       .getByLabel('About the role')
-      .fill('Build and operate the internal platform: Python services, PostgreSQL, Redis and CI/CD pipelines.')
+      .fill(
+        'Build and operate the internal platform: Python services, PostgreSQL, Redis and CI/CD pipelines.',
+      )
     await page.getByLabel('Min. experience (years)').fill('2')
     await page.getByRole('combobox', { name: 'Skills' }).click()
     const picker = page.getByRole('dialog')
     await picker.getByRole('combobox', { name: 'Skills' }).fill('Python')
-    await picker.getByRole('option', { name: /^Python\b/ }).first().click()
+    await picker
+      .getByRole('option', { name: /^Python\b/ })
+      .first()
+      .click()
     await page.keyboard.press('Escape')
     await page.getByRole('button', { name: 'Publish' }).click()
     await expect(page).toHaveURL(/\/jobs\/[0-9a-f-]{36}$/) // lands on the published posting
@@ -38,7 +43,9 @@ test.describe('workflows 2–3 · a recruiter publishes a job and works the appl
 
     // --- a new candidate applies
     const { email } = await newCandidate(request)
-    const candCtx = await browser.newContext({ baseURL: page.url().split('/manage')[0] })
+    const candCtx = await browser.newContext({
+      baseURL: page.url().split('/manage')[0],
+    })
     const cand = await candCtx.newPage()
     await login(cand, email)
     await cand.goto('/jobs')
@@ -54,11 +61,17 @@ test.describe('workflows 2–3 · a recruiter publishes a job and works the appl
     await page.getByRole('searchbox').fill('Tester')
     const card = page.getByText('Eve Tester').first()
     await expect(card).toBeVisible()
-    await page.getByRole('button', { name: /Move Eve Tester/ }).first().click()
+    await page
+      .getByRole('button', { name: /Move Eve Tester/ })
+      .first()
+      .click()
     await page.getByRole('menuitem', { name: /screening/i }).click()
 
     // --- the detail page records the transition in the audited history
-    await page.getByRole('link', { name: /Eve Tester/ }).first().click()
+    await page
+      .getByRole('link', { name: /Eve Tester/ })
+      .first()
+      .click()
     await expect(page.getByText(/screening/i).first()).toBeVisible()
     await expect(page.getByText(/history|timeline/i).first()).toBeVisible()
     await page.getByLabel(/note/i).first().fill('Strong match on the platform skills.')

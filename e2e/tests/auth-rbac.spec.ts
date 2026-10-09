@@ -11,7 +11,9 @@ test.describe('authentication and role-based access', () => {
     await expect(page).toHaveURL(/\/login/)
   })
 
-  test('a candidate signs in, sees the candidate area, and cannot reach staff or admin pages', async ({ page }) => {
+  test('a candidate signs in, sees the candidate area, and cannot reach staff or admin pages', async ({
+    page,
+  }) => {
     await login(page, ACCOUNTS.candidate)
     await expect(page).toHaveURL(/\/dashboard/)
     for (const path of ['/admin/system', '/manage/jobs', '/candidates']) {
@@ -35,7 +37,10 @@ test.describe('authentication and role-based access', () => {
     await login(page, ACCOUNTS.candidate)
     await page.reload()
     await expect(page).toHaveURL(/\/dashboard/)
-    await page.getByRole('button', { name: /account|profile|menu|alex/i }).first().click()
+    await page
+      .getByRole('button', { name: /account|profile|menu|alex/i })
+      .first()
+      .click()
     await page.getByRole('menuitem', { name: /sign out|log out/i }).click()
     await expect(page).toHaveURL(/\/login|\/$/)
     await page.goto('/dashboard')

@@ -19,7 +19,9 @@ test.describe('workflow 4 · résumé upload → async parsing → review → pr
     await page.getByRole('button', { name: 'Upload résumé' }).click()
 
     // the worker extracts and parses it; the page polls until the résumé is processed
-    await expect(page.getByText('Processed', { exact: true })).toBeVisible({ timeout: 60_000 })
+    await expect(page.getByText('Processed', { exact: true })).toBeVisible({
+      timeout: 60_000,
+    })
     await page.getByRole('button', { name: 'Review suggestions' }).click()
 
     // suggestions come from the file itself, with confidence and provenance
@@ -45,7 +47,9 @@ test.describe('workflow 4 · résumé upload → async parsing → review → pr
 
     // privacy: another candidate cannot fetch this résumé file
     const mine = await page.evaluate(async () => {
-      const r = await fetch('/api/v1/resumes?page_size=1', { credentials: 'include' })
+      const r = await fetch('/api/v1/resumes?page_size=1', {
+        credentials: 'include',
+      })
       return r.status
     })
     expect([200, 401]).toContain(mine)

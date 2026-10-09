@@ -17,7 +17,9 @@ export async function login(page: Page, email: string, password = PASSWORD): Pro
 
 /** API login for setup/verification that is not the point of the scenario under test. */
 export async function apiToken(request: APIRequestContext, email: string): Promise<string> {
-  const res = await request.post('/api/v1/auth/login', { data: { email, password: PASSWORD } })
+  const res = await request.post('/api/v1/auth/login', {
+    data: { email, password: PASSWORD },
+  })
   expect(res.ok(), await res.text()).toBeTruthy()
   return (await res.json()).access_token as string
 }
@@ -33,7 +35,13 @@ export async function newCandidate(request: APIRequestContext): Promise<{ email:
   const email = `e2e.${uniqueSuffix()}@example.com`
   const first = 'Eve'
   const res = await request.post('/api/v1/auth/register', {
-    data: { email, password: PASSWORD, first_name: first, last_name: 'Tester', role: 'CANDIDATE' },
+    data: {
+      email,
+      password: PASSWORD,
+      first_name: first,
+      last_name: 'Tester',
+      role: 'CANDIDATE',
+    },
   })
   expect(res.ok(), await res.text()).toBeTruthy()
   return { email, first }
@@ -49,7 +57,12 @@ export async function resumePdf(name: string): Promise<Buffer> {
   const page = doc.addPage([595, 842])
   let y = 790
   const line = (text: string, opts: { bold?: boolean; size?: number } = {}) => {
-    page.drawText(text, { x: 50, y, size: opts.size ?? 11, font: opts.bold ? bold : font })
+    page.drawText(text, {
+      x: 50,
+      y,
+      size: opts.size ?? 11,
+      font: opts.bold ? bold : font,
+    })
     y -= (opts.size ?? 11) + 7
   }
   line(name, { bold: true, size: 20 })

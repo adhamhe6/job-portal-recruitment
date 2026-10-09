@@ -8,7 +8,9 @@ test.describe('workflow 6 · matching, reports and monitoring', () => {
   }) => {
     const token = await apiToken(request, ACCOUNTS.recruiter)
     const jobs = await request.get('/api/v1/jobs?q=Senior+Backend&page_size=5', { headers: bearer(token) })
-    const job = (await jobs.json()).items.find((j: { title: string }) => j.title === 'Senior Backend Engineer')
+    const job = (await jobs.json()).items.find(
+      (j: { title: string }) => j.title === 'Senior Backend Engineer',
+    )
     expect(job).toBeTruthy()
 
     await login(page, ACCOUNTS.recruiter)
@@ -18,18 +20,23 @@ test.describe('workflow 6 · matching, reports and monitoring', () => {
     // the assertion is on ordering and presence rather than on a fixed first place.
     const cards = page.getByRole('article')
     await expect(cards.first()).toContainText(/\d+%/)
-    const scores = (await cards.evaluateAll((els) => els.map((e) => e.getAttribute('aria-label') ?? ''))).map((l) =>
-      Number(/(\d+)% match/.exec(l)?.[1] ?? NaN),
+    const scores = (await cards.evaluateAll((els) => els.map((e) => e.getAttribute('aria-label') ?? ''))).map(
+      (l) => Number(/(\d+)% match/.exec(l)?.[1] ?? NaN),
     )
     expect(scores.length).toBeGreaterThan(3)
     expect([...scores].sort((a, b) => b - a)).toEqual(scores)
     const alex = page.getByRole('article', { name: /^Alex Rivera/ })
     await expect(alex).toBeVisible()
-    expect(Number(/(\d+)% match/.exec((await alex.getAttribute('aria-label')) ?? '')?.[1])).toBeGreaterThanOrEqual(90)
+    expect(
+      Number(/(\d+)% match/.exec((await alex.getAttribute('aria-label')) ?? '')?.[1]),
+    ).toBeGreaterThanOrEqual(90)
     const first = alex
     await first.getByRole('button', { name: /why this score/i }).click()
     await expect(page.getByText(/python/i).first()).toBeVisible()
-    await page.getByText(/how to read match scores/i).first().click()
+    await page
+      .getByText(/how to read match scores/i)
+      .first()
+      .click()
     await expect(page.getByText(/ranking aid|not a hiring decision/i).first()).toBeVisible()
 
     // a refresh goes through the background worker and finishes

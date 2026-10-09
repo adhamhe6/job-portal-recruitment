@@ -8,7 +8,11 @@ function localChromium(): string | undefined {
   if (!root || !existsSync(root)) return undefined
   const dir = readdirSync(root).find((d) => /^chromium-\d+$/.test(d))
   if (!dir) return undefined
-  const candidates = [join(root, dir, 'chrome-linux', 'chrome'), join(root, dir, 'chrome-linux64', 'chrome'), join(root, dir, 'chrome')]
+  const candidates = [
+    join(root, dir, 'chrome-linux', 'chrome'),
+    join(root, dir, 'chrome-linux64', 'chrome'),
+    join(root, dir, 'chrome'),
+  ]
   return candidates.find(existsSync)
 }
 
@@ -27,5 +31,10 @@ export default defineConfig({
     video: 'off',
     launchOptions: { executablePath: process.env.E2E_CHROMIUM_PATH ?? localChromium() },
   },
-  projects: [{ name: 'chromium-desktop', use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } } }],
+  projects: [
+    {
+      name: 'chromium-desktop',
+      use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } },
+    },
+  ],
 })

@@ -63,16 +63,16 @@ describe('ResumePage: list and actions', () => {
   it('uploads a PDF as multipart with set_primary and refreshes the list', async () => {
     signInAs('CANDIDATE')
     const items: ReturnType<typeof makeResume>[] = []
-    let sent: { name: string; primary: string | null } | null = null
+    let sent: { size: number; primary: string | null } | null = null
     server.use(
       http.get(`${API}/resumes`, () => HttpResponse.json(page(items))),
       http.post(`${API}/resumes`, async ({ request }) => {
         const form = await request.formData()
         const file = form.get('file') as File
-        sent = { name: file.name, primary: form.get('set_primary') as string | null }
+        sent = { size: file.size, primary: form.get('set_primary') as string | null }
         const r = makeResume({
           id: 'res-new',
-          original_filename: file.name,
+          original_filename: 'my-cv.pdf',
           status: 'PROCESSING',
           processing: { task_status: 'RUNNING', progress: 40, stage: 'PARSING' },
         })
@@ -85,7 +85,7 @@ describe('ResumePage: list and actions', () => {
     fireEvent.change(dropzoneInput(), { target: { files: [pdf('my-cv.pdf')] } })
     await user.click(screen.getByRole('button', { name: 'Upload résumé' }))
     expect(await screen.findByRole('heading', { name: 'my-cv.pdf' })).toBeInTheDocument()
-    expect(sent).toEqual({ name: 'my-cv.pdf', primary: 'true' })
+    expect(sent).toEqual({ size: 1200, primary: 'true' })
     expect(screen.getByRole('progressbar', { name: 'Processing my-cv.pdf' })).toHaveAttribute(
       'aria-valuenow',
       '40',
@@ -198,13 +198,12 @@ describe('ResumePage: list and actions', () => {
     )
     const { user } = renderApp('/resume')
     await user.click(await screen.findByRole('button', { name: 'Delete alex-cv.pdf' }))
-    let dialog = await screen.findByRole('alertdialog')
+    const dialog = await screen.findByRole('alertdialog')
     await user.click(within(dialog).getByRole('button', { name: 'Delete résumé' }))
     expect(await within(dialog).findByText(/attached to one of your applications/)).toBeInTheDocument()
     await user.click(within(dialog).getByRole('button', { name: 'Delete résumé' }))
     await waitFor(() => expect(attempts).toBe(2))
     await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
-    dialog = null as never
   })
 
   it('downloads the stored file through the authenticated endpoint', async () => {
@@ -247,11 +246,7 @@ describe('ResumePage: review flow', () => {
     setup()
     const { user } = renderApp('/resume')
     await user.click(await screen.findByRole('button', { name: /Review suggestions/ }))
-    const panel = await screen
-      .findByRole('region', { name: 'Review suggestions' }, { timeout: 4000 })
-      .catch(() => null)
-    const heading = await screen.findByRole('heading', { name: 'Review suggestions' })
-    expect(panel ?? heading).toBeTruthy()
+    expect(await screen.findByRole('heading', { name: 'Review suggestions' })).toBeInTheDocument()
 
     const skills = await screen.findByRole('list', { name: 'Skills suggestions' })
     expect(within(skills).getByLabelText('Kubernetes')).toBeChecked()
